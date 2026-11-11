@@ -56,8 +56,14 @@ const AppState = {
 
     init() {
         const cached = LocationCache.get();
-        if (cached && (Date.now() - cached.timestamp < CONFIG.CACHE_DURATION)) {
-            this.currentLocation = cached.data;
+        const age = cached ? Date.now() - Number(cached.timestamp) : Infinity;
+        const location = cached?.data;
+        const validCoordinates = Number.isFinite(Number(location?.lat)) &&
+            Number.isFinite(Number(location?.lon)) &&
+            Math.abs(Number(location.lat)) <= 90 &&
+            Math.abs(Number(location.lon)) <= 180;
+        if (cached && age >= 0 && age < CONFIG.CACHE_DURATION && validCoordinates) {
+            this.currentLocation = { ...location, lat: Number(location.lat), lon: Number(location.lon) };
             return this.currentLocation;
         }
         this.currentLocation = { ...CONFIG.DEFAULT_LOCATION };
@@ -164,6 +170,9 @@ const GeoService = {
 
     async _reverseNominatim(lat, lon) {
         try {
+            // حد Nominatim يطبق على جميع الطلبات، بما فيها البحث العكسي.
+            if (Date.now() - this.lastNominatimSearchAt < 1100) return this._fallback(lat, lon);
+            this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1&accept-language=ar`;
             const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim failed');
@@ -212,32 +221,44 @@ const GeoService = {
         };
     },
 
-    async searchCities(query) {
+    async searchCities(query, allowRemote = false) {
         if (!query || query.length < 2) return [];
-        const q = query.toLowerCase();
-        const local = ALGERIAN_CITIES.filter(c => c.name.toLowerCase().includes(q));
+        const q = query.toLocaleLowerCase('ar');
+        const local = ALGERIAN_CITIES.filter(c => c.name.toLocaleLowerCase('ar').includes(q));
         if (local.length > 0) return local.map(c => ({
             ...c, displayName: this._buildDisplayName(c.name, c.state, 'الجزائر')
         }));
-        return this._searchNominatim(query);
+        // Nominatim لا يسمح بالبحث التلقائي أثناء الكتابة؛ البحث الخارجي يتم بطلب Enter فقط.
+        return allowRemote ? this._searchNominatim(query) : [];
     },
 
+    lastNominatimSearchAt: 0,
     async _searchNominatim(query) {
         try {
+            // احترام حد Nominatim العام: طلب بحث واحد كحد أقصى في الثانية.
+            if (Date.now() - this.lastNominatimSearchAt < 1100) return [];
+            this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
             const res = await fetchWithTimeout(url);
+            if (!res.ok) throw new Error('Nominatim search failed');
             const data = await res.json();
+            if (!Array.isArray(data)) return [];
             return data.map(p => {
+                const lat = Number(p.lat), lon = Number(p.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
                 const addr = p.address || {};
-                const name = p.display_name.split(',')[0];
+                const displayName = typeof p.display_name === 'string' ? p.display_name : '';
                 return {
-                    lat: parseFloat(p.lat), lon: parseFloat(p.lon),
-                    name, state: addr.state || addr.county || '',
+                    lat, lon, name: displayName.split(',')[0] || 'موقع غير معروف',
+                    state: addr.state || addr.county || '',
                     country: addr.country || 'الجزائر',
-                    displayName: p.display_name
+                    displayName
                 };
-            });
-        } catch (e) { return []; }
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('[Geo] Nominatim search failed:', e);
+            return [];
+        }
     }
 };
 
@@ -304,21 +325,33 @@ const WeatherService = {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات الطقس الحالية');
-        return res.json();
+        const data = await res.json();
+        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
+            throw new Error('استجابة الطقس الحالية غير مكتملة');
+        }
+        return data;
     },
 
     async fetchForecast(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب التنبؤات');
-        return res.json();
+        const data = await res.json();
+        if (!Array.isArray(data?.list) || data.list.length === 0) {
+            throw new Error('بيانات التنبؤ غير متاحة أو غير مكتملة');
+        }
+        return data;
     },
 
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات النقطة');
-        return res.json();
+        const data = await res.json();
+        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
+            throw new Error('بيانات الطقس للنقطة غير مكتملة');
+        }
+        return data;
     },
 
     getIcon(id, isDay = true) {
@@ -346,8 +379,6 @@ const WeatherService = {
         return dirs[Math.round((deg % 360) / 45) % 8];
     },
 
-    waveHeight(windSpeed) { return (windSpeed * 0.2).toFixed(1); },
-    wavePeriod(windSpeed) { return (windSpeed * 0.3).toFixed(1); },
     formatTime(d) { return d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }); }
 };
 
@@ -451,7 +482,7 @@ const UI = {
             daily[key].descs.push(item.weather[0]?.description || '');
         });
 
-        const entries = Object.values(daily).slice(0, 7);
+        const entries = Object.values(daily).slice(0, 5);
         if (this.els.forecastContainer) {
             this.els.forecastContainer.innerHTML = entries.map(day => {
                 const max = Math.max(...day.temps);
@@ -527,7 +558,7 @@ const UI = {
 
     updateChart(forecast) {
         const ctx = this.els.temperatureChart?.getContext('2d');
-        if (!ctx) return;
+        if (!ctx || !window.Chart) return;
 
         const labels = [];
         const maxTemps = [];
@@ -613,6 +644,10 @@ const MapService = {
 
     init() {
         const loc = AppState.currentLocation || CONFIG.DEFAULT_LOCATION;
+        if (!window.L || !document.getElementById('weatherMap')) {
+            console.warn('[Map] Leaflet is unavailable; weather data will continue without the map.');
+            return;
+        }
         this.map = L.map('weatherMap').setView([loc.lat, loc.lon], 6);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -627,6 +662,7 @@ const MapService = {
     },
 
     _updateLayer() {
+        if (!this.map || !window.L) return;
         const urls = {
             temperature: `${CONFIG.TILE_URL}/temp_new/{z}/{x}/{y}.png?appid=${CONFIG.OPENWEATHER_API_KEY}`,
             precipitation: `${CONFIG.TILE_URL}/precipitation_new/{z}/{x}/{y}.png?appid=${CONFIG.OPENWEATHER_API_KEY}`,
@@ -658,6 +694,7 @@ const MapService = {
     },
 
     _setMarker(lat, lon, title) {
+        if (!this.map || !window.L) return;
         if (this.marker) this.map.removeLayer(this.marker);
         this.marker = L.marker([lat, lon]).addTo(this.map)
             .bindPopup(`<b style="font-family:Cairo;">${escapeHTML(title)}</b>`)
@@ -726,34 +763,48 @@ const SearchService = {
         this.input = document.getElementById('searchInput');
         this.suggestions = document.getElementById('citySuggestions');
         if (!this.input || !this.suggestions) return;
-
         this.input.addEventListener('input', e => this._onInput(e));
-        this.input.addEventListener('focus', () => { if (this.input.value.length >= 2) this._onInput({ target: this.input }); });
+        this.input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = this.input.value.trim();
+                if (query.length >= 2) this._search(query, true);
+            }
+        });
+        this.input.addEventListener('focus', () => {
+            if (this.input.value.length >= 2) this._onInput({ target: this.input });
+        });
         this.suggestions.addEventListener('click', e => {
             const item = e.target.closest('.city-suggestion-item');
             if (item) this._select(item.dataset);
         });
-        document.addEventListener('click', e => { if (!e.target.closest('.search-wrapper')) this._hide(); });
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.search-wrapper')) this._hide();
+        });
     },
 
     _onInput(e) {
         const q = e.target.value.trim();
         if (q.length < 2) { this.requestId++; this._hide(); return; }
         clearTimeout(this.timer);
-        this.timer = setTimeout(() => this._search(q), 300);
+        this.timer = setTimeout(() => this._search(q, false), 250);
     },
 
-    async _search(q) {
+    async _search(q, allowRemote = false) {
         const requestId = ++this.requestId;
-        const results = await GeoService.searchCities(q);
+        const results = await GeoService.searchCities(q, allowRemote);
         if (requestId !== this.requestId || q !== this.input?.value.trim()) return;
-        this._render(results);
+        this._render(results, allowRemote);
     },
 
-    _render(list) {
-        if (!list?.length) { this._hide(); return; }
+    _render(list, remoteRequested = false) {
+        if (!list?.length) {
+            this.suggestions.innerHTML = `<div class="city-suggestion-empty">${remoteRequested ? 'لم نعثر على نتائج لهذه المدينة.' : 'اكتب اسم مدينة جزائرية أو اضغط Enter للبحث الموسع.'}</div>`;
+            this.suggestions.classList.add('visible');
+            return;
+        }
         this.suggestions.innerHTML = list.slice(0, 8).map(c => `
-            <div class="city-suggestion-item" data-lat="${c.lat}" data-lon="${c.lon}" data-name="${escapeHTML(c.name)}" data-display="${escapeHTML(c.displayName || c.name)}">
+            <div class="city-suggestion-item" data-lat="${Number(c.lat)}" data-lon="${Number(c.lon)}" data-name="${escapeHTML(c.name)}" data-display="${escapeHTML(c.displayName || c.name)}" data-state="${escapeHTML(c.state || '')}" data-country="${escapeHTML(c.country || 'الجزائر')}">
                 <div class="city-name">${escapeHTML(c.name)}</div>
                 <div class="city-region">${escapeHTML(c.state ? c.state + ' - ' : '')}${escapeHTML(c.country || 'الجزائر')}</div>
             </div>
@@ -765,8 +816,9 @@ const SearchService = {
 
     _select(ds) {
         const loc = {
-            lat: parseFloat(ds.lat), lon: parseFloat(ds.lon),
-            name: ds.name, displayName: ds.display || ds.name
+            lat: Number(ds.lat), lon: Number(ds.lon),
+            name: ds.name, state: ds.state || '', country: ds.country || 'الجزائر',
+            displayName: ds.display || ds.name
         };
         this.input.value = ds.name;
         this._hide();
@@ -815,8 +867,11 @@ function initStarField() {
     const canvas = document.getElementById('starCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     let w, h, stars = [], mouse = { x: null, y: null };
-    const N = 200, D = 100;
+    const N = 70, D = 90;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let animationFrame = null;
 
     function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
     function create() { stars.length = 0; for (let i = 0; i < N; i++) stars.push({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.5 + 0.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, a: Math.random() * 0.5 + 0.3 }); }
@@ -839,8 +894,16 @@ function initStarField() {
             if (s.x < 0) s.x = w; if (s.x > w) s.x = 0; if (s.y < 0) s.y = h; if (s.y > h) s.y = 0;
             s.a += (Math.random() - 0.5) * 0.02; s.a = Math.max(0.2, Math.min(0.8, s.a));
         }
-        requestAnimationFrame(draw);
+        if (!reducedMotion && !document.hidden) animationFrame = requestAnimationFrame(draw);
     }
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && animationFrame !== null) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        } else if (!document.hidden && !reducedMotion && animationFrame === null) {
+            draw();
+        }
+    });
     canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
     canvas.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
     window.addEventListener('resize', () => { resize(); create(); });
@@ -876,7 +939,7 @@ const App = {
         initStarField();
 
         // GSAP animations
-        if (window.gsap) {
+        if (window.gsap && window.ScrollTrigger) {
             gsap.registerPlugin(ScrollTrigger);
             gsap.utils.toArray('.weather-card, .forecast-card, .stat-card, .tip-card').forEach(el => {
                 gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.6, ease: 'power2.out' });
@@ -1004,15 +1067,6 @@ const App = {
                 document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 MapService.setLayer(this.dataset.layer);
-            });
-        });
-
-        // تبويبات الإحصائيات
-        document.querySelectorAll('.stats-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                Notify.success(`تم تغيير الفترة إلى: ${this.textContent}`);
             });
         });
 
