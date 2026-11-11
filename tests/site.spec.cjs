@@ -75,3 +75,40 @@ test('service worker installs and serves the app shell while offline', async ({ 
   await page.locator('#mobileMenuBtn').click();
   await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
+
+test('manual GPS selection refreshes weather for the newly selected location', async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.716667, longitude: 4.05 });
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
+  });
+  await page.route('https://api.openweathermap.org/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.includes('/geo/1.0/reverse')) {
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ name: 'تيزي وزو', state: 'تيزي وزو', country: 'DZ' }]) });
+    }
+    if (url.pathname.endsWith('/forecast')) {
+      const now = Math.floor(Date.now() / 1000);
+      const list = Array.from({ length: 8 }, (_, i) => ({
+        dt: now + i * 10800,
+        main: { temp: 22 + i, feels_like: 22 + i, humidity: 55, pressure: 1012 },
+        weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+        wind: { speed: 2, deg: 90 }, clouds: { all: 0 }, rain: { '3h': 0 }
+      }));
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ list }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      main: { temp: 24, feels_like: 24, humidity: 55, pressure: 1012 },
+      weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+      wind: { speed: 2, deg: 90 }, visibility: 10000, clouds: { all: 0 }, name: 'Algeria'
+    }) });
+  });
+  await page.route('https://tile.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#currentCity')).toContainText('الجزائر العاصمة');
+  await page.locator('#locationBtn').click();
+  await expect(page.locator('#currentCity')).toContainText('تيزي وزو', { timeout: 10000 });
+});
