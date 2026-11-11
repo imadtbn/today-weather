@@ -52,6 +52,7 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
 });
 
 test('service worker precaches the app shell for offline use', async ({ page, context }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
   await page.addInitScript(() => {
     localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
       data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
