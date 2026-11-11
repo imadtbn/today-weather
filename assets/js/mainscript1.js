@@ -463,7 +463,7 @@ const UI = {
             daily[key].descs.push(item.weather[0]?.description || '');
         });
 
-        const entries = Object.values(daily).slice(0, 7);
+        const entries = Object.values(daily).slice(0, 5);
         if (this.els.forecastContainer) {
             this.els.forecastContainer.innerHTML = entries.map(day => {
                 const max = Math.max(...day.temps);
