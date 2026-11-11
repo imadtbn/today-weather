@@ -1,0 +1,39 @@
+name: Site quality checks
+
+on:
+  push:
+    branches: [main, codex/phase-3-quality-pwa]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-validation:
+    name: Static site validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate site files
+        run: node scripts/validate-site.mjs
+
+  browser-tests:
+    name: Responsive and offline browser tests
+    runs-on: ubuntu-latest
+    needs: static-validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-audit --no-fund --no-package-lock
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run browser tests
+        run: npm run test:e2e
