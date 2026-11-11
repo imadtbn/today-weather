@@ -325,21 +325,33 @@ const WeatherService = {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات الطقس الحالية');
-        return res.json();
+        const data = await res.json();
+        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
+            throw new Error('استجابة الطقس الحالية غير مكتملة');
+        }
+        return data;
     },
 
     async fetchForecast(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب التنبؤات');
-        return res.json();
+        const data = await res.json();
+        if (!Array.isArray(data?.list) || data.list.length === 0) {
+            throw new Error('بيانات التنبؤ غير متاحة أو غير مكتملة');
+        }
+        return data;
     },
 
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات النقطة');
-        return res.json();
+        const data = await res.json();
+        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
+            throw new Error('بيانات الطقس للنقطة غير مكتملة');
+        }
+        return data;
     },
 
     getIcon(id, isDay = true) {
