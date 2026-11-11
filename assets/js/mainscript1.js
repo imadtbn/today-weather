@@ -212,32 +212,44 @@ const GeoService = {
         };
     },
 
-    async searchCities(query) {
+    async searchCities(query, allowRemote = false) {
         if (!query || query.length < 2) return [];
-        const q = query.toLowerCase();
-        const local = ALGERIAN_CITIES.filter(c => c.name.toLowerCase().includes(q));
+        const q = query.toLocaleLowerCase('ar');
+        const local = ALGERIAN_CITIES.filter(c => c.name.toLocaleLowerCase('ar').includes(q));
         if (local.length > 0) return local.map(c => ({
             ...c, displayName: this._buildDisplayName(c.name, c.state, 'الجزائر')
         }));
-        return this._searchNominatim(query);
+        // Nominatim لا يسمح بالبحث التلقائي أثناء الكتابة؛ البحث الخارجي يتم بطلب Enter فقط.
+        return allowRemote ? this._searchNominatim(query) : [];
     },
 
+    lastNominatimSearchAt: 0,
     async _searchNominatim(query) {
         try {
+            // احترام حد Nominatim العام: طلب بحث واحد كحد أقصى في الثانية.
+            if (Date.now() - this.lastNominatimSearchAt < 1100) return [];
+            this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
             const res = await fetchWithTimeout(url);
+            if (!res.ok) throw new Error('Nominatim search failed');
             const data = await res.json();
+            if (!Array.isArray(data)) return [];
             return data.map(p => {
+                const lat = Number(p.lat), lon = Number(p.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
                 const addr = p.address || {};
-                const name = p.display_name.split(',')[0];
+                const displayName = typeof p.display_name === 'string' ? p.display_name : '';
                 return {
-                    lat: parseFloat(p.lat), lon: parseFloat(p.lon),
-                    name, state: addr.state || addr.county || '',
+                    lat, lon, name: displayName.split(',')[0] || 'موقع غير معروف',
+                    state: addr.state || addr.county || '',
                     country: addr.country || 'الجزائر',
-                    displayName: p.display_name
+                    displayName
                 };
-            });
-        } catch (e) { return []; }
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('[Geo] Nominatim search failed:', e);
+            return [];
+        }
     }
 };
 
@@ -726,34 +738,48 @@ const SearchService = {
         this.input = document.getElementById('searchInput');
         this.suggestions = document.getElementById('citySuggestions');
         if (!this.input || !this.suggestions) return;
-
         this.input.addEventListener('input', e => this._onInput(e));
-        this.input.addEventListener('focus', () => { if (this.input.value.length >= 2) this._onInput({ target: this.input }); });
+        this.input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = this.input.value.trim();
+                if (query.length >= 2) this._search(query, true);
+            }
+        });
+        this.input.addEventListener('focus', () => {
+            if (this.input.value.length >= 2) this._onInput({ target: this.input });
+        });
         this.suggestions.addEventListener('click', e => {
             const item = e.target.closest('.city-suggestion-item');
             if (item) this._select(item.dataset);
         });
-        document.addEventListener('click', e => { if (!e.target.closest('.search-wrapper')) this._hide(); });
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.search-wrapper')) this._hide();
+        });
     },
 
     _onInput(e) {
         const q = e.target.value.trim();
         if (q.length < 2) { this.requestId++; this._hide(); return; }
         clearTimeout(this.timer);
-        this.timer = setTimeout(() => this._search(q), 300);
+        this.timer = setTimeout(() => this._search(q, false), 250);
     },
 
-    async _search(q) {
+    async _search(q, allowRemote = false) {
         const requestId = ++this.requestId;
-        const results = await GeoService.searchCities(q);
+        const results = await GeoService.searchCities(q, allowRemote);
         if (requestId !== this.requestId || q !== this.input?.value.trim()) return;
-        this._render(results);
+        this._render(results, allowRemote);
     },
 
-    _render(list) {
-        if (!list?.length) { this._hide(); return; }
+    _render(list, remoteRequested = false) {
+        if (!list?.length) {
+            this.suggestions.innerHTML = `<div class="city-suggestion-empty">${remoteRequested ? 'لم نعثر على نتائج لهذه المدينة.' : 'اكتب اسم مدينة جزائرية أو اضغط Enter للبحث الموسع.'}</div>`;
+            this.suggestions.classList.add('visible');
+            return;
+        }
         this.suggestions.innerHTML = list.slice(0, 8).map(c => `
-            <div class="city-suggestion-item" data-lat="${c.lat}" data-lon="${c.lon}" data-name="${escapeHTML(c.name)}" data-display="${escapeHTML(c.displayName || c.name)}">
+            <div class="city-suggestion-item" data-lat="${Number(c.lat)}" data-lon="${Number(c.lon)}" data-name="${escapeHTML(c.name)}" data-display="${escapeHTML(c.displayName || c.name)}" data-state="${escapeHTML(c.state || '')}" data-country="${escapeHTML(c.country || 'الجزائر')}">
                 <div class="city-name">${escapeHTML(c.name)}</div>
                 <div class="city-region">${escapeHTML(c.state ? c.state + ' - ' : '')}${escapeHTML(c.country || 'الجزائر')}</div>
             </div>
