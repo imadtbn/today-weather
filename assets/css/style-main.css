@@ -2327,3 +2327,29 @@ body {
         transition-duration: 0.01ms !important;
     }
 }
+
+
+/* Responsive safeguards for narrow phones and embedded ad units */
+@media (max-width: 768px) {
+    .header-inner { grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; }
+    .header-controls, .search-wrapper, .search-input, .container, .hero-grid,
+    .weather-card, .weather-details-grid, .forecast-grid, .stats-grid, .tips-grid,
+    .news-grid, .sea-grid, .warnings-grid, .map-wrapper, .ad-container, .ad-placeholder {
+        min-width: 0; max-width: 100%;
+    }
+    .header-controls { width: 100%; }
+    .search-input, .search-input:focus { width: 100%; }
+    .weather-card { padding: var(--space-md); }
+    .weather-card-header, .weather-main, .section-header, .hero-stats { flex-wrap: wrap; }
+    .weather-location, .weather-city { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+    .hero-stat { min-width: 0; flex: 1 1 90px; }
+    .ad-placeholder, ins.adsbygoogle { width: 100%; }
+}
+@media (max-width: 380px) {
+    .header-inner { padding-inline: 10px; gap: 6px; }
+    .brand-icon { width: 32px; height: 32px; }
+    #locationBtn { width: 32px; height: 32px; }
+    .weather-card { padding: 12px; border-radius: var(--radius-md); }
+    .hero-title { font-size: 1.65rem; }
+    .section-title { font-size: 1.2rem; }
+}
