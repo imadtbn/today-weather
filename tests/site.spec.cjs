@@ -60,7 +60,10 @@ test('service worker precaches the app shell for offline use', async ({ page, co
   });
   await page.route('https://api.openweathermap.org/**', route => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 15000 });
+  await page.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration())?.active), null, { timeout: 15000 });
+  // Reload once online so the newly activated worker controls this document.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10000 });
   await page.waitForFunction(async () => {
     for (const key of await caches.keys()) {
       if (!key.startsWith('today-weather-shell-')) continue;
