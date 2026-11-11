@@ -1,7 +1,7 @@
 {
   "name": "أحوال الطقس",
   "short_name": "الطقس",
-  "description": "توقعات الطقس المحدثة للمناطق المتاحة",
+  "description": "حالة الطقس في الجزائر والتوقعات الجوية المحدثة دورياً",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
@@ -12,7 +12,7 @@
   "icons": [
     {
       "src": "assets/images/icon1.webp",
-      "sizes": "any",
+      "sizes": "1024x1024",
       "type": "image/webp",
       "purpose": "any"
     }
