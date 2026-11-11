@@ -56,8 +56,14 @@ const AppState = {
 
     init() {
         const cached = LocationCache.get();
-        if (cached && (Date.now() - cached.timestamp < CONFIG.CACHE_DURATION)) {
-            this.currentLocation = cached.data;
+        const age = cached ? Date.now() - Number(cached.timestamp) : Infinity;
+        const location = cached?.data;
+        const validCoordinates = Number.isFinite(Number(location?.lat)) &&
+            Number.isFinite(Number(location?.lon)) &&
+            Math.abs(Number(location.lat)) <= 90 &&
+            Math.abs(Number(location.lon)) <= 180;
+        if (cached && age >= 0 && age < CONFIG.CACHE_DURATION && validCoordinates) {
+            this.currentLocation = { ...location, lat: Number(location.lat), lon: Number(location.lon) };
             return this.currentLocation;
         }
         this.currentLocation = { ...CONFIG.DEFAULT_LOCATION };
