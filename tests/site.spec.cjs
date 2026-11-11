@@ -86,6 +86,13 @@ test('service worker precaches the app shell for offline use', async ({ page, co
     expect(cachedPaths, 'missing cached PWA resource ' + path).toContain(path);
   }
   await context.setOffline(true);
+  const offlineIndex = await page.evaluate(async () => {
+    const cache = await caches.open('today-weather-shell-v2');
+    const response = await cache.match('./index.html');
+    return response ? { status: response.status, html: await response.text() } : null;
+  });
+  expect(offlineIndex?.status).toBe(200);
+  expect(offlineIndex?.html).toContain('class="site-header"');
   await expect(page.locator('.site-header')).toBeVisible();
   await expect(page.locator('#searchInput')).toBeVisible();
   await page.locator('#mobileMenuBtn').click();
@@ -127,4 +134,18 @@ test('manual GPS selection refreshes weather for the newly selected location', a
   await expect(page.locator('#currentCity')).toContainText('الجزائر العاصمة');
   await page.locator('#locationBtn').click();
   await expect(page.locator('#currentCity')).toContainText('تيزي وزو', { timeout: 10000 });
+});
+
+test('performance safeguards defer third-party scripts and omit unused heavy libraries', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const checks = await page.evaluate(() => ({
+    blockingHeadScripts: [...document.head.querySelectorAll('script[src]')]
+      .filter(script => !script.async && !script.defer)
+      .map(script => script.src),
+    unusedLibraries: [...performance.getEntriesByType('resource')]
+      .map(entry => entry.name)
+      .filter(url => /three\\.min\\.js|chartjs-plugin-datalabels/i.test(url))
+  }));
+  expect(checks.blockingHeadScripts).toEqual([]);
+  expect(checks.unusedLibraries).toEqual([]);
 });
