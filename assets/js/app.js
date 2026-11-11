@@ -59,10 +59,10 @@ const App = {
             return;
         }
         // لا يوجد cache صالح: نطلب GPS
-        await this.updateFromGPS();
+        await this.updateFromGPS(false);
     },
 
-    async updateFromGPS() {
+    async updateFromGPS(refreshWeather = true) {
         UI.setLocLoading(true);
         try {
             const pos = await GeoService.requestGPS();
@@ -80,8 +80,8 @@ const App = {
             Notify.warning('تم استخدام الموقع الافتراضي: الجزائر العاصمة');
         } finally {
             UI.setLocLoading(false);
-
         }
+        if (refreshWeather) await this.loadWeather();
     },
 
     async loadWeather() {
