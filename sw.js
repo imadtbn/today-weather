@@ -42,8 +42,10 @@ self.addEventListener('fetch', event => {
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         try {
-            const response = await fetch(request);
+            const response = await fetch(request, { signal: controller.signal });
             if (response && response.ok) await cache.put(request, response.clone());
             return response;
         } catch (error) {
@@ -54,6 +56,8 @@ self.addEventListener('fetch', event => {
                 if (shell) return shell;
             }
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     })());
 });
