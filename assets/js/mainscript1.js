@@ -411,12 +411,12 @@ const UI = {
         this._updateCubes(data.main.temp);
     },
 
-    _updateCubes(temp) {
-        const temps = [temp, temp - 2, temp + 1, temp - 1, temp + 8, temp - 3];
-        temps.forEach((t, i) => {
-            const el = this.els[`cubeTemp${i + 1}`];
-            if (el) el.textContent = `${Math.round(t)}°`;
-        });
+    _updateCubes() {
+        // لا نستبدل بيانات المدن الأخرى بتقديرات مشتقة من درجة مدينة واحدة.
+        for (let i = 1; i <= 6; i++) {
+            const el = this.els[`cubeTemp${i}`];
+            if (el) el.textContent = '--°';
+        }
     },
 
     updateHourly(data) {
