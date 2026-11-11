@@ -1,5 +1,5 @@
 const CACHE_NAME = 'today-weather-shell-v2';
-const APP_SHELL = ['./','./index.html','./manifest.webmanifest','./assets/css/style-main.css','./assets/js/core.js','./assets/js/geo-service.js','./assets/js/weather-service.js','./assets/js/ui.js','./assets/js/map-service.js','./assets/js/search-news.js','./assets/js/effects.js','./assets/js/app.js','./assets/js/adsData.js','./assets/images/icon1.webp'];
+const APP_SHELL = ['./index.html','./manifest.webmanifest','./assets/css/style-main.css','./assets/js/core.js','./assets/js/geo-service.js','./assets/js/weather-service.js','./assets/js/ui.js','./assets/js/map-service.js','./assets/js/search-news.js','./assets/js/effects.js','./assets/js/app.js','./assets/js/adsData.js','./assets/images/icon1.webp'];
 const STATIC_EXTERNAL_HOSTS = new Set(['cdnjs.cloudflare.com','unpkg.com','cdn.jsdelivr.net','fonts.googleapis.com','fonts.gstatic.com']);
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE_NAME);await cache.addAll(APP_SHELL);await self.skipWaiting();})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(key=>key.startsWith('today-weather-')&&key!==CACHE_NAME).map(key=>caches.delete(key)));await self.clients.claim();})()));
