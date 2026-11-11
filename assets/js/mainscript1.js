@@ -170,6 +170,9 @@ const GeoService = {
 
     async _reverseNominatim(lat, lon) {
         try {
+            // حد Nominatim يطبق على جميع الطلبات، بما فيها البحث العكسي.
+            if (Date.now() - this.lastNominatimSearchAt < 1100) return this._fallback(lat, lon);
+            this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1&accept-language=ar`;
             const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim failed');
