@@ -1053,15 +1053,6 @@ const App = {
             });
         });
 
-        // تبويبات الإحصائيات
-        document.querySelectorAll('.stats-tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                Notify.success(`تم تغيير الفترة إلى: ${this.textContent}`);
-            });
-        });
-
         // روابط المدن في الفوتر
         document.querySelectorAll('[data-city]').forEach(link => {
             link.addEventListener('click', e => {
