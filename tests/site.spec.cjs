@@ -52,9 +52,18 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
 });
 
 test('service worker installs and serves the app shell while offline', async ({ page, context }) => {
+  page.on('console', message => { if (message.type() === 'error') console.log('[browser console]', message.text()); });
+  page.on('pageerror', error => console.log('[browser pageerror]', error.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(async () => Boolean(await navigator.serviceWorker.getRegistration()), null, { timeout: 15000 });
-  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    return Boolean(registration?.active) || registration?.installing?.state === 'redundant';
+  }, null, { timeout: 15000 });
+  const workerState = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    return { active: registration?.active?.state || null, installing: registration?.installing?.state || null, waiting: registration?.waiting?.state || null };
+  });
+  expect(workerState.active, 'service worker did not activate: ' + JSON.stringify(workerState)).toBe('activated');
   // A second online navigation ensures this document is controlled by the active worker.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10000 });
