@@ -1,0 +1,11 @@
+{
+  "name": "today-weather-quality",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate-site.mjs",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}
