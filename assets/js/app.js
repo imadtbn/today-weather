@@ -12,19 +12,19 @@ const App = {
         SearchService.init();
         AppState.init();
 
+        // تفعيل عناصر الواجهة فوراً قبل أي طلب شبكي أو انتظار GPS.
+        this._setupEvents();
+
         // أولاً: تحميل الخريطة
         MapService.init();
 
-        // ثانياً: طلب الموقع (GPS إذا لم يوجد cache)
+        // ثانياً: تحديد الموقع ثم تحميل البيانات
         await this._checkLocation();
-
-        // ثالثاً: تحميل البيانات
         await this.loadWeather();
         await this.loadNews();
 
-        // رابعاً: التحديث التلقائي والأحداث
+        // التحديث التلقائي بعد اكتمال التهيئة الأولية
         this._setupAutoRefresh();
-        this._setupEvents();
         initStarField();
 
         // GSAP animations
@@ -160,8 +160,12 @@ const App = {
         document.getElementById('refreshNews')?.addEventListener('click', () => this.loadNews());
 
         // قائمة الجوال
-        document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
-            document.getElementById('mainNav')?.classList.toggle('active');
+        const menuButton = document.getElementById('mobileMenuBtn');
+        const mainNav = document.getElementById('mainNav');
+        menuButton?.addEventListener('click', () => {
+            const expanded = mainNav?.classList.toggle('active') || false;
+            menuButton.setAttribute('aria-expanded', String(expanded));
+            menuButton.setAttribute('aria-label', expanded ? 'إغلاق قائمة التنقل' : 'فتح قائمة التنقل');
         });
 
         // طبقات الخريطة
@@ -201,6 +205,8 @@ const App = {
                         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
                         this.classList.add('active');
                         document.getElementById('mainNav')?.classList.remove('active');
+                        menuButton?.setAttribute('aria-expanded', 'false');
+                        menuButton?.setAttribute('aria-label', 'فتح قائمة التنقل');
                     }
                 }
             });
