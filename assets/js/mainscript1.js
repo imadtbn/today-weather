@@ -560,7 +560,7 @@ const UI = {
 
     updateChart(forecast) {
         const ctx = this.els.temperatureChart?.getContext('2d');
-        if (!ctx) return;
+        if (!ctx || !window.Chart) return;
 
         const labels = [];
         const maxTemps = [];
@@ -646,6 +646,10 @@ const MapService = {
 
     init() {
         const loc = AppState.currentLocation || CONFIG.DEFAULT_LOCATION;
+        if (!window.L || !document.getElementById('weatherMap')) {
+            console.warn('[Map] Leaflet is unavailable; weather data will continue without the map.');
+            return;
+        }
         this.map = L.map('weatherMap').setView([loc.lat, loc.lon], 6);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -660,6 +664,7 @@ const MapService = {
     },
 
     _updateLayer() {
+        if (!this.map || !window.L) return;
         const urls = {
             temperature: `${CONFIG.TILE_URL}/temp_new/{z}/{x}/{y}.png?appid=${CONFIG.OPENWEATHER_API_KEY}`,
             precipitation: `${CONFIG.TILE_URL}/precipitation_new/{z}/{x}/{y}.png?appid=${CONFIG.OPENWEATHER_API_KEY}`,
@@ -691,6 +696,7 @@ const MapService = {
     },
 
     _setMarker(lat, lon, title) {
+        if (!this.map || !window.L) return;
         if (this.marker) this.map.removeLayer(this.marker);
         this.marker = L.marker([lat, lon]).addTo(this.map)
             .bindPopup(`<b style="font-family:Cairo;">${escapeHTML(title)}</b>`)
@@ -863,6 +869,7 @@ function initStarField() {
     const canvas = document.getElementById('starCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     let w, h, stars = [], mouse = { x: null, y: null };
     const N = 70, D = 90;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -934,7 +941,7 @@ const App = {
         initStarField();
 
         // GSAP animations
-        if (window.gsap) {
+        if (window.gsap && window.ScrollTrigger) {
             gsap.registerPlugin(ScrollTrigger);
             gsap.utils.toArray('.weather-card, .forecast-card, .stat-card, .tip-card').forEach(el => {
                 gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.6, ease: 'power2.out' });
