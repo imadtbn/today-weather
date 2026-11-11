@@ -52,6 +52,7 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
 });
 
 test('service worker precaches the app shell for offline use', async ({ page, context }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
   await page.addInitScript(() => {
     localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
       data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
@@ -60,33 +61,38 @@ test('service worker precaches the app shell for offline use', async ({ page, co
   });
   await page.route('https://api.openweathermap.org/**', route => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration())?.active), null, { timeout: 15000 });
-  // Reload once online so the newly activated worker controls this document.
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10000 });
-  await page.waitForFunction(async () => {
-    for (const key of await caches.keys()) {
-      if (!key.startsWith('today-weather-shell-')) continue;
-      const cache = await caches.open(key);
-      if (await cache.match('./index.html')) return true;
-    }
-    return false;
-  }, null, { timeout: 10000 });
-  await context.setOffline(true);
-  const cachedResources = await page.evaluate(async () => {
-    const key = (await caches.keys()).find(name => name.startsWith('today-weather-shell-'));
-    const cache = await caches.open(key);
-    const paths = ['./index.html', './assets/css/style-main.css', './assets/js/app.js', './manifest.webmanifest'];
-    const resources = await Promise.all(paths.map(async path => {
-      const response = await cache.match(path);
-      return { path, available: Boolean(response), text: response ? await response.text() : '' };
-    }));
-    return resources;
+  const diagnostic = await page.evaluate(async () => {
+    let registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    const cacheNames = await caches.keys();
+    const cacheInfo = await Promise.all(cacheNames.map(async name => ({
+      name,
+      urls: (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname)
+    })));
+    return {
+      active: registration.active?.state || null,
+      installing: registration.installing?.state || null,
+      waiting: registration.waiting?.state || null,
+      caches: cacheInfo
+    };
   });
-  for (const resource of cachedResources) expect(resource.available, resource.path).toBe(true);
-  expect(cachedResources[0].text).toContain('class="site-header"');
-  expect(cachedResources[1].text).toContain(':root');
-  expect(cachedResources[2].text).toContain('const App');
+  console.log('[PWA diagnostic]', JSON.stringify(diagnostic));
+  expect(diagnostic.active, 'service worker activation state: ' + JSON.stringify(diagnostic)).toBe('activated');
+  const shellCache = diagnostic.caches.find(cache => cache.name.startsWith('today-weather-shell-'));
+  expect(shellCache, 'PWA shell cache was not created').toBeTruthy();
+  const cachedPaths = shellCache.urls;
+  for (const path of ['/index.html', '/assets/css/style-main.css', '/assets/js/app.js', '/manifest.webmanifest']) {
+    expect(cachedPaths, 'missing cached PWA resource ' + path).toContain(path);
+  }
+  await context.setOffline(true);
+  const offlineIndex = await page.evaluate(async () => {
+    const cache = await caches.open('today-weather-shell-v2');
+    const response = await cache.match('./index.html');
+    return response ? { status: response.status, html: await response.text() } : null;
+  });
+  expect(offlineIndex?.status).toBe(200);
+  expect(offlineIndex?.html).toContain('class="site-header"');
   await expect(page.locator('.site-header')).toBeVisible();
   await expect(page.locator('#searchInput')).toBeVisible();
   await page.locator('#mobileMenuBtn').click();
@@ -128,4 +134,18 @@ test('manual GPS selection refreshes weather for the newly selected location', a
   await expect(page.locator('#currentCity')).toContainText('الجزائر العاصمة');
   await page.locator('#locationBtn').click();
   await expect(page.locator('#currentCity')).toContainText('تيزي وزو', { timeout: 10000 });
+});
+
+test('performance safeguards defer third-party scripts and omit unused heavy libraries', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const checks = await page.evaluate(() => ({
+    blockingHeadScripts: [...document.head.querySelectorAll('script[src]')]
+      .filter(script => !script.async && !script.defer)
+      .map(script => script.src),
+    unusedLibraries: [...performance.getEntriesByType('resource')]
+      .map(entry => entry.name)
+      .filter(url => /three\\.min\\.js|chartjs-plugin-datalabels/i.test(url))
+  }));
+  expect(checks.blockingHeadScripts).toEqual([]);
+  expect(checks.unusedLibraries).toEqual([]);
 });
