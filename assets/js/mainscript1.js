@@ -849,7 +849,9 @@ function initStarField() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let w, h, stars = [], mouse = { x: null, y: null };
-    const N = 200, D = 100;
+    const N = 70, D = 90;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let animationFrame = null;
 
     function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
     function create() { stars.length = 0; for (let i = 0; i < N; i++) stars.push({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.5 + 0.5, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, a: Math.random() * 0.5 + 0.3 }); }
@@ -872,8 +874,16 @@ function initStarField() {
             if (s.x < 0) s.x = w; if (s.x > w) s.x = 0; if (s.y < 0) s.y = h; if (s.y > h) s.y = 0;
             s.a += (Math.random() - 0.5) * 0.02; s.a = Math.max(0.2, Math.min(0.8, s.a));
         }
-        requestAnimationFrame(draw);
+        if (!reducedMotion && !document.hidden) animationFrame = requestAnimationFrame(draw);
     }
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && animationFrame !== null) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+        } else if (!document.hidden && !reducedMotion && animationFrame === null) {
+            draw();
+        }
+    });
     canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
     canvas.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
     window.addEventListener('resize', () => { resize(); create(); });
