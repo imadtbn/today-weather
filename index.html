@@ -10,7 +10,7 @@
     <meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">
 
     <meta name="description"
-        content="تنبؤات الطقس لجميع مناطق العالم لحظة بلحظة، خرائط تفاعلية، تحذيرات جوية، أخبار الطقس، توقعات 7 أيام، إحصائيات يومية وأسبوعية وشهرية وسنوية.">
+        content="تنبؤات الطقس لجميع مناطق العالم لحظة بلحظة، خرائط تفاعلية، تحذيرات جوية، أخبار الطقس، توقعات 5 أيام، إحصائيات يومية وأسبوعية وشهرية وسنوية.">
     <meta name="keywords"
         content="طقس الجزائر, أحوال الطقس لجميع مناطق العالم, حالة الطقس اليوم, الطقس الأسبوعي, الطقس الآن, توقعات الطقس الجزائر, نشرة جوية الجزائر, درجات الحرارة الجزائر, تنبؤات الطقس, رادار الطقس, خرائط الطقس الجزائر, طقس الولايات, طقس الجزائر العاصمة, طقس وهران, طقس قسنطينة, تنبيهات الطقس, أمطار الجزائر, رياح الجزائر, ثلوج الجزائر, موجة حر الجزائر, منخفض جوي الجزائر, weather algeria, algeria forecast, algeria weather map, today-weather algerie, today-weather dz, توقعات المطر, توقعات الرياح, توقعات الحرارة, موجة برد, منخفض جوي, أخبار الطقس الجزائر, صور الطقس, مناخ الجزائر, حالة البحر الجزائر">
 
@@ -116,7 +116,7 @@
                     "alternateName": "الجزائر"
                 },
                 "isAccessibleForFree": true,
-                "temporalCoverage": "P7D"
+                "temporalCoverage": "P5D"
             }, {
                 "@type": "FAQPage",
                 "@id": "https://imadtbn.github.io/today-weather/#faq",
@@ -132,7 +132,7 @@
                     "name": "هل يمكنني معرفة حالة البحر لجميع مناطق العالم؟",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "نعم، الموقع يوفر معلومات عن حالة البحر بما في ذلك ارتفاع الأمواج واتجاهها وفترتها."
+                        "text": "يعرض الموقع بيانات الطقس المتاحة، وقد لا تتوفر قياسات بحرية مباشرة في بعض المواقع."
                     }
                 }]
             }]
@@ -274,7 +274,7 @@
             <section class="forecast-section" id="forecast">
                 <div class="container">
                     <div class="section-header">
-                        <h2 class="section-title">تنبؤات 7 أيام القادمة</h2>
+                        <h2 class="section-title">تنبؤات 5 أيام القادمة</h2>
                         <div class="section-actions"><button class="btn btn-secondary btn-sm" id="viewFullForecast"><i
                                     class="fas fa-expand"></i> عرض الكل</button></div>
                     </div>
@@ -382,36 +382,31 @@
                     <div class="section-header">
                         <h2 class="section-title">إحصائيات الطقس</h2>
                     </div>
-                    <div class="stats-tabs">
-                        <button class="stats-tab active" data-period="daily">يومية</button>
-                        <button class="stats-tab" data-period="weekly">أسبوعية</button>
-                        <button class="stats-tab" data-period="monthly">شهرية</button>
-                        <button class="stats-tab" data-period="yearly">سنوية</button>
-                    </div>
+                    <p class="stats-period-note">المؤشرات التالية محسوبة من فترة التنبؤ المتاحة، ولا تمثل سجلاً تاريخياً شهرياً أو سنوياً.</p>
                     <div class="stats-grid" id="statsGrid">
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-temperature-high"></i></div>
                             <div class="stat-value" id="statMaxTemp">--°</div>
                             <div class="stat-label">أعلى درجة حرارة</div>
-                            <div class="stat-change up"><i class="fas fa-arrow-up"></i> +2°</div>
+                            
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-temperature-low"></i></div>
                             <div class="stat-value" id="statMinTemp">--°</div>
                             <div class="stat-label">أدنى درجة حرارة</div>
-                            <div class="stat-change down"><i class="fas fa-arrow-down"></i> -1°</div>
+                            
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-tint"></i></div>
                             <div class="stat-value" id="statRain">--mm</div>
                             <div class="stat-label">كمية الأمطار</div>
-                            <div class="stat-change up"><i class="fas fa-arrow-up"></i> +15%</div>
+                            
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-wind"></i></div>
                             <div class="stat-value" id="statWind">--km/h</div>
                             <div class="stat-label">متوسط سرعة الرياح</div>
-                            <div class="stat-change down"><i class="fas fa-arrow-down"></i> -5%</div>
+                            
                         </div>
                     </div>
                     <div class="chart-container"><canvas id="temperatureChart"></canvas></div>
@@ -469,60 +464,8 @@
                         <h2 class="section-title">نشرات التحذير</h2>
                     </div>
                     <div class="warnings-grid" id="warningsGrid">
-                        <div class="warning-card heat">
-                            <div class="warning-header">
-                                <div class="warning-icon heat"><i class="fas fa-temperature-high"></i></div>
-                                <div>
-                                    <div class="warning-title">موجة حرارة</div>
-                                    <div class="warning-status">الجنوب الجزائري</div>
-                                </div>
-                            </div>
-                            <p class="warning-text">توقعات بموجة حر شديدة في ولايات الجنوب مع درجات حرارة تتجاوز 45°C.
-                                تجنب
-                                التعرض المباشر للشمس.</p>
-                            <div class="warning-meta"><span class="warning-time"><i class="fas fa-clock"></i> منذ 2
-                                    ساعة</span><span class="warning-badge active">تحذير نشط</span></div>
-                        </div>
-                        <div class="warning-card wind">
-                            <div class="warning-header">
-                                <div class="warning-icon wind"><i class="fas fa-wind"></i></div>
-                                <div>
-                                    <div class="warning-title">رياح قوية</div>
-                                    <div class="warning-status">السواحل الغربية</div>
-                                </div>
-                            </div>
-                            <p class="warning-text">رياح قوية قد تصل سرعتها إلى 70 كم/س على السواحل الغربية. احذر من
-                                الأجسام
-                                الطائرة.</p>
-                            <div class="warning-meta"><span class="warning-time"><i class="fas fa-clock"></i> منذ 4
-                                    ساعات</span><span class="warning-badge watch">مراقبة</span></div>
-                        </div>
-                        <div class="warning-card sea">
-                            <div class="warning-header">
-                                <div class="warning-icon sea"><i class="fas fa-water"></i></div>
-                                <div>
-                                    <div class="warning-title">بحر مضطرب</div>
-                                    <div class="warning-status">البحر المتوسط</div>
-                                </div>
-                            </div>
-                            <p class="warning-text">ارتفاع الأمواج إلى 2.5 متر مع رياح شمالية غربية. غير مناسب للقوارب
-                                الصغيرة.</p>
-                            <div class="warning-meta"><span class="warning-time"><i class="fas fa-clock"></i> منذ 6
-                                    ساعات</span><span class="warning-badge active">تحذير نشط</span></div>
-                        </div>
-                        <div class="warning-card cold">
-                            <div class="warning-header">
-                                <div class="warning-icon cold"><i class="fas fa-snowflake"></i></div>
-                                <div>
-                                    <div class="warning-title">موجة برد</div>
-                                    <div class="warning-status">الهضاب العليا</div>
-                                </div>
-                            </div>
-                            <p class="warning-text">انخفاض درجات الحرارة في المناطق الجبلية ليلاً. ارتدِ ملابس دافئة
-                                واحذر
-                                من الانزلاق.</p>
-                            <div class="warning-meta"><span class="warning-time"><i class="fas fa-clock"></i> منذ 8
-                                    ساعات</span><span class="warning-badge safe">آمن</span></div>
+                        <div class="warning-card">
+                            <p class="warning-text">لا تتوفر حالياً نشرات تحذير رسمية متصلة بمصدر الأرصاد الجوية. يرجى متابعة النشرات الرسمية عند صدورها.</p>
                         </div>
                     </div>
                 </div>

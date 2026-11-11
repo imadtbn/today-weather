@@ -6,6 +6,22 @@
 // ============================================
 // 1. CONFIGURATION
 // ============================================
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+async function fetchWithTimeout(url, options = {}, timeout = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 const CONFIG = {
     OPENWEATHER_API_KEY: '1151122405b6f7be33bf0de4b22bb5a4',
     DEFAULT_LOCATION: {
@@ -17,7 +33,7 @@ const CONFIG = {
         displayName: 'الجزائر العاصمة / الجزائر العاصمة / الجزائر'
     },
     REFRESH_INTERVAL: 25 * 60 * 1000,
-    CACHE_DURATION: 30 * 60 * 1000,
+    CACHE_DURATION: 25 * 60 * 1000,
     GEO_TIMEOUT: 10000,
     API_BASE_URL: 'https://api.openweathermap.org/data/2.5',
     GEO_API_URL: 'https://api.openweathermap.org/geo/1.0',
@@ -133,7 +149,7 @@ const GeoService = {
         // المحاولة الأولى: OpenWeatherMap
         try {
             const url = `${CONFIG.GEO_API_URL}/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${CONFIG.OPENWEATHER_API_KEY}`;
-            const res = await fetch(url);
+            const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('OWM failed');
             const data = await res.json();
             if (data?.length > 0) {
@@ -149,7 +165,7 @@ const GeoService = {
     async _reverseNominatim(lat, lon) {
         try {
             const url = `${CONFIG.NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1&accept-language=ar`;
-            const res = await fetch(url, { headers: { 'User-Agent': 'meteo-dz/2.0' } });
+            const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim failed');
             const data = await res.json();
             return this._parseNominatim(data, lat, lon);
@@ -209,7 +225,7 @@ const GeoService = {
     async _searchNominatim(query) {
         try {
             const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
-            const res = await fetch(url, { headers: { 'User-Agent': 'meteo-dz/2.0' } });
+            const res = await fetchWithTimeout(url);
             const data = await res.json();
             return data.map(p => {
                 const addr = p.address || {};
@@ -286,21 +302,21 @@ const ALGERIAN_CITIES = [
 const WeatherService = {
     async fetchCurrent(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات الطقس الحالية');
         return res.json();
     },
 
     async fetchForecast(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب التنبؤات');
         return res.json();
     },
 
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات النقطة');
         return res.json();
     },
@@ -395,12 +411,12 @@ const UI = {
         this._updateCubes(data.main.temp);
     },
 
-    _updateCubes(temp) {
-        const temps = [temp, temp - 2, temp + 1, temp - 1, temp + 8, temp - 3];
-        temps.forEach((t, i) => {
-            const el = this.els[`cubeTemp${i + 1}`];
-            if (el) el.textContent = `${Math.round(t)}°`;
-        });
+    _updateCubes() {
+        // لا نستبدل بيانات المدن الأخرى بتقديرات مشتقة من درجة مدينة واحدة.
+        for (let i = 1; i <= 6; i++) {
+            const el = this.els[`cubeTemp${i}`];
+            if (el) el.textContent = '--°';
+        }
     },
 
     updateHourly(data) {
@@ -416,7 +432,7 @@ const UI = {
                         <div class="hourly-time">${hour}:00</div>
                         <div class="hourly-icon"><i class="${info.icon}" style="color:${info.color}"></i></div>
                         <div class="hourly-temp">${Math.round(item.main.temp)}°</div>
-                        <div class="hourly-desc">${item.weather[0]?.description || ''}</div>
+                        <div class="hourly-desc">${escapeHTML(item.weather[0]?.description || '')}</div>
                     </div>
                 `;
             }).join('');
@@ -448,7 +464,7 @@ const UI = {
                         <div class="forecast-day">${day.dayName}</div>
                         <div class="forecast-date">${day.dateStr}</div>
                         <div class="forecast-icon"><i class="${info.icon}" style="color:${info.color}"></i></div>
-                        <div class="forecast-condition">${desc}</div>
+                        <div class="forecast-condition">${escapeHTML(desc)}</div>
                         <div class="forecast-temps">
                             <span class="forecast-high">${Math.round(max)}°</span>
                             <span class="forecast-low">${Math.round(min)}°</span>
@@ -460,28 +476,21 @@ const UI = {
     },
 
     updateSea(data) {
-        const wh = WeatherService.waveHeight(data.wind.speed);
-        const wp = WeatherService.wavePeriod(data.wind.speed);
-        const wd = WeatherService.windDir(data.wind.deg || 0);
-        if (this.els.waveHeight) this.els.waveHeight.textContent = wh;
-        if (this.els.waveDirection) this.els.waveDirection.textContent = wd;
-        if (this.els.wavePeriod) this.els.wavePeriod.textContent = wp;
-
-        const h = parseFloat(wh);
-        let tips = [];
-        if (h < 0.5) tips = ['<i class="fas fa-check"></i> البحر هادئ - مثالي للسباحة', '<i class="fas fa-check"></i> مناسب لجميع الأنشطة البحرية', '<i class="fas fa-check"></i> حالة ممتازة للصيد', '<i class="fas fa-check"></i> آمن للقوارب الصغيرة'];
-        else if (h < 1.5) tips = ['<i class="fas fa-check"></i> البحر هادئ إلى متوسط', '<i class="fas fa-check"></i> مناسب لمعظم الأنشطة', '<i class="fas fa-exclamation-triangle"></i> احترس من التيارات', '<i class="fas fa-check"></i> راقب الأطفال أثناء السباحة'];
-        else if (h < 2.5) tips = ['<i class="fas fa-exclamation-triangle"></i> بحر مضطرب - احذر', '<i class="fas fa-times"></i> تجنب السباحة', '<i class="fas fa-times"></i> غير مناسب للقوارب الصغيرة', '<i class="fas fa-check"></i> ارتدِ سترة النجاة'];
-        else tips = ['<i class="fas fa-times"></i> بحر عالي الموج - خطر', '<i class="fas fa-times"></i> تجنب الأنشطة البحرية تماماً', '<i class="fas fa-times"></i> لا تخرج بالقوارب', '<i class="fas fa-exclamation-triangle"></i> انتظر حتى تهدأ الأمواج'];
-
-        if (this.els.seaTipsList) this.els.seaTipsList.innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+        // مصدر الطقس الحالي لا يقدم قياسات بحرية؛ لا نستنتج ارتفاع الموج
+        // أو سلامة السباحة والقوارب من سرعة الرياح وحدها.
+        if (this.els.waveHeight) this.els.waveHeight.textContent = '--';
+        if (this.els.waveDirection) this.els.waveDirection.textContent = '--';
+        if (this.els.wavePeriod) this.els.wavePeriod.textContent = '--';
+        if (this.els.seaTipsList) {
+            this.els.seaTipsList.textContent = 'لا تتوفر حالياً بيانات مباشرة وموثوقة عن الأمواج لهذا الموقع.';
+        }
     },
 
     updateStats(current, forecast) {
         const temps = forecast.list.map(i => i.main.temp);
         const max = Math.max(...temps);
         const min = Math.min(...temps);
-        const rain = forecast.list.filter(i => i.weather[0]?.id >= 500 && i.weather[0]?.id < 600).length * 2.5;
+        const rain = forecast.list.reduce((total, item) => total + Number(item.rain?.['3h'] || 0), 0);
         const avgWind = forecast.list.reduce((s, i) => s + i.wind.speed, 0) / forecast.list.length;
 
         if (this.els.statMaxTemp) this.els.statMaxTemp.textContent = `${Math.round(max)}°`;
@@ -651,7 +660,7 @@ const MapService = {
     _setMarker(lat, lon, title) {
         if (this.marker) this.map.removeLayer(this.marker);
         this.marker = L.marker([lat, lon]).addTo(this.map)
-            .bindPopup(`<b style="font-family:Cairo;">${title}</b>`)
+            .bindPopup(`<b style="font-family:Cairo;">${escapeHTML(title)}</b>`)
             .openPopup();
     },
 
@@ -670,12 +679,12 @@ const MapService = {
 
             L.popup().setLatLng([lat, lon]).setContent(`
                 <div style="direction:rtl;text-align:right;font-family:Cairo;min-width:220px;">
-                    <h3 style="margin-bottom:8px;color:#d4a853;font-size:1.1rem;"><i class="fas fa-map-marker-alt"></i> ${geo.displayName}</h3>
+                    <h3 style="margin-bottom:8px;color:#d4a853;font-size:1.1rem;"><i class="fas fa-map-marker-alt"></i> ${escapeHTML(geo.displayName)}</h3>
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
                         <i class="${info.icon}" style="font-size:2rem;color:${info.color}"></i>
                         <div>
                             <div style="font-size:1.5rem;font-weight:800;color:#e8e0d0;">${Math.round(weather.main.temp)}°C</div>
-                            <div style="color:#a09888;font-size:0.9rem;">${weather.weather[0]?.description || ''}</div>
+                            <div style="color:#a09888;font-size:0.9rem;">${escapeHTML(weather.weather[0]?.description || '')}</div>
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.85rem;color:#a09888;">
@@ -712,7 +721,7 @@ const MapService = {
 // 9. SEARCH SERVICE
 // ============================================
 const SearchService = {
-    input: null, suggestions: null, timer: null,
+    input: null, suggestions: null, timer: null, requestId: 0,
     init() {
         this.input = document.getElementById('searchInput');
         this.suggestions = document.getElementById('citySuggestions');
@@ -729,22 +738,24 @@ const SearchService = {
 
     _onInput(e) {
         const q = e.target.value.trim();
-        if (q.length < 2) { this._hide(); return; }
+        if (q.length < 2) { this.requestId++; this._hide(); return; }
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this._search(q), 300);
     },
 
     async _search(q) {
+        const requestId = ++this.requestId;
         const results = await GeoService.searchCities(q);
+        if (requestId !== this.requestId || q !== this.input?.value.trim()) return;
         this._render(results);
     },
 
     _render(list) {
         if (!list?.length) { this._hide(); return; }
         this.suggestions.innerHTML = list.slice(0, 8).map(c => `
-            <div class="city-suggestion-item" data-lat="${c.lat}" data-lon="${c.lon}" data-name="${c.name}" data-display="${c.displayName || c.name}">
-                <div class="city-name">${c.name}</div>
-                <div class="city-region">${c.state ? c.state + ' - ' : ''}${c.country || 'الجزائر'}</div>
+            <div class="city-suggestion-item" data-lat="${c.lat}" data-lon="${c.lon}" data-name="${escapeHTML(c.name)}" data-display="${escapeHTML(c.displayName || c.name)}">
+                <div class="city-name">${escapeHTML(c.name)}</div>
+                <div class="city-region">${escapeHTML(c.state ? c.state + ' - ' : '')}${escapeHTML(c.country || 'الجزائر')}</div>
             </div>
         `).join('');
         this.suggestions.classList.add('visible');
@@ -768,26 +779,32 @@ const SearchService = {
 // ============================================
 const NewsService = {
     async fetch() {
-        return [
-            { title: 'تحذير من موجة حر في الجنوب الجزائري', excerpt: 'تتوقع مصالح الأرصاد الجوية موجة حر شديدة في ولايات الجنوب الأسبوع المقبل مع درجات حرارة تتجاوز 45 درجة مئوية.', category: 'alert', time: 'منذ 2 ساعة', image: 'https://images.unsplash.com/photo-1504370805625-d32c54b16100?w=600' },
-            { title: 'تحسن في الأحوال الجوية بالشمال', excerpt: 'من المتوقع تحسن الأحوال الجوية بداية من يوم الغد مع انخفاض في درجات الحرارة وهبوب رياح معتدلة.', category: 'weather', time: 'منذ 4 ساعات', image: 'https://images.unsplash.com/photo-1592210454359-9043f067919b?w=600' },
-            { title: 'دراسة: تغير المناخ يؤثر على الأمطار في الجزائر', excerpt: 'أظهرت دراسة حديثة تراجعاً في كميات الأمطار السنوية بنسبة 15% خلال العقد الماضي.', category: 'climate', time: 'منذ 6 ساعات', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS78siJJZBgrkcehidIRlOHE08bBqUZFvVAH3Dm57PqSe7MuvwdnQ8msxM&s=10' }
-        ];
+        // لا نعرض أخباراً تجريبية على أنها أخبار حقيقية أو مباشرة.
+        return [];
     },
     render(data) {
-        const c = document.getElementById('newsGrid');
-        if (!c) return;
-        c.innerHTML = data.map(n => `
-            <div class="news-card">
-                <div class="news-image"><img src="${n.image}" alt="${n.title}" loading="lazy"></div>
-                <div class="news-content">
-                    <span class="news-category ${n.category}">${n.category === 'alert' ? 'تحذير' : n.category === 'weather' ? 'طقس' : 'مناخ'}</span>
-                    <h3 class="news-title">${n.title}</h3>
-                    <p class="news-excerpt">${n.excerpt}</p>
-                    <div class="news-meta"><span><i class="fas fa-clock"></i> ${n.time}</span></div>
+        const container = document.getElementById('newsGrid');
+        if (!container) return;
+        if (!Array.isArray(data) || data.length === 0) {
+            container.textContent = 'لا تتوفر حالياً أخبار موثقة من مصدر إخباري متصل.';
+            return;
+        }
+        container.innerHTML = data.map(item => {
+            const category = ['alert', 'weather', 'climate'].includes(item.category) ? item.category : 'weather';
+            const image = typeof item.image === 'string' && /^https?:\/\//i.test(item.image) ? escapeHTML(item.image) : '';
+            const categoryLabel = category === 'alert' ? 'تحذير' : category === 'weather' ? 'طقس' : 'مناخ';
+            return `
+                <div class="news-card">
+                    <div class="news-image"><img src="${image}" alt="${escapeHTML(item.title)}" loading="lazy"></div>
+                    <div class="news-content">
+                        <span class="news-category ${category}">${categoryLabel}</span>
+                        <h3 class="news-title">${escapeHTML(item.title)}</h3>
+                        <p class="news-excerpt">${escapeHTML(item.excerpt)}</p>
+                        <div class="news-meta"><span><i class="fas fa-clock"></i> ${escapeHTML(item.time)}</span></div>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
 };
 
@@ -896,7 +913,7 @@ const App = {
             Notify.warning('تم استخدام الموقع الافتراضي: الجزائر العاصمة');
         } finally {
             UI.setLocLoading(false);
-            Notify.hide();
+
         }
     },
 
@@ -937,11 +954,12 @@ const App = {
             if (AppState.currentLocation.name !== CONFIG.DEFAULT_LOCATION.name) {
                 Notify.warning('جارٍ المحاولة بالموقع الافتراضي...');
                 AppState.setLocation({ ...CONFIG.DEFAULT_LOCATION });
+                UI.setLoading(false);
                 await this.loadWeather();
             }
         } finally {
             UI.setLoading(false);
-            Notify.hide();
+
         }
     },
 
