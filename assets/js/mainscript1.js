@@ -490,7 +490,7 @@ const UI = {
         const temps = forecast.list.map(i => i.main.temp);
         const max = Math.max(...temps);
         const min = Math.min(...temps);
-        const rain = forecast.list.filter(i => i.weather[0]?.id >= 500 && i.weather[0]?.id < 600).length * 2.5;
+        const rain = forecast.list.reduce((total, item) => total + Number(item.rain?.['3h'] || 0), 0);
         const avgWind = forecast.list.reduce((s, i) => s + i.wind.speed, 0) / forecast.list.length;
 
         if (this.els.statMaxTemp) this.els.statMaxTemp.textContent = `${Math.round(max)}°`;
