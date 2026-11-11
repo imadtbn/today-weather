@@ -39,21 +39,25 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
     const metrics = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       document: document.documentElement.scrollWidth,
-      body: document.body.scrollWidth
+      body: document.body.scrollWidth,
+      offenders: [...document.body.querySelectorAll('*')].map(el => {
+        const r = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return { tag: el.tagName, id: el.id, className: typeof el.className === 'string' ? el.className : '', left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), position: style.position };
+      }).filter(x => x.width > 0 && (x.left < -1 || x.right > innerWidth + 1) && x.position !== 'fixed').slice(0, 12)
     }));
-    expect(metrics.document, 'document overflow at viewport ' + width).toBeLessThanOrEqual(metrics.viewport + 1);
-    expect(metrics.body, 'body overflow at viewport ' + width).toBeLessThanOrEqual(metrics.viewport + 1);
+    expect(metrics.document, 'document overflow at viewport ' + width + ': ' + JSON.stringify(metrics.offenders)).toBeLessThanOrEqual(metrics.viewport + 1);
+    expect(metrics.body, 'body overflow at viewport ' + width + ': ' + JSON.stringify(metrics.offenders)).toBeLessThanOrEqual(metrics.viewport + 1);
   }
 });
 
 test('service worker installs and serves the app shell while offline', async ({ page, context }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
-    }
-  });
+  await page.waitForFunction(async () => Boolean(await navigator.serviceWorker.getRegistration()), null, { timeout: 15000 });
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  // A second online navigation ensures this document is controlled by the active worker.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10000 });
   await page.waitForFunction(async () => {
     for (const key of await caches.keys()) {
       if (!key.startsWith('today-weather-shell-')) continue;
