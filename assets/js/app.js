@@ -5,6 +5,7 @@ const App = {
     weatherRequestId: 0,
 
     async init() {
+        this._registerServiceWorker();
         console.log('%c[Algeria Weather Pro] Starting...', 'color:#d4a853; font-size:14px; font-weight:bold;');
         Notify.init();
         UI.init();
@@ -33,6 +34,13 @@ const App = {
                 gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.6, ease: 'power2.out' });
             });
         }
+    },
+
+
+    _registerServiceWorker() {
+        if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+            .catch(error => console.warn('[PWA] Service worker registration failed:', error));
     },
 
     async _checkLocation() {
