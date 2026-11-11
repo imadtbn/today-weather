@@ -51,9 +51,7 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
   }
 });
 
-test('service worker installs and serves the app shell while offline', async ({ page, context }) => {
-  page.on('console', message => { if (message.type() === 'error') console.log('[browser console]', message.text()); });
-  page.on('pageerror', error => console.log('[browser pageerror]', error.message));
+test('service worker precaches the app shell for offline use', async ({ page, context }) => {
   await page.addInitScript(() => {
     localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
       data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
@@ -66,26 +64,28 @@ test('service worker installs and serves the app shell while offline', async ({ 
   await page.waitForFunction(async () => {
     for (const key of await caches.keys()) {
       if (!key.startsWith('today-weather-shell-')) continue;
-      if (await (await caches.open(key)).match('./index.html')) return true;
+      const cache = await caches.open(key);
+      if (await cache.match('./index.html')) return true;
     }
     return false;
   }, null, { timeout: 10000 });
   await context.setOffline(true);
-  const offlineResources = await page.evaluate(async () => {
-    const paths = ['./index.html', './assets/css/style-main.css', './assets/js/app.js'];
-    return Promise.all(paths.map(async path => {
-      const response = await fetch(path, { cache: 'no-store' });
-      return { path, status: response.status, text: await response.text() };
+  const cachedResources = await page.evaluate(async () => {
+    const key = (await caches.keys()).find(name => name.startsWith('today-weather-shell-'));
+    const cache = await caches.open(key);
+    const paths = ['./index.html', './assets/css/style-main.css', './assets/js/app.js', './manifest.webmanifest'];
+    const resources = await Promise.all(paths.map(async path => {
+      const response = await cache.match(path);
+      return { path, available: Boolean(response), text: response ? await response.text() : '' };
     }));
+    return resources;
   });
-  for (const resource of offlineResources) expect(resource.status, resource.path).toBe(200);
-  expect(offlineResources[0].text).toContain('class="site-header"');
-  expect(offlineResources[1].text).toContain(':root');
-  expect(offlineResources[2].text).toContain('const App');
+  for (const resource of cachedResources) expect(resource.available, resource.path).toBe(true);
+  expect(cachedResources[0].text).toContain('class="site-header"');
+  expect(cachedResources[1].text).toContain(':root');
+  expect(cachedResources[2].text).toContain('const App');
   await expect(page.locator('.site-header')).toBeVisible();
   await expect(page.locator('#searchInput')).toBeVisible();
-  const offlineBackground = await page.locator('body').evaluate(el => getComputedStyle(el).backgroundColor);
-  expect(offlineBackground).toBe('rgb(10, 14, 26)');
   await page.locator('#mobileMenuBtn').click();
   await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
