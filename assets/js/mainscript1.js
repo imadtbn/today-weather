@@ -379,8 +379,6 @@ const WeatherService = {
         return dirs[Math.round((deg % 360) / 45) % 8];
     },
 
-    waveHeight(windSpeed) { return (windSpeed * 0.2).toFixed(1); },
-    wavePeriod(windSpeed) { return (windSpeed * 0.3).toFixed(1); },
     formatTime(d) { return d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' }); }
 };
 
