@@ -170,7 +170,7 @@ const GeoService = {
 
     async _reverseNominatim(lat, lon) {
         try {
-            // حد Nominatim يطبق على جميع الطلبات، بما فيها البحث العكسي.
+            // هذا الفاصل يخفف تكرار الطلبات داخل جلسة المتصفح فقط؛ لا يفرض حداً مشتركاً بين جميع الزوار.
             if (Date.now() - this.lastNominatimSearchAt < 1100) return this._fallback(lat, lon);
             this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1&accept-language=ar`;
@@ -235,7 +235,7 @@ const GeoService = {
     lastNominatimSearchAt: 0,
     async _searchNominatim(query) {
         try {
-            // احترام حد Nominatim العام: طلب بحث واحد كحد أقصى في الثانية.
+            // مهلة محلية لتقليل تكرار طلبات البحث من هذا المتصفح؛ ليست محدداً مركزياً لحركة جميع الزوار.
             if (Date.now() - this.lastNominatimSearchAt < 1100) return [];
             this.lastNominatimSearchAt = Date.now();
             const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
@@ -567,17 +567,17 @@ const UI = {
 
         forecast.list.forEach(item => {
             const d = new Date(item.dt * 1000);
-            const ds = d.toLocaleDateString('ar-DZ', { weekday: 'short' });
-            if (!daily[ds]) daily[ds] = [];
-            daily[ds].push(item.main.temp);
+            const key = d.toISOString().slice(0, 10);
+            if (!daily[key]) daily[key] = { label: d.toLocaleDateString('ar-DZ', { weekday: 'short', day: 'numeric', month: 'short' }), temps: [] };
+            daily[key].temps.push(item.main.temp);
         });
 
         let c = 0;
-        for (const [day, temps] of Object.entries(daily)) {
-            if (c >= 7) break;
-            labels.push(day);
-            maxTemps.push(Math.round(Math.max(...temps)));
-            minTemps.push(Math.round(Math.min(...temps)));
+        for (const day of Object.values(daily)) {
+            if (c >= 5) break;
+            labels.push(day.label);
+            maxTemps.push(Math.round(Math.max(...day.temps)));
+            minTemps.push(Math.round(Math.min(...day.temps)));
             c++;
         }
 
@@ -915,6 +915,7 @@ function initStarField() {
 // ============================================
 const App = {
     refreshTimer: null,
+    weatherRequestId: 0,
 
     async init() {
         console.log('%c[Algeria Weather Pro] Starting...', 'color:#d4a853; font-size:14px; font-weight:bold;');
@@ -949,9 +950,16 @@ const App = {
 
     async _checkLocation() {
         const cached = LocationCache.get();
-        if (cached && (Date.now() - cached.timestamp < CONFIG.CACHE_DURATION)) {
-            AppState.currentLocation = cached.data;
-            Notify.success(`مرحباً بك في ${cached.data.displayName || cached.data.name}`);
+        const timestamp = Number(cached?.timestamp);
+        const location = cached?.data;
+        const age = Date.now() - timestamp;
+        const lat = Number(location?.lat);
+        const lon = Number(location?.lon);
+        const validCache = Number.isFinite(timestamp) && age >= 0 && age < CONFIG.CACHE_DURATION &&
+            Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+        if (validCache) {
+            AppState.currentLocation = { ...location, lat, lon };
+            Notify.success(`مرحباً بك في ${location.displayName || location.name}`);
             return;
         }
         // لا يوجد cache صالح: نطلب GPS
@@ -981,17 +989,18 @@ const App = {
     },
 
     async loadWeather() {
-        if (AppState.isLoading) return;
+        const requestId = ++this.weatherRequestId;
         UI.setLoading(true);
         Notify.loading('جارٍ تحميل بيانات الطقس...');
 
         try {
-            const loc = AppState.currentLocation;
+            const loc = { ...AppState.currentLocation };
             const [current, forecast] = await Promise.all([
                 WeatherService.fetchCurrent(loc.lat, loc.lon),
                 WeatherService.fetchForecast(loc.lat, loc.lon)
             ]);
 
+            if (requestId !== this.weatherRequestId) return;
             AppState.setWeather(current);
             AppState.forecastData = forecast;
 
@@ -1009,6 +1018,7 @@ const App = {
             Notify.success('تم تحديث بيانات الطقس بنجاح');
 
         } catch (err) {
+            if (requestId !== this.weatherRequestId) return;
             console.error('[App] Weather error:', err);
             Notify.error(`خطأ في جلب البيانات: ${err.message}`);
             UI.setApiStatus(false);
@@ -1017,12 +1027,10 @@ const App = {
             if (AppState.currentLocation.name !== CONFIG.DEFAULT_LOCATION.name) {
                 Notify.warning('جارٍ المحاولة بالموقع الافتراضي...');
                 AppState.setLocation({ ...CONFIG.DEFAULT_LOCATION });
-                UI.setLoading(false);
                 await this.loadWeather();
             }
         } finally {
-            UI.setLoading(false);
-
+            if (requestId === this.weatherRequestId) UI.setLoading(false);
         }
     },
 
