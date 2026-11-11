@@ -38,7 +38,8 @@ const App = {
 
 
     _registerServiceWorker() {
-        if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+        const localSecureHost = ['localhost', '127.0.0.1'].includes(location.hostname);
+        if (!('serviceWorker' in navigator) || (!window.isSecureContext && !localSecureHost)) return;
         navigator.serviceWorker.register('./sw.js', { scope: './' })
             .catch(error => console.warn('[PWA] Service worker registration failed:', error));
     },
