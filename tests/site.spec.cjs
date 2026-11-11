@@ -70,4 +70,8 @@ test('service worker installs and serves the app shell while offline', async ({ 
   await expect(page.locator('.site-header')).toBeVisible();
   await expect(page.locator('#searchInput')).toBeVisible();
   await expect(page.locator('#weatherMap')).toBeAttached();
+  const offlineBackground = await page.locator('body').evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(offlineBackground).toBe('rgb(10, 14, 26)');
+  await page.locator('#mobileMenuBtn').click();
+  await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
