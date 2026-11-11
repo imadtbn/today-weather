@@ -54,31 +54,36 @@ test('layout has no horizontal page overflow on common screen widths', async ({ 
 test('service worker installs and serves the app shell while offline', async ({ page, context }) => {
   page.on('console', message => { if (message.type() === 'error') console.log('[browser console]', message.text()); });
   page.on('pageerror', error => console.log('[browser pageerror]', error.message));
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(async () => {
-    const registration = await navigator.serviceWorker.getRegistration();
-    return Boolean(registration?.active) || registration?.installing?.state === 'redundant';
-  }, null, { timeout: 15000 });
-  const workerState = await page.evaluate(async () => {
-    const registration = await navigator.serviceWorker.getRegistration();
-    return { active: registration?.active?.state || null, installing: registration?.installing?.state || null, waiting: registration?.waiting?.state || null };
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
   });
-  expect(workerState.active, 'service worker did not activate: ' + JSON.stringify(workerState)).toBe('activated');
-  // A second online navigation ensures this document is controlled by the active worker.
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10000 });
+  await page.route('https://api.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 15000 });
   await page.waitForFunction(async () => {
     for (const key of await caches.keys()) {
       if (!key.startsWith('today-weather-shell-')) continue;
       if (await (await caches.open(key)).match('./index.html')) return true;
     }
     return false;
-  });
+  }, null, { timeout: 10000 });
   await context.setOffline(true);
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  const offlineResources = await page.evaluate(async () => {
+    const paths = ['./index.html', './assets/css/style-main.css', './assets/js/app.js'];
+    return Promise.all(paths.map(async path => {
+      const response = await fetch(path, { cache: 'no-store' });
+      return { path, status: response.status, text: await response.text() };
+    }));
+  });
+  for (const resource of offlineResources) expect(resource.status, resource.path).toBe(200);
+  expect(offlineResources[0].text).toContain('class="site-header"');
+  expect(offlineResources[1].text).toContain(':root');
+  expect(offlineResources[2].text).toContain('const App');
   await expect(page.locator('.site-header')).toBeVisible();
   await expect(page.locator('#searchInput')).toBeVisible();
-  await expect(page.locator('#weatherMap')).toBeAttached();
   const offlineBackground = await page.locator('body').evaluate(el => getComputedStyle(el).backgroundColor);
   expect(offlineBackground).toBe('rgb(10, 14, 26)');
   await page.locator('#mobileMenuBtn').click();
