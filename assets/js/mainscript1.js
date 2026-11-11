@@ -791,8 +791,9 @@ const SearchService = {
 
     _select(ds) {
         const loc = {
-            lat: parseFloat(ds.lat), lon: parseFloat(ds.lon),
-            name: ds.name, displayName: ds.display || ds.name
+            lat: Number(ds.lat), lon: Number(ds.lon),
+            name: ds.name, state: ds.state || '', country: ds.country || 'الجزائر',
+            displayName: ds.display || ds.name
         };
         this.input.value = ds.name;
         this._hide();
