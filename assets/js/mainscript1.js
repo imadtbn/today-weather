@@ -6,6 +6,22 @@
 // ============================================
 // 1. CONFIGURATION
 // ============================================
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+async function fetchWithTimeout(url, options = {}, timeout = 12000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 const CONFIG = {
     OPENWEATHER_API_KEY: '1151122405b6f7be33bf0de4b22bb5a4',
     DEFAULT_LOCATION: {
@@ -17,7 +33,7 @@ const CONFIG = {
         displayName: 'الجزائر العاصمة / الجزائر العاصمة / الجزائر'
     },
     REFRESH_INTERVAL: 25 * 60 * 1000,
-    CACHE_DURATION: 30 * 60 * 1000,
+    CACHE_DURATION: 25 * 60 * 1000,
     GEO_TIMEOUT: 10000,
     API_BASE_URL: 'https://api.openweathermap.org/data/2.5',
     GEO_API_URL: 'https://api.openweathermap.org/geo/1.0',
@@ -133,7 +149,7 @@ const GeoService = {
         // المحاولة الأولى: OpenWeatherMap
         try {
             const url = `${CONFIG.GEO_API_URL}/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${CONFIG.OPENWEATHER_API_KEY}`;
-            const res = await fetch(url);
+            const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('OWM failed');
             const data = await res.json();
             if (data?.length > 0) {
@@ -149,7 +165,7 @@ const GeoService = {
     async _reverseNominatim(lat, lon) {
         try {
             const url = `${CONFIG.NOMINATIM_URL}/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&addressdetails=1&accept-language=ar`;
-            const res = await fetch(url, { headers: { 'User-Agent': 'meteo-dz/2.0' } });
+            const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim failed');
             const data = await res.json();
             return this._parseNominatim(data, lat, lon);
@@ -209,7 +225,7 @@ const GeoService = {
     async _searchNominatim(query) {
         try {
             const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
-            const res = await fetch(url, { headers: { 'User-Agent': 'meteo-dz/2.0' } });
+            const res = await fetchWithTimeout(url);
             const data = await res.json();
             return data.map(p => {
                 const addr = p.address || {};
@@ -286,21 +302,21 @@ const ALGERIAN_CITIES = [
 const WeatherService = {
     async fetchCurrent(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات الطقس الحالية');
         return res.json();
     },
 
     async fetchForecast(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب التنبؤات');
         return res.json();
     },
 
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetch(url);
+        const res = await fetchWithTimeout(url);
         if (!res.ok) throw new Error('فشل جلب بيانات النقطة');
         return res.json();
     },
@@ -712,7 +728,7 @@ const MapService = {
 // 9. SEARCH SERVICE
 // ============================================
 const SearchService = {
-    input: null, suggestions: null, timer: null,
+    input: null, suggestions: null, timer: null, requestId: 0,
     init() {
         this.input = document.getElementById('searchInput');
         this.suggestions = document.getElementById('citySuggestions');
@@ -729,13 +745,15 @@ const SearchService = {
 
     _onInput(e) {
         const q = e.target.value.trim();
-        if (q.length < 2) { this._hide(); return; }
+        if (q.length < 2) { this.requestId++; this._hide(); return; }
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this._search(q), 300);
     },
 
     async _search(q) {
+        const requestId = ++this.requestId;
         const results = await GeoService.searchCities(q);
+        if (requestId !== this.requestId || q !== this.input?.value.trim()) return;
         this._render(results);
     },
 
@@ -896,7 +914,7 @@ const App = {
             Notify.warning('تم استخدام الموقع الافتراضي: الجزائر العاصمة');
         } finally {
             UI.setLocLoading(false);
-            Notify.hide();
+
         }
     },
 
@@ -937,11 +955,12 @@ const App = {
             if (AppState.currentLocation.name !== CONFIG.DEFAULT_LOCATION.name) {
                 Notify.warning('جارٍ المحاولة بالموقع الافتراضي...');
                 AppState.setLocation({ ...CONFIG.DEFAULT_LOCATION });
+                UI.setLoading(false);
                 await this.loadWeather();
             }
         } finally {
             UI.setLoading(false);
-            Notify.hide();
+
         }
     },
 
