@@ -2306,7 +2306,24 @@ body {
     }
 
     .search-input {
-        font-size: 14px;
+        font-size: 16px;
         padding: 0.55rem 2rem 0.55rem 0.8rem;
+    }
+}
+
+/* Keyboard accessibility and reduced-motion support */
+:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }
