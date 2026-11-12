@@ -155,11 +155,11 @@ test('service worker precaches the app shell for offline use', async ({ page, co
     expect(cachedPaths, 'missing cached PWA resource ' + path).toContain(path);
   }
   await context.setOffline(true);
-  const offlineIndex = await page.evaluate(async () => {
-    const cache = await caches.open('today-weather-shell-v2');
+  const offlineIndex = await page.evaluate(async cacheName => {
+    const cache = await caches.open(cacheName);
     const response = await cache.match('./index.html');
     return response ? { status: response.status, html: await response.text() } : null;
-  });
+  }, shellCache.name);
   expect(offlineIndex?.status).toBe(200);
   expect(offlineIndex?.html).toContain('class="site-header"');
   await expect(page.locator('.site-header')).toBeVisible();
