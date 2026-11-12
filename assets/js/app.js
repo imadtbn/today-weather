@@ -107,7 +107,7 @@ const App = {
             UI.updateSea(current);
             SpecializedWeather.load(loc);
             UI.updateStats(current, forecast);
-            UI.updateTips(current);
+            await UI.updateTips(current, forecast, loc);
             UI.updateWarnings(WeatherService.buildWeatherAlerts(forecast), loc);
             UI.renderFavoriteLocations(loc);
             UI.updateChart(forecast);
