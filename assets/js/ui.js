@@ -16,7 +16,7 @@ const UI = {
         ids.forEach(id => { this.els[id] = document.getElementById(id); });
     },
 
-    updateCurrentWeather(data, location, extra = null) {
+    updateCurrentWeather(data, location) {
         if (!location) return;
         const locName = location.displayName || location.name;
 
@@ -40,10 +40,18 @@ const UI = {
             return new Date((Number(timestamp) + offset) * 1000)
                 .toISOString().slice(11, 16);
         };
-        const extraCurrent = extra || {};
-        const uv = Number(extraCurrent.uv_index);
+        const humidity = Number(data.main.humidity);
+        const temperature = Number(data.main.temp);
+        const dewPoint = humidity > 0 && humidity <= 100 && Number.isFinite(temperature)
+            ? (() => {
+                const a = 17.27, b = 237.7;
+                const alpha = (a * temperature) / (b + temperature) + Math.log(humidity / 100);
+                return (b * alpha) / (a - alpha);
+            })()
+            : null;
+        const uv = Number(data.uvi);
         const uvLabel = Number.isFinite(uv)
-            ? `${uv.toFixed(1)}${uv >= 8 ? ' (مرتفع جداً)' : uv >= 6 ? ' (مرتفع)' : uv >= 3 ? ' (متوسط)' : ' (منخفض)'}`
+            ? `${uv.toFixed(1)}${uv >= 11 ? ' (شديد جداً)' : uv >= 8 ? ' (مرتفع جداً)' : uv >= 6 ? ' (مرتفع)' : uv >= 3 ? ' (متوسط)' : ' (منخفض)'}`
             : 'غير متاح';
         const details = [
             { icon: 'fas fa-temperature-high', label: 'الحرارة المحسوسة', value: `${Math.round(data.main.feels_like)}°C` },
@@ -51,7 +59,7 @@ const UI = {
             { icon: 'fas fa-wind', label: 'سرعة الرياح', value: `${Math.round((data.wind?.speed || 0) * 3.6)} كم/س` },
             { icon: 'fas fa-compress-alt', label: 'الضغط الجوي', value: `${data.main.pressure} hPa` },
             { icon: 'fas fa-eye', label: 'الرؤية', value: Number.isFinite(Number(data.visibility)) ? `${(data.visibility / 1000).toFixed(1)} كم` : 'غير متاح' },
-            { icon: 'fas fa-droplet', label: 'نقطة الندى', value: Number.isFinite(Number(extraCurrent.dew_point_2m)) ? `${Number(extraCurrent.dew_point_2m).toFixed(1)}°C` : 'غير متاح' },
+            { icon: 'fas fa-droplet', label: 'نقطة الندى (تقديرية)', value: Number.isFinite(dewPoint) ? `${dewPoint.toFixed(1)}°C` : 'غير متاح' },
             { icon: 'fas fa-sun', label: 'مؤشر الأشعة UV', value: uvLabel },
             { icon: 'fas fa-sunrise', label: 'الشروق', value: formatLocalTime(data.sys?.sunrise) },
             { icon: 'fas fa-sunset', label: 'الغروب', value: formatLocalTime(data.sys?.sunset) },
