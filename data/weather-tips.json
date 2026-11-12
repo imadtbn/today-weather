@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-12",
+  "description": "قواعد إرشادية آلية تستند إلى بيانات الطقس الحالية وتوقعات الساعات القادمة. لا تمثل تحذيرات رسمية.",
+  "rules": [
+    {
+      "id": "extreme-heat",
+      "category": "heat",
+      "priority": 100,
+      "severity": "high",
+      "icon": "fas fa-temperature-high",
+      "title": "حرارة شديدة حالياً",
+      "message": "قلّل التعرض للشمس والجهد البدني، وابحث عن مكان بارد واشرب الماء بانتظام. انتبه بشكل خاص للأطفال وكبار السن.",
+      "conditions": {
+        "currentTempMin": 40
+      }
+    },
+    {
+      "id": "high-heat",
+      "category": "heat",
+      "priority": 90,
+      "severity": "high",
+      "icon": "fas fa-temperature-high",
+      "title": "ارتفاع درجات الحرارة",
+      "message": "تجنب الأنشطة المجهدة خلال ساعات الذروة، وارتدِ ملابس خفيفة وفاتحة اللون واحرص على شرب الماء بانتظام.",
+      "conditions": {
+        "currentTempMin": 35
+      }
+    },
+    {
+      "id": "forecast-heat",
+      "category": "heat",
+      "priority": 88,
+      "severity": "medium",
+      "icon": "fas fa-temperature-arrow-up",
+      "title": "ارتفاع الحرارة متوقع",
+      "message": "تشير التوقعات إلى ارتفاع الحرارة خلال الساعات القادمة. خطط للأنشطة الخارجية في وقت أبرد وتجنب التعرض الطويل للشمس.",
+      "conditions": {
+        "forecastMaxTempMin": 37
+      }
+    },
+    {
+      "id": "cold-weather",
+      "category": "cold",
+      "priority": 85,
+      "severity": "medium",
+      "icon": "fas fa-snowflake",
+      "title": "طقس بارد",
+      "message": "ارتدِ طبقات ملابس مناسبة، وغطِّ الأطراف عند الخروج، وتحقق من تدفئة المسكن بطريقة آمنة.",
+      "conditions": {
+        "currentTempMax": 9
+      }
+    },
+    {
+      "id": "frost-risk",
+      "category": "cold",
+      "priority": 95,
+      "severity": "high",
+      "icon": "fas fa-temperature-low",
+      "title": "برودة شديدة",
+      "message": "قلّل البقاء في الخارج، واحمِ الأطفال وكبار السن من البرد، وانتبه لاحتمال تشكل الجليد على الطرق إذا ترافقت البرودة مع الهطول.",
+      "conditions": {
+        "currentTempMax": 2
+      }
+    },
+    {
+      "id": "heavy-rain-now",
+      "category": "rain",
+      "priority": 98,
+      "severity": "high",
+      "icon": "fas fa-cloud-showers-heavy",
+      "title": "أمطار غزيرة متوقعة",
+      "message": "تجنب الأودية ومجاري المياه والطرق المنخفضة، ولا تحاول عبور تجمعات المياه سيراً أو بالسيارة.",
+      "conditions": {
+        "forecastRain3hMin": 20
+      }
+    },
+    {
+      "id": "rain-coming",
+      "category": "rain",
+      "priority": 70,
+      "severity": "medium",
+      "icon": "fas fa-umbrella",
+      "title": "احتمال هطول الأمطار",
+      "message": "احتفظ بمظلة أو معطف مناسب، واترك مسافة أمان أكبر أثناء القيادة تحسباً لانزلاق الطريق.",
+      "conditions": {
+        "forecastRain3hMin": 2
+      }
+    },
+    {
+      "id": "strong-wind",
+      "category": "wind",
+      "priority": 92,
+      "severity": "high",
+      "icon": "fas fa-wind",
+      "title": "رياح قوية",
+      "message": "ثبّت الأغراض الخفيفة في الشرفات والأسطح، وابتعد عن الأشجار واللوحات والأجسام غير المستقرة.",
+      "conditions": {
+        "forecastWindKmhMin": 55
+      }
+    },
+    {
+      "id": "thunderstorm",
+      "category": "storm",
+      "priority": 99,
+      "severity": "high",
+      "icon": "fas fa-bolt",
+      "title": "عواصف رعدية متوقعة",
+      "message": "ابتعد عن الأماكن المكشوفة والأشجار وأعمدة الكهرباء، وادخل مبنى آمناً عند سماع الرعد.",
+      "conditions": {
+        "forecastThunder": true
+      }
+    },
+    {
+      "id": "snowfall",
+      "category": "snow",
+      "priority": 94,
+      "severity": "high",
+      "icon": "fas fa-snowflake",
+      "title": "تساقط ثلوج متوقع",
+      "message": "تحقق من حالة الطرق قبل التنقل، وخفّض السرعة وتجنب المسالك الجبلية غير المهيأة.",
+      "conditions": {
+        "forecastSnow": true
+      }
+    },
+    {
+      "id": "fog",
+      "category": "visibility",
+      "priority": 91,
+      "severity": "high",
+      "icon": "fas fa-smog",
+      "title": "ضباب أو ضعف في الرؤية",
+      "message": "خفّض السرعة، واستخدم أضواء السيارة المناسبة، وزد مسافة الأمان وتجنب التجاوزات الخطرة.",
+      "conditions": {
+        "forecastFog": true
+      }
+    },
+    {
+      "id": "low-visibility",
+      "category": "visibility",
+      "priority": 89,
+      "severity": "high",
+      "icon": "fas fa-eye",
+      "title": "رؤية محدودة",
+      "message": "قد تكون الرؤية ضعيفة في المنطقة. قد ببطء واترك مسافة أمان كافية وتجنب التوقف المفاجئ.",
+      "conditions": {
+        "currentVisibilityMax": 3000
+      }
+    },
+    {
+      "id": "high-humidity",
+      "category": "humidity",
+      "priority": 55,
+      "severity": "low",
+      "icon": "fas fa-droplet",
+      "title": "رطوبة مرتفعة",
+      "message": "اختر ملابس خفيفة تسمح بالتهوية، وخفف المجهود الخارجي إذا شعرت بالإجهاد أو صعوبة التبريد.",
+      "conditions": {
+        "currentHumidityMin": 85
+      }
+    },
+    {
+      "id": "sunny-outdoor",
+      "category": "sun",
+      "priority": 40,
+      "severity": "low",
+      "icon": "fas fa-sun",
+      "title": "طقس مناسب للخروج مع الحماية",
+      "message": "إذا خرجت نهاراً، استخدم الظل وغطاء الرأس ووسائل الحماية المناسبة من الشمس. لا تتوفر قراءة مباشرة لمؤشر UV ضمن البيانات الحالية.",
+      "conditions": {
+        "currentClear": true,
+        "currentTempMin": 25,
+        "daytime": true
+      }
+    },
+    {
+      "id": "moderate-weather",
+      "category": "general",
+      "priority": 10,
+      "severity": "low",
+      "icon": "fas fa-cloud-sun",
+      "title": "أجواء مستقرة نسبياً",
+      "message": "الأجواء الحالية لا تُظهر مؤشرات جوية بارزة ضمن البيانات المتاحة. تحقق من التوقعات قبل الأنشطة الخارجية الطويلة.",
+      "conditions": {}
+    }
+  ]
+}
