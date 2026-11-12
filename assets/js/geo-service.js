@@ -99,15 +99,15 @@ const GeoService = {
     normalizeSearchText(value) {
         return String(value ?? '')
             .normalize('NFD')
-            .replace(/[\\u0300-\\u036f\\u064B-\\u065F\\u0670]/g, '')
+            .replace(/[\u0300-\u036f\u064B-\u065F\u0670]/g, '')
             .replace(/[أإآٱ]/g, 'ا')
             .replace(/ى/g, 'ي')
             .replace(/ة/g, 'ه')
             .replace(/[ؤئ]/g, 'ء')
             .toLocaleLowerCase()
-            .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+            .replace(/[^\p{L}\p{N}]+/gu, ' ')
             .trim()
-            .replace(/\\s+/g, ' ');
+            .replace(/\s+/g, ' ');
     },
 
     _rankCityMatch(city, query) {
