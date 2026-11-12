@@ -100,6 +100,66 @@ const LocationCache = {
 };
 
 // ============================================
+// 2.1 FAVORITE LOCATIONS
+// ============================================
+const FavoriteLocations = {
+    KEY: 'today_weather_favorite_locations_v1',
+    MAX_ITEMS: 12,
+    get() {
+        try {
+            const items = JSON.parse(localStorage.getItem(this.KEY) || '[]');
+            if (!Array.isArray(items)) return [];
+            return items.filter(item =>
+                item && Number.isFinite(Number(item.lat)) &&
+                Number.isFinite(Number(item.lon)) &&
+                Math.abs(Number(item.lat)) <= 90 && Math.abs(Number(item.lon)) <= 180
+            ).slice(0, this.MAX_ITEMS);
+        } catch (error) {
+            console.warn('[Favorites] Read failed:', error);
+            return [];
+        }
+    },
+    key(location) {
+        return `${Number(location.lat).toFixed(4)},${Number(location.lon).toFixed(4)}`;
+    },
+    has(location) {
+        if (!location) return false;
+        const key = this.key(location);
+        return this.get().some(item => this.key(item) === key);
+    },
+    toggle(location) {
+        const items = this.get();
+        const key = this.key(location);
+        const index = items.findIndex(item => this.key(item) === key);
+        if (index >= 0) {
+            items.splice(index, 1);
+            this.save(items);
+            return { saved: false, items };
+        }
+        if (items.length >= this.MAX_ITEMS) return { saved: false, limitReached: true, items };
+        items.push({
+            lat: Number(location.lat), lon: Number(location.lon),
+            name: String(location.name || location.displayName || 'مدينة').slice(0, 100),
+            state: String(location.state || '').slice(0, 100),
+            country: String(location.country || '').slice(0, 100),
+            displayName: String(location.displayName || location.name || 'مدينة').slice(0, 220)
+        });
+        this.save(items);
+        return { saved: true, items };
+    },
+    remove(location) {
+        const key = this.key(location);
+        const items = this.get().filter(item => this.key(item) !== key);
+        this.save(items);
+        return items;
+    },
+    save(items) {
+        try { localStorage.setItem(this.KEY, JSON.stringify(items.slice(0, this.MAX_ITEMS))); }
+        catch (error) { console.warn('[Favorites] Save failed:', error); }
+    }
+};
+
+// ============================================
 // 3. NOTIFICATION
 // ============================================
 const Notify = {
