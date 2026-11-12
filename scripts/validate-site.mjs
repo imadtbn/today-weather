@@ -11,6 +11,9 @@ const css = read('assets/css/style-main.css');
 const sitemap = read('sitemap.xml');
 const sw = read('sw.js');
 const manifest = JSON.parse(read('manifest.webmanifest'));
+const weatherTips = JSON.parse(read('data/weather-tips.json'));
+assert.ok(Array.isArray(weatherTips.rules) && weatherTips.rules.length >= 10, 'Dynamic weather tips rules are missing');
+assert.ok(weatherTips.rules.every(rule => rule.id && rule.category && rule.conditions && rule.message), 'Weather tips rules must be complete');
 
 const refs = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)]
   .map(m => m[1])
@@ -52,7 +55,7 @@ for (const host of ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fo
 
 assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, 'Unbalanced CSS braces');
 const jsFiles = [
-  'assets/js/core.js', 'assets/js/geo-service.js', 'assets/js/weather-service.js',
+  'assets/js/core.js', 'assets/js/geo-service.js', 'assets/js/weather-service.js', 'assets/js/weather-tips-engine.js',
   'assets/js/ui.js', 'assets/js/map-service.js', 'assets/js/search-news.js',
   'assets/js/effects.js', 'assets/js/app.js', 'assets/js/adsData.js', 'sw.js'
 ];
