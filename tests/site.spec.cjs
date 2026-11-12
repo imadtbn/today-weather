@@ -32,6 +32,14 @@ test('mobile navigation is immediately interactive and accessible', async ({ pag
   await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
 
+test('header remains available after scrolling down', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect(page.locator('#siteHeader')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#searchInput')).toBeVisible();
+});
+
 test('city search supports accessible keyboard navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
