@@ -152,7 +152,7 @@ const GeoService = {
             // مهلة محلية لتقليل تكرار طلبات البحث من هذا المتصفح؛ ليست محدداً مركزياً لحركة جميع الزوار.
             if (Date.now() - this.lastNominatimSearchAt < 1100) return [];
             this.lastNominatimSearchAt = Date.now();
-            const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar,fr,en&q=${encodeURIComponent(query + ', Algeria')}`;
+            const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar,fr,en&q=${encodeURIComponent(query)}`;
             const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim search failed');
             const data = await res.json();
