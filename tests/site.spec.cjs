@@ -218,3 +218,77 @@ test('performance safeguards defer third-party scripts and omit unused heavy lib
   expect(checks.blockingHeadScripts).toEqual([]);
   expect(checks.unusedLibraries).toEqual([]);
 });
+
+
+test('weather risk cards show forecast-derived source and severity', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
+  });
+  await page.route('https://api.openweathermap.org/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/forecast')) {
+      const now = Math.floor(Date.now() / 1000);
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        city: { timezone: 3600 },
+        list: [
+          { dt: now + 3600, main: { temp: 43, temp_max: 43, temp_min: 31 }, wind: { speed: 22 }, rain: { '3h': 24 }, weather: [{ id: 600, description: 'ثلوج' }] },
+          { dt: now + 7200, main: { temp: 40, temp_max: 40, temp_min: 30 }, wind: { speed: 18 }, rain: { '3h': 12 }, weather: [{ id: 211, description: 'عاصفة رعدية' }] }
+        ]
+      }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      main: { temp: 24, feels_like: 24, humidity: 55, pressure: 1012 },
+      weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+      wind: { speed: 2, deg: 90 }, visibility: 10000, clouds: { all: 0 }, name: 'Algeria', timezone: 3600
+    }) });
+  });
+  await page.route('https://tile.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#warningsGrid .warning-card')).toHaveCount(5);
+  await expect(page.locator('#warningsGrid')).toContainText('أمطار غزيرة متوقعة');
+  await expect(page.locator('#warningsGrid')).toContainText('OpenWeatherMap Forecast');
+  await expect(page.locator('.warnings-disclaimer')).toContainText('ليست نشرة تحذير رسمية');
+});
+
+test('favorite locations can be saved, revisited, and removed', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
+  });
+  await page.route('https://api.openweathermap.org/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/forecast')) {
+      const now = Math.floor(Date.now() / 1000);
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        city: { timezone: 3600 },
+        list: Array.from({ length: 8 }, (_, i) => ({
+          dt: now + (i + 1) * 10800,
+          main: { temp: 22, feels_like: 22, temp_max: 24, temp_min: 18, humidity: 55, pressure: 1012 },
+          weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+          wind: { speed: 2, deg: 90 }, clouds: { all: 0 }
+        }))
+      }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      main: { temp: 24, feels_like: 24, humidity: 55, pressure: 1012 },
+      weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+      wind: { speed: 2, deg: 90 }, visibility: 10000, clouds: { all: 0 }, name: 'Algeria', timezone: 3600
+    }) });
+  });
+  await page.route('https://tile.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.locator('#favoriteCurrentBtn').click();
+  await expect(page.locator('#favoriteCitiesPanel')).toBeVisible();
+  await expect(page.locator('#favoriteCities')).toContainText('الجزائر العاصمة');
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('today_weather_favorite_locations_v1') || '[]'));
+  expect(stored).toHaveLength(1);
+  await page.locator('[data-favorite-select="0"]').click();
+  await expect(page.locator('#currentCity')).toContainText('الجزائر العاصمة');
+  await page.locator('[data-favorite-remove="0"]').click();
+  await expect(page.locator('#favoriteCitiesPanel')).toBeHidden();
+});
