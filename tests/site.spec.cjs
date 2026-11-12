@@ -32,6 +32,52 @@ test('mobile navigation is immediately interactive and accessible', async ({ pag
   await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
 
+test('mobile header uses separate brand/menu and search rows', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const layout = await page.evaluate(() => {
+    const rect = selector => {
+      const r = document.querySelector(selector).getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    };
+    return {
+      header: rect('.header-inner'),
+      brand: rect('.header-inner > .brand'),
+      menu: rect('#mobileMenuBtn'),
+      controls: rect('.header-controls'),
+      search: rect('#searchInput'),
+      location: rect('#locationBtn'),
+      pageWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    };
+  });
+  expect(layout.controls.y).toBeGreaterThan(layout.brand.y);
+  expect(layout.controls.y).toBeGreaterThan(layout.menu.y);
+  expect(layout.search.width).toBeGreaterThan(180);
+  expect(layout.location.width).toBeGreaterThanOrEqual(40);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.pageWidth + 1);
+});
+
+test('mobile section cards use the available content width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const widths = await page.evaluate(() => {
+    const viewport = document.documentElement.clientWidth;
+    const selectors = ['#currentWeather', '.forecast-card', '.stat-card', '.tip-card'];
+    return selectors.map(selector => {
+      const el = document.querySelector(selector);
+      if (!el) return { selector, missing: true };
+      const r = el.getBoundingClientRect();
+      return { selector, width: r.width, viewport, left: r.left, right: r.right };
+    });
+  });
+  for (const item of widths.filter(item => !item.missing)) {
+    expect(item.width, item.selector + ' should use most of the phone width').toBeGreaterThan(145);
+    expect(item.left).toBeGreaterThanOrEqual(-1);
+    expect(item.right).toBeLessThanOrEqual(item.viewport + 1);
+  }
+});
+
 test('header remains available after scrolling down', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
