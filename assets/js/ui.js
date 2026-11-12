@@ -9,7 +9,7 @@ const UI = {
             'updateTime', 'currentTemp', 'currentCondition', 'weatherIcon', 'weatherDetails',
             'hourlyForecast', 'forecastContainer', 'weatherMap', 'temperatureChart',
             'statsGrid', 'newsGrid', 'apiStatus', 'scrollTop', 'refreshWeather', 'refreshNews',
-            'weatherTips', 'waveHeight', 'waveDirection', 'wavePeriod', 'seaTipsList',
+            'weatherTips', 'weatherTipsContext', 'weatherTipsStatus', 'weatherTipsToggle', 'waveHeight', 'waveDirection', 'wavePeriod', 'seaTipsList',
             'cubeTemp1', 'cubeTemp2', 'cubeTemp3', 'cubeTemp4', 'cubeTemp5', 'cubeTemp6',
             'statMaxTemp', 'statMinTemp', 'statRain', 'statWind', 'warningsGrid', 'favoriteCurrentBtn', 'favoriteCities', 'favoriteCitiesPanel'
         ];
@@ -228,30 +228,66 @@ const UI = {
         ).join('');
     },
 
-    updateTips(data) {
-        const temp = data.main.temp;
-        const id = data.weather[0]?.id || 800;
-        const wind = (data.wind.speed || 0) * 3.6;
-        const tips = [];
+    async updateTips(data, forecast, location) {
+        const grid = this.els.weatherTips;
+        if (!grid) return;
+        const contextLabel = this.els.weatherTipsContext;
+        const status = this.els.weatherTipsStatus;
+        const toggle = this.els.weatherTipsToggle;
+        grid.setAttribute('aria-busy', 'true');
+        if (status) status.innerHTML = '<i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> جارٍ التحليل';
 
-        if (temp > 35) tips.push({ icon: 'fas fa-temperature-high', title: 'موجة حرارة شديدة', text: 'تجنب التعرض للشمس بين 11 صباحاً و4 مساءً. اشرب الماء باستمرار.', severity: 'high' });
-        if (temp > 28) tips.push({ icon: 'fas fa-tint', title: 'ترطيب الجسم', text: 'اشرب 8-10 أكواب من الماء يومياً. تجنب الكافيين.', severity: 'medium' });
-        if (temp < 10) tips.push({ icon: 'fas fa-snowflake', title: 'موجة برد', text: 'ارتدِ طبقات ملابس دافئة. احمِ يديك ورأسك.', severity: 'high' });
-        if (id >= 500 && id < 600) tips.push({ icon: 'fas fa-umbrella', title: 'توقعات أمطار', text: 'احمل مظلة وارتدِ ملابس مقاومة للماء.', severity: 'medium' });
-        if (wind > 50) tips.push({ icon: 'fas fa-wind', title: 'رياح قوية', text: 'ثبت الأشياء في الخارج. تجنب الوقوف تحت الأشجار.', severity: 'high' });
-        if (id >= 200 && id < 300) tips.push({ icon: 'fas fa-bolt', title: 'عواصف رعدية', text: 'ابقَ في الداخل. تجنب الأجهزة الكهربائية.', severity: 'high' });
-        if (!tips.length) tips.push({ icon: 'fas fa-sun', title: 'طقس معتدل', text: 'الأحوال الجوية مستقرة. فرصة ممتازة للأنشطة الخارجية.', severity: 'low' });
-
-        if (this.els.weatherTips) {
-            this.els.weatherTips.innerHTML = tips.slice(0, 3).map(t => `
-                <div class="tip-card">
-                    <div class="tip-icon"><i class="${t.icon}"></i></div>
-                    <h3 class="tip-title">${t.title}</h3>
-                    <p class="tip-text">${t.text}</p>
-                    <span class="tip-severity ${t.severity}">${t.severity === 'high' ? 'تحذير عالي' : t.severity === 'medium' ? 'تنبيه متوسط' : 'نصيحة عامة'}</span>
-                </div>
-            `).join('');
+        let tips = [];
+        try {
+            const result = await WeatherTipsEngine.generate(data, forecast);
+            tips = result.tips || [];
+        } catch (error) {
+            console.warn('[WeatherTips] Generation failed:', error);
         }
+        if (!tips.length) {
+            tips = [{
+                id: 'weather-data-limited', category: 'general', priority: 1,
+                severity: 'low', icon: 'fas fa-cloud-sun', title: 'تابع مستجدات الطقس',
+                message: 'لا تتوفر بيانات كافية لاستخراج نصائح مخصصة الآن. تحقق من حالة الطقس قبل التنقل أو التخطيط للأنشطة الخارجية.',
+                timing: 'حالياً', source: 'بيانات محدودة'
+            }];
+        }
+
+        if (contextLabel) {
+            const place = location?.displayName || location?.name || 'الموقع المختار';
+            contextLabel.textContent = `نصائح مخصصة لـ ${place} · مبنية على الحالة الحالية وتوقعات 24 ساعة`;
+        }
+        const labels = { high: 'تنبيه مهم', medium: 'تنبيه احترازي', low: 'نصيحة عامة' };
+        grid.innerHTML = tips.map((tip, index) => {
+            const severity = ['high', 'medium', 'low'].includes(tip.severity) ? tip.severity : 'low';
+            return `
+                <article class="tip-card severity-${severity}" ${index >= 3 ? 'data-tip-extra hidden' : ''}>
+                    <div class="tip-icon"><i class="${escapeHTML(tip.icon || 'fas fa-cloud-sun')}" aria-hidden="true"></i></div>
+                    <h3 class="tip-title">${escapeHTML(tip.title)}</h3>
+                    <p class="tip-text">${escapeHTML(tip.message || '')}</p>
+                    <div class="tip-card-meta">
+                        <span class="tip-severity ${severity}">${labels[severity]}</span>
+                        <span class="tip-timing">${escapeHTML(tip.timing || 'حالياً')}</span>
+                    </div>
+                </article>`;
+        }).join('');
+
+        if (toggle) {
+            const hasMore = tips.length > 3;
+            toggle.hidden = !hasMore;
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.innerHTML = 'عرض جميع النصائح <i class="fas fa-chevron-down" aria-hidden="true"></i>';
+            toggle.onclick = () => {
+                const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+                grid.querySelectorAll('[data-tip-extra]').forEach(card => { card.hidden = !expanded; });
+                toggle.setAttribute('aria-expanded', String(expanded));
+                toggle.innerHTML = expanded
+                    ? 'عرض أقل <i class="fas fa-chevron-up" aria-hidden="true"></i>'
+                    : 'عرض جميع النصائح <i class="fas fa-chevron-down" aria-hidden="true"></i>';
+            };
+        }
+        grid.setAttribute('aria-busy', 'false');
+        if (status) status.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> نصائح محدثة';
     },
 
     updateChart(forecast) {
