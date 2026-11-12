@@ -16,7 +16,7 @@ const UI = {
         ids.forEach(id => { this.els[id] = document.getElementById(id); });
     },
 
-    updateCurrentWeather(data, location) {
+    updateCurrentWeather(data, location, extra = null) {
         if (!location) return;
         const locName = location.displayName || location.name;
 
@@ -34,15 +34,29 @@ const UI = {
             this.els.weatherIcon.style.color = wInfo.color;
         }
 
+        const formatLocalTime = timestamp => {
+            if (!Number.isFinite(Number(timestamp))) return '--';
+            const offset = Number(data.timezone || 0);
+            return new Date((Number(timestamp) + offset) * 1000)
+                .toISOString().slice(11, 16);
+        };
+        const extraCurrent = extra || {};
+        const uv = Number(extraCurrent.uv_index);
+        const uvLabel = Number.isFinite(uv)
+            ? `${uv.toFixed(1)}${uv >= 8 ? ' (مرتفع جداً)' : uv >= 6 ? ' (مرتفع)' : uv >= 3 ? ' (متوسط)' : ' (منخفض)'}`
+            : 'غير متاح';
         const details = [
-            { icon: 'fas fa-temperature-high', label: 'الإحساس', value: `${Math.round(data.main.feels_like)}°C` },
+            { icon: 'fas fa-temperature-high', label: 'الحرارة المحسوسة', value: `${Math.round(data.main.feels_like)}°C` },
             { icon: 'fas fa-tint', label: 'الرطوبة', value: `${data.main.humidity}%` },
-            { icon: 'fas fa-wind', label: 'الرياح', value: `${Math.round(data.wind.speed * 3.6)} كم/س` },
-            { icon: 'fas fa-compress-alt', label: 'الضغط', value: `${data.main.pressure} hPa` },
-            { icon: 'fas fa-eye', label: 'الرؤية', value: `${(data.visibility / 1000).toFixed(1)} كم` },
-            { icon: 'fas fa-cloud', label: 'السحب', value: `${data.clouds?.all || 0}%` },
-            { icon: 'fas fa-location-arrow', label: 'اتجاه الرياح', value: WeatherService.windDir(data.wind.deg || 0) },
-            { icon: 'fas fa-sun', label: 'UV', value: data.uvi || '--' }
+            { icon: 'fas fa-wind', label: 'سرعة الرياح', value: `${Math.round((data.wind?.speed || 0) * 3.6)} كم/س` },
+            { icon: 'fas fa-compress-alt', label: 'الضغط الجوي', value: `${data.main.pressure} hPa` },
+            { icon: 'fas fa-eye', label: 'الرؤية', value: Number.isFinite(Number(data.visibility)) ? `${(data.visibility / 1000).toFixed(1)} كم` : 'غير متاح' },
+            { icon: 'fas fa-droplet', label: 'نقطة الندى', value: Number.isFinite(Number(extraCurrent.dew_point_2m)) ? `${Number(extraCurrent.dew_point_2m).toFixed(1)}°C` : 'غير متاح' },
+            { icon: 'fas fa-sun', label: 'مؤشر الأشعة UV', value: uvLabel },
+            { icon: 'fas fa-sunrise', label: 'الشروق', value: formatLocalTime(data.sys?.sunrise) },
+            { icon: 'fas fa-sunset', label: 'الغروب', value: formatLocalTime(data.sys?.sunset) },
+            { icon: 'fas fa-cloud', label: 'الغطاء السحابي', value: `${data.clouds?.all ?? 0}%` },
+            { icon: 'fas fa-compass', label: 'اتجاه الرياح', value: WeatherService.windDir(data.wind?.deg || 0) }
         ];
 
         if (this.els.weatherDetails) {
