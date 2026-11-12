@@ -11,6 +11,7 @@ const App = {
         UI.init();
         SearchService.init();
         AppState.init();
+        UI.renderFavoriteLocations(AppState.currentLocation);
 
         // تفعيل عناصر الواجهة فوراً قبل أي طلب شبكي أو انتظار GPS.
         this._setupEvents();
