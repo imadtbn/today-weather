@@ -106,6 +106,8 @@ const App = {
             UI.updateSea(current);
             UI.updateStats(current, forecast);
             UI.updateTips(current);
+            UI.updateWarnings(WeatherService.buildWeatherAlerts(forecast), loc);
+            UI.renderFavoriteLocations(loc);
             UI.updateChart(forecast);
             UI.updateTime();
             UI.setApiStatus(true);
@@ -139,6 +141,7 @@ const App = {
 
     setLocation(loc) {
         AppState.setLocation(loc);
+        UI.renderFavoriteLocations(loc);
         this.loadWeather();
         MapService.setView(loc.lat, loc.lon, 10);
         MapService.updateMarker(loc.lat, loc.lon, loc.displayName || loc.name);
@@ -159,6 +162,33 @@ const App = {
 
         // تحديث الأخبار
         document.getElementById('refreshNews')?.addEventListener('click', () => this.loadNews());
+
+        // حفظ الموقع الحالي أو إزالته من المدن المفضلة.
+        document.getElementById('favoriteCurrentBtn')?.addEventListener('click', () => {
+            const result = FavoriteLocations.toggle(AppState.currentLocation);
+            if (result.limitReached) Notify.warning(`يمكن حفظ ${FavoriteLocations.MAX_ITEMS} مدينة كحد أقصى.`);
+            else {
+                UI.renderFavoriteLocations(AppState.currentLocation);
+                Notify.success(result.saved ? 'أضيفت المدينة إلى المفضلة.' : 'أزيلت المدينة من المفضلة.');
+            }
+        });
+
+        // التنقل بين المدن المحفوظة وحذفها دون إعادة البحث.
+        document.getElementById('favoriteCities')?.addEventListener('click', event => {
+            const selectButton = event.target.closest('[data-favorite-select]');
+            const removeButton = event.target.closest('[data-favorite-remove]');
+            if (selectButton) {
+                const location = FavoriteLocations.get()[Number(selectButton.dataset.favoriteSelect)];
+                if (location) this.setLocation(location);
+            } else if (removeButton) {
+                const location = FavoriteLocations.get()[Number(removeButton.dataset.favoriteRemove)];
+                if (location) {
+                    FavoriteLocations.remove(location);
+                    UI.renderFavoriteLocations(AppState.currentLocation);
+                    Notify.success('تم حذف المدينة من المفضلة.');
+                }
+            }
+        });
 
         // قائمة الجوال
         const menuButton = document.getElementById('mobileMenuBtn');
