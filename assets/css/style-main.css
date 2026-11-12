@@ -2432,3 +2432,300 @@ body {
     .brand-icon { width: 32px; height: 32px; }
     .search-input { padding-inline: 1.8rem 0.65rem; }
 }
+
+
+/* Mobile-first header hierarchy and edge-to-edge section cards */
+@media (max-width: 768px) {
+    .site-header {
+        transform: none;
+        background: rgba(10, 14, 26, 0.97);
+    }
+
+    .site-header.hidden {
+        transform: none;
+    }
+
+    .header-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "brand menu"
+            "controls controls";
+        align-items: center;
+        gap: 8px 12px;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        padding: 9px 12px 12px;
+    }
+
+    .header-inner > .brand {
+        grid-area: brand;
+        justify-self: start;
+        min-width: 0;
+    }
+
+    .brand-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .brand-text {
+        display: flex;
+    }
+
+    .brand-name {
+        font-size: 0.95rem;
+    }
+
+    .brand-tagline {
+        font-size: 0.62rem;
+        letter-spacing: 0;
+    }
+
+    .mobile-menu-btn {
+        grid-area: menu;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border: 1px solid rgba(212, 168, 83, 0.18);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.045);
+        font-size: 1.25rem;
+    }
+
+    .header-controls {
+        grid-area: controls;
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .search-wrapper {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .search-input,
+    .search-input:focus {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        padding: 0.55rem 2.5rem 0.55rem 0.8rem;
+        font-size: 16px;
+    }
+
+    .search-icon {
+        right: 14px;
+    }
+
+    #locationBtn {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+    }
+
+    .main-nav {
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-top: 1px solid rgba(212, 168, 83, 0.12);
+        border-radius: 0 0 16px 16px;
+    }
+
+    .main-content {
+        padding-top: 124px;
+    }
+
+    .alert-banner {
+        top: 124px;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 100%;
+        padding-inline: 12px;
+    }
+
+    /* Nested section containers previously doubled the horizontal gutters. */
+    .container .container {
+        width: 100%;
+        max-width: 100%;
+        padding-inline: 0;
+    }
+
+    .hero-section {
+        padding: 24px 0 18px;
+    }
+
+    .hero-grid {
+        gap: 14px;
+    }
+
+    .hero-title {
+        font-size: clamp(1.75rem, 7vw, 2.2rem);
+        line-height: 1.35;
+    }
+
+    .hero-subtitle {
+        max-width: 100%;
+        margin-bottom: 18px;
+        font-size: clamp(1rem, 4.2vw, 1.2rem);
+        line-height: 1.75;
+    }
+
+    .section-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .section-actions .btn {
+        flex: 1 1 140px;
+        justify-content: center;
+        min-width: 0;
+        padding-inline: 10px;
+    }
+
+    .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: start;
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    .hero-stat {
+        min-width: 0;
+        padding: 8px 4px;
+        border: 1px solid rgba(212, 168, 83, 0.1);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.025);
+    }
+
+    .hero-stat-value {
+        font-size: clamp(1.15rem, 5vw, 1.55rem);
+        line-height: 1.35;
+        white-space: nowrap;
+    }
+
+    .hero-stat-label {
+        font-size: 0.72rem;
+        line-height: 1.4;
+    }
+
+    .weather-card,
+    .map-container,
+    .sea-card,
+    .warning-card,
+    .tip-card,
+    .stat-card,
+    .forecast-card,
+    .news-card {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .weather-card {
+        padding: 14px;
+    }
+
+    .weather-details-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .detail-card,
+    .sea-item,
+    .stat-card,
+    .forecast-card {
+        padding: 12px 8px;
+    }
+
+    .forecast-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .stats-grid,
+    .tips-grid,
+    .warnings-grid,
+    .news-grid,
+    .sea-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .section-header {
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .section-title {
+        min-width: 0;
+        font-size: 1.25rem;
+        line-height: 1.45;
+    }
+
+    .hourly-section,
+    .forecast-section,
+    .map-section,
+    .stats-section,
+    .tips-section,
+    .warnings-section {
+        padding-block: 22px;
+    }
+}
+
+@media (max-width: 380px) {
+    .header-inner {
+        padding-inline: 10px;
+        gap: 7px 8px;
+    }
+
+    .brand-icon {
+        width: 34px;
+        height: 34px;
+    }
+
+    .brand-name {
+        font-size: 0.88rem;
+    }
+
+    .brand-tagline {
+        display: none;
+    }
+
+    .container {
+        padding-inline: 9px;
+    }
+
+    .hero-stats {
+        gap: 5px;
+    }
+
+    .hero-stat-value {
+        font-size: 1.05rem;
+    }
+
+    .hero-stat-label {
+        font-size: 0.66rem;
+    }
+
+    .forecast-grid,
+    .stats-grid,
+    .tips-grid,
+    .warnings-grid,
+    .news-grid,
+    .sea-grid {
+        gap: 7px;
+    }
+}
