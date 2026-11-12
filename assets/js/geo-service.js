@@ -96,15 +96,54 @@ const GeoService = {
         };
     },
 
+    normalizeSearchText(value) {
+        return String(value ?? '')
+            .normalize('NFD')
+            .replace(/[\\u0300-\\u036f\\u064B-\\u065F\\u0670]/g, '')
+            .replace(/[أإآٱ]/g, 'ا')
+            .replace(/ى/g, 'ي')
+            .replace(/ة/g, 'ه')
+            .replace(/[ؤئ]/g, 'ء')
+            .toLocaleLowerCase()
+            .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+            .trim()
+            .replace(/\\s+/g, ' ');
+    },
+
+    _rankCityMatch(city, query) {
+        const q = this.normalizeSearchText(query);
+        const names = [city.name, city.state, ...(CITY_SEARCH_ALIASES[city.name] || [])]
+            .map(name => this.normalizeSearchText(name))
+            .filter(Boolean);
+        if (names.includes(q)) return 0;
+        if (names.some(name => name.startsWith(q))) return 1;
+        if (names.some(name => name.includes(q))) return 2;
+        return Infinity;
+    },
+
     async searchCities(query, allowRemote = false) {
-        if (!query || query.length < 2) return [];
-        const q = query.toLocaleLowerCase('ar');
-        const local = ALGERIAN_CITIES.filter(c => c.name.toLocaleLowerCase('ar').includes(q));
-        if (local.length > 0) return local.map(c => ({
-            ...c, displayName: this._buildDisplayName(c.name, c.state, 'الجزائر')
-        }));
-        // Nominatim لا يسمح بالبحث التلقائي أثناء الكتابة؛ البحث الخارجي يتم بطلب Enter فقط.
-        return allowRemote ? this._searchNominatim(query) : [];
+        if (!query || this.normalizeSearchText(query).length < 2) return [];
+        const local = ALGERIAN_CITIES
+            .map(city => ({ city, rank: this._rankCityMatch(city, query) }))
+            .filter(item => Number.isFinite(item.rank))
+            .sort((a, b) => a.rank - b.rank || a.city.name.localeCompare(b.city.name, 'ar'))
+            .map(({ city }) => ({
+                ...city,
+                country: 'الجزائر',
+                displayName: this._buildDisplayName(city.name, city.state, 'الجزائر')
+            }));
+
+        // أثناء الكتابة نعرض النتائج المحلية فوراً؛ البحث الموسع يبدأ عند Enter.
+        if (!allowRemote) return local.slice(0, 8);
+
+        const remote = await this._searchNominatim(query);
+        const seen = new Set();
+        return [...local, ...remote].filter(city => {
+            const key = `${Number(city.lat).toFixed(3)},${Number(city.lon).toFixed(3)}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).slice(0, 8);
     },
 
     lastNominatimSearchAt: 0,
@@ -113,7 +152,7 @@ const GeoService = {
             // مهلة محلية لتقليل تكرار طلبات البحث من هذا المتصفح؛ ليست محدداً مركزياً لحركة جميع الزوار.
             if (Date.now() - this.lastNominatimSearchAt < 1100) return [];
             this.lastNominatimSearchAt = Date.now();
-            const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar&q=${encodeURIComponent(query + ', Algeria')}`;
+            const url = `${CONFIG.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=8&accept-language=ar,fr,en&q=${encodeURIComponent(query + ', Algeria')}`;
             const res = await fetchWithTimeout(url);
             if (!res.ok) throw new Error('Nominatim search failed');
             const data = await res.json();
@@ -140,6 +179,60 @@ const GeoService = {
 // ============================================
 // 5. ALGERIAN CITIES DB
 // ============================================
+// أسماء بديلة شائعة لتسهيل البحث بالعربية والفرنسية والإنجليزية.
+// تبقى أسماء العرض والإحداثيات الرسمية في ALGERIAN_CITIES كما هي.
+const CITY_SEARCH_ALIASES = {
+    "الجزائر العاصمة": ["Algiers", "Alger", "Alger la blanche", "الجزاير", "العاصمة"],
+    "وهران": ["Oran", "وهران", "Wahran"],
+    "قسنطينة": ["Constantine", "Cirta"],
+    "عنابة": ["Annaba", "Bône", "Bone"],
+    "البليدة": ["Blida"],
+    "سطيف": ["Setif", "Sétif"],
+    "تيزي وزو": ["Tizi Ouzou", "Tizi-Ouzou"],
+    "باتنة": ["Batna"],
+    "الشلف": ["Chlef", "El Asnam", "Ech Cheliff"],
+    "تلمسان": ["Tlemcen"],
+    "بجاية": ["Bejaia", "Béjaïa", "Bougie"],
+    "بشار": ["Bechar", "Béchar"],
+    "ورقلة": ["Ouargla"],
+    "تمنراست": ["Tamanrasset", "Tamenghasset"],
+    "سعيدة": ["Saida", "Saïda"],
+    "سكيكدة": ["Skikda", "Philippeville"],
+    "المدية": ["Medea", "Médéa"],
+    "تيارت": ["Tiaret"],
+    "الجلفة": ["Djelfa"],
+    "قالمة": ["Guelma"],
+    "بومرداس": ["Boumerdes", "Boumerdès"],
+    "دلس": ["Dellys"],
+    "البويرة": ["Bouira"],
+    "تيبازة": ["Tipaza", "Tipasa"],
+    "عين الدفلى": ["Ain Defla", "Aïn Defla"],
+    "مستغانم": ["Mostaganem"],
+    "غليزان": ["Relizane", "Ghilizane"],
+    "الأغواط": ["Laghouat"],
+    "غرداية": ["Ghardaia", "Ghardaïa"],
+    "تندوف": ["Tindouf"],
+    "إليزي": ["Illizi"],
+    "أدرار": ["Adrar"],
+    "تيسمسيلت": ["Tissemsilt"],
+    "سيدي بلعباس": ["Sidi Bel Abbes", "Sidi Bel Abbès"],
+    "سوق أهراس": ["Souk Ahras"],
+    "خنشلة": ["Khenchela"],
+    "ميلة": ["Mila"],
+    "عين تيموشنت": ["Ain Temouchent", "Aïn Témouchent"],
+    "برج بوعريريج": ["Bordj Bou Arreridj", "Bordj Bou-Arréridj"],
+    "المسيلة": ["M'Sila", "Msila"],
+    "الوادي": ["El Oued", "Oued Souf"],
+    "خميس مليانة": ["Khemis Miliana"],
+    "القليعة": ["Kolea", "Koléa"],
+    "الرويبة": ["Rouiba", "Rouïba"],
+    "زرالدة": ["Zeralda", "Zéralda"],
+    "الحراش": ["El Harrach"],
+    "باب الزوار": ["Bab Ezzouar", "Bab Ezzouar"],
+    "بوزريعة": ["Bouzaréah", "Bouzaréah"],
+    "الدار البيضاء": ["Dar El Beida", "Dar El-Beida"]
+};
+
 const ALGERIAN_CITIES = [
     { name: "الجزائر العاصمة", lat: 36.752887, lon: 3.042048, state: "الجزائر العاصمة" },
     { name: "وهران", lat: 35.697654, lon: -0.633737, state: "وهران" },
