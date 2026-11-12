@@ -23,6 +23,25 @@ const WeatherService = {
         return data;
     },
 
+    async fetchExtraMetrics(lat, lon) {
+        // Open-Meteo supplies dew point and UV index without exposing another API key.
+        const params = new URLSearchParams({
+            latitude: String(lat),
+            longitude: String(lon),
+            current: 'dew_point_2m,uv_index',
+            timezone: 'auto'
+        });
+        try {
+            const res = await fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+            if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
+            const data = await res.json();
+            return data?.current || null;
+        } catch (error) {
+            console.warn('[Weather] Additional metrics unavailable:', error);
+            return null;
+        }
+    },
+
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
