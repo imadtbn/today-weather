@@ -122,7 +122,7 @@ const SearchService = {
         if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
         const loc = {
             lat, lon, name: ds.name, state: ds.state || '', country: ds.country || 'الجزائر',
-            displayName: ds.display || ds.name
+            displayName: ds.display || ds.displayName || ds.name
         };
         this.input.value = ds.name;
         this._hide();
