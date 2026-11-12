@@ -37,7 +37,7 @@ const WeatherTipsEngine = (() => {
         const maxTemp = upcoming.reduce((max, item) =>
             Math.max(max, Number(item.main?.temp_max ?? item.main?.temp ?? -100)), -100);
         const maxRain = upcoming.reduce((max, item) =>
-            Math.max(max, Number(item.rain?.['3h'] || 0), Number(item.snow?.['3h'] || 0)), 0);
+            Math.max(max, Number(item.rain?.['3h'] || 0)), 0);
         const maxWind = upcoming.reduce((max, item) =>
             Math.max(max, Number(item.wind?.speed || 0) * 3.6), 0);
         const currentId = Number(current?.weather?.[0]?.id || 0);
@@ -77,14 +77,14 @@ const WeatherTipsEngine = (() => {
         const availableRules = await load();
         const context = buildContext(current, forecast);
         const matched = availableRules
-            .filter(rule => matches(rule.conditions, context))
+            .filter(rule => rule.id !== 'moderate-weather' && matches(rule.conditions, context))
             .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
         const categories = new Set();
         const selected = [];
         for (const rule of matched) {
             if (categories.has(rule.category)) continue;
             categories.add(rule.category);
-            const isForecast = /forecast|coming|expected|snowfall|thunderstorm|strong-wind|fog/.test(rule.id);
+            const isForecast = Object.keys(rule.conditions || {}).some(key => key.startsWith('forecast'));
             selected.push({
                 ...rule,
                 timing: isForecast ? 'خلال الساعات القادمة' : 'حسب الحالة الحالية',
