@@ -2943,3 +2943,73 @@ body {
     .hourly-card { min-width: 0; }
     .forecast-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+
+/* Dynamic weather tips */
+.tips-intro {
+    margin-top: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+.tips-live-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+.tips-live-status .fa-check-circle { color: var(--success); }
+.tips-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    align-items: stretch;
+}
+.tip-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    height: 100%;
+}
+.tip-card .tip-text { flex: 1; }
+.tip-card.severity-high { border-color: rgba(231, 76, 60, 0.28); }
+.tip-card.severity-medium { border-color: rgba(230, 126, 34, 0.24); }
+.tip-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: var(--space-md);
+}
+.tip-card-meta .tip-severity { margin-top: 0; }
+.tip-timing {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+}
+.tip-card[data-tip-extra][hidden] { display: none !important; }
+.tip-card-loading { min-height: 190px; }
+.tips-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-top: var(--space-lg);
+}
+.tips-disclaimer {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    line-height: 1.6;
+}
+.tips-toggle { white-space: nowrap; }
+@media (max-width: 640px) {
+    .tips-section { padding: var(--space-xl) 0; }
+    .tips-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-md); }
+    .tip-card { padding: var(--space-lg); }
+    .tips-footer { align-items: stretch; }
+    .tips-footer .btn { width: 100%; justify-content: center; }
+    .tips-live-status { align-self: flex-start; }
+}
