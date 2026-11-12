@@ -193,6 +193,9 @@
                         <h2 class="weather-city" id="currentCity">الجزائر العاصمة</h2>
                         <span class="weather-country" id="currentCountry">الجزائر</span>
                     </div>
+                    <button class="favorite-current-btn" id="favoriteCurrentBtn" type="button" aria-pressed="false">
+                        <i class="far fa-star" aria-hidden="true"></i><span>حفظ المدينة</span>
+                    </button>
                     <div class="weather-update"><i class="fas fa-clock"></i><span id="updateTime">--:--</span></div>
                 </div>
                 <div class="weather-main">
@@ -203,6 +206,10 @@
                     <div class="weather-icon-main" id="weatherIcon"><i class="fas fa-sun"></i></div>
                 </div>
                 <div class="weather-details-grid" id="weatherDetails"></div>
+                <div class="favorite-cities-panel" id="favoriteCitiesPanel" hidden>
+                    <div class="favorite-cities-heading"><i class="fas fa-star"></i><span>مدنك المفضلة</span></div>
+                    <div class="favorite-cities-list" id="favoriteCities" aria-label="قائمة المدن المفضلة"></div>
+                </div>
             </div>
         </section>
 
@@ -421,11 +428,12 @@
             <section class="warnings-section" id="warnings">
                 <div class="container">
                     <div class="section-header">
-                        <h2 class="section-title">نشرات التحذير</h2>
+                        <h2 class="section-title">الإنذارات ومؤشرات المخاطر الجوية</h2>
                     </div>
-                    <div class="warnings-grid" id="warningsGrid">
-                        <div class="warning-card">
-                            <p class="warning-text">لا تتوفر حالياً نشرات تحذير رسمية متصلة بمصدر الأرصاد الجوية. يرجى متابعة النشرات الرسمية عند صدورها.</p>
+                    <p class="warnings-disclaimer">مؤشرات آلية مستنتجة من التوقعات وليست نشرة تحذير رسمية. عند صدور تحذير رسمي، يُرجى اعتماد بيانات الديوان الوطني للأرصاد الجوية.</p>
+                    <div class="warnings-grid" id="warningsGrid" aria-live="polite">
+                        <div class="warning-card warning-empty">
+                            <p class="warning-text">سيتم عرض المخاطر المتوقعة بعد تحميل بيانات الطقس.</p>
                         </div>
                     </div>
                 </div>
