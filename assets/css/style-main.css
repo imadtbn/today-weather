@@ -2729,3 +2729,25 @@ body {
         gap: 7px;
     }
 }
+
+
+/* Collapse empty AdSense placements so reserved ad space never obscures page content. */
+.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"]),
+.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"]) {
+    display: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"]) .ad-placeholder,
+.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"]) .ad-placeholder {
+    display: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
