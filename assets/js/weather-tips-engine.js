@@ -61,12 +61,15 @@ const WeatherTipsEngine = (() => {
 
     function matches(conditions, context) {
         for (const [key, expected] of Object.entries(conditions || {})) {
-            const actual = context[key];
+            // Threshold suffixes belong to the rule operator, not the context field.
+            const operator = key.endsWith('Min') ? 'min' : key.endsWith('Max') ? 'max' : null;
+            const contextKey = operator ? key.slice(0, -3) : key;
+            const actual = context[contextKey];
             if (typeof expected === 'boolean') {
                 if (actual !== expected) return false;
-            } else if (key.endsWith('Min')) {
+            } else if (operator === 'min') {
                 if (!Number.isFinite(actual) || actual < expected) return false;
-            } else if (key.endsWith('Max')) {
+            } else if (operator === 'max') {
                 if (!Number.isFinite(actual) || actual > expected) return false;
             }
         }
