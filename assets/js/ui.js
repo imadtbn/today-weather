@@ -11,7 +11,7 @@ const UI = {
             'statsGrid', 'newsGrid', 'apiStatus', 'scrollTop', 'refreshWeather', 'refreshNews',
             'weatherTips', 'waveHeight', 'waveDirection', 'wavePeriod', 'seaTipsList',
             'cubeTemp1', 'cubeTemp2', 'cubeTemp3', 'cubeTemp4', 'cubeTemp5', 'cubeTemp6',
-            'statMaxTemp', 'statMinTemp', 'statRain', 'statWind'
+            'statMaxTemp', 'statMinTemp', 'statRain', 'statWind', 'warningsGrid', 'favoriteCurrentBtn', 'favoriteCities', 'favoriteCitiesPanel'
         ];
         ids.forEach(id => { this.els[id] = document.getElementById(id); });
     },
@@ -165,6 +165,67 @@ const UI = {
         if (this.els.statMinTemp) this.els.statMinTemp.textContent = `${Math.round(min)}°`;
         if (this.els.statRain) this.els.statRain.textContent = `${rain.toFixed(1)}mm`;
         if (this.els.statWind) this.els.statWind.textContent = `${Math.round(avgWind * 3.6)}km/h`;
+    },
+
+    updateWarnings(alerts, location) {
+        const grid = this.els.warningsGrid;
+        if (!grid) return;
+        if (!alerts.length) {
+            grid.innerHTML = `
+                <div class="warning-card warning-empty">
+                    <p class="warning-text">لا تظهر في توقعات الـ24 ساعة القادمة مؤشرات تتجاوز مستويات التنبيه المعتمدة في هذا الموقع.</p>
+                    <div class="warning-meta"><span class="warning-time">${escapeHTML(location?.displayName || location?.name || '')}</span><span class="warning-badge safe">لا توجد مؤشرات</span></div>
+                    <p class="warning-source">المصدر: توقعات OpenWeatherMap — ليست نشرة رسمية</p>
+                </div>`;
+            return;
+        }
+        const timeLabel = timestamp => {
+            const offset = Number(AppState.forecastData?.city?.timezone || 0);
+            return new Date((timestamp + offset) * 1000).toISOString().slice(0, 16).replace('T', ' ');
+        };
+        grid.innerHTML = alerts.map(alert => {
+            const severityLabel = alert.severity === 'high' ? 'خطورة مرتفعة' : 'خطورة متوسطة';
+            const badge = alert.severity === 'high' ? 'active' : 'watch';
+            return `
+                <article class="warning-card ${escapeHTML(alert.type)} severity-${escapeHTML(alert.severity)}">
+                    <div class="warning-header">
+                        <div class="warning-icon ${escapeHTML(alert.type)}"><i class="${escapeHTML(alert.icon)}" aria-hidden="true"></i></div>
+                        <div><h3 class="warning-title">${escapeHTML(alert.title)}</h3><span class="warning-status">${severityLabel}</span></div>
+                    </div>
+                    <p class="warning-text">${escapeHTML(alert.text)}</p>
+                    <div class="warning-meta">
+                        <span class="warning-time">${escapeHTML(timeLabel(alert.time))} · ${escapeHTML(alert.value)}</span>
+                        <span class="warning-badge ${badge}">${severityLabel}</span>
+                    </div>
+                    <p class="warning-source">المصدر: <a href="https://openweathermap.org/forecast5" target="_blank" rel="noopener noreferrer">OpenWeatherMap Forecast</a> · توقع آلي وليس تحذيراً رسمياً</p>
+                </article>`;
+        }).join('');
+    },
+
+    renderFavoriteLocations(currentLocation) {
+        const button = this.els.favoriteCurrentBtn;
+        const panel = this.els.favoriteCitiesPanel;
+        const list = this.els.favoriteCities;
+        const saved = FavoriteLocations.has(currentLocation);
+        if (button) {
+            button.classList.toggle('is-saved', saved);
+            button.setAttribute('aria-pressed', String(saved));
+            button.innerHTML = saved
+                ? '<i class="fas fa-star" aria-hidden="true"></i><span>محفوظة</span>'
+                : '<i class="far fa-star" aria-hidden="true"></i><span>حفظ المدينة</span>';
+        }
+        if (!panel || !list) return;
+        const items = FavoriteLocations.get();
+        panel.hidden = items.length === 0;
+        list.innerHTML = items.map((item, index) => `
+            <div class="favorite-city-item">
+                <button class="favorite-city-select" type="button" data-favorite-select="${index}" aria-label="عرض طقس ${escapeHTML(item.name)}">
+                    <i class="fas fa-location-dot" aria-hidden="true"></i>
+                    <span><strong>${escapeHTML(item.name)}</strong><small>${escapeHTML([item.state, item.country].filter(Boolean).join(' · '))}</small></span>
+                </button>
+                <button class="favorite-city-remove" type="button" data-favorite-remove="${index}" aria-label="حذف ${escapeHTML(item.name)} من المفضلة"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>`
+        ).join('');
     },
 
     updateTips(data) {
