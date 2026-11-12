@@ -2751,3 +2751,29 @@ body {
     margin: 0 !important;
     padding: 0 !important;
 }
+
+
+/* Detailed current-weather metrics: compact, readable cards across screen sizes. */
+.weather-details-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.detail-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.detail-card-value {
+    font-size: clamp(1rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+}
+.detail-card-label {
+    line-height: 1.5;
+}
+@media (max-width: 768px) {
+    .weather-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 360px) {
+    .detail-card { padding: 10px 6px; }
+    .detail-card-icon { font-size: 1.25rem; }
+    .detail-card-value { font-size: 0.98rem; }
+    .detail-card-label { font-size: 0.74rem; }
+}
