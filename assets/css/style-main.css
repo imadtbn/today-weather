@@ -3013,3 +3013,28 @@ body {
     .tips-footer .btn { width: 100%; justify-content: center; }
     .tips-live-status { align-self: flex-start; }
 }
+
+
+/* AdSense: حظر أي إعلان داخل الهيدر مع إبقاء الحاويات الإعلانية في المحتوى. */
+.site-header .google-auto-placed,
+.site-header ins.adsbygoogle,
+.site-header iframe[id^="google_ads_iframe"],
+.site-header iframe[src*="doubleclick.net"] {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* وحدات AdSense لا تأخذ مساحة إلا داخل حاوياتها المخصصة. */
+.ad-container ins.adsbygoogle {
+    display: block;
+    max-width: 100%;
+}
