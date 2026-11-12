@@ -23,6 +23,57 @@ const WeatherService = {
         return data;
     },
 
+    buildWeatherAlerts(forecast) {
+        const now = Date.now() / 1000;
+        const upcoming = (forecast?.list || []).filter(item =>
+            Number(item.dt) >= now && Number(item.dt) <= now + 24 * 60 * 60
+        );
+        if (!upcoming.length) return [];
+        const alerts = [];
+        const peak = (items, selector) => items.reduce((best, item) =>
+            !best || selector(item) > selector(best) ? item : best, null
+        );
+        const add = (type, title, icon, severity, text, item, value) => {
+            if (!item) return;
+            alerts.push({ type, title, icon, severity, text, value, time: Number(item.dt), source: 'OpenWeatherMap' });
+        };
+
+        const rainPeak = peak(upcoming, item => Number(item.rain?.['3h'] || 0));
+        const rainMm = Number(rainPeak?.rain?.['3h'] || 0);
+        if (rainMm >= 10) add('rain', 'أمطار غزيرة متوقعة', 'fas fa-cloud-showers-heavy',
+            rainMm >= 20 ? 'high' : 'medium',
+            rainMm >= 20 ? 'توقعات بهطول كثيف خلال فترة ثلاث ساعات؛ تجنب الأودية والطرق المنخفضة وتابع المستجدات.' : 'احتمال أمطار ملحوظة خلال فترة ثلاث ساعات؛ توخّ الحذر أثناء القيادة.',
+            rainPeak, `${rainMm.toFixed(1)} مم / 3 ساعات`);
+
+        const windPeak = peak(upcoming, item => Number(item.wind?.speed || 0));
+        const windKmh = Number(windPeak?.wind?.speed || 0) * 3.6;
+        if (windKmh >= 55) add('wind', 'رياح قوية متوقعة', 'fas fa-wind',
+            windKmh >= 75 ? 'high' : 'medium',
+            'ثبت الأغراض القابلة للتطاير وابتعد عن اللوحات والأشجار والأجسام غير المستقرة.',
+            windPeak, `${Math.round(windKmh)} كم/س`);
+
+        const heatPeak = peak(upcoming, item => Number(item.main?.temp_max ?? item.main?.temp ?? -100));
+        const maxTemp = Number(heatPeak?.main?.temp_max ?? heatPeak?.main?.temp);
+        if (maxTemp >= 37) add('heat', 'ارتفاع شديد في الحرارة', 'fas fa-temperature-high',
+            maxTemp >= 42 ? 'high' : 'medium',
+            'قلل التعرض المباشر للشمس واشرب الماء بانتظام، خاصة خلال ساعات الظهيرة.',
+            heatPeak, `${Math.round(maxTemp)}°C`);
+
+        const snowItem = upcoming.find(item => (item.weather || []).some(condition => Number(condition.id) >= 600 && Number(condition.id) < 700));
+        if (snowItem) add('snow', 'تساقط ثلوج متوقع', 'fas fa-snowflake', 'medium',
+            'قد تؤثر الثلوج في حركة المرور؛ تحقق من حالة الطرق قبل التنقل.',
+            snowItem, snowItem.weather?.[0]?.description || 'ثلوج متوقعة');
+
+        const stormItem = upcoming.find(item => (item.weather || []).some(condition => Number(condition.id) >= 200 && Number(condition.id) < 300));
+        if (stormItem) add('storm', 'عواصف رعدية متوقعة', 'fas fa-bolt', 'high',
+            'تجنب الأماكن المكشوفة والاحتماء تحت الأشجار أثناء البرق والرعد.',
+            stormItem, stormItem.weather?.[0]?.description || 'عواصف رعدية');
+
+        return alerts.sort((a, b) =>
+            (a.severity === 'high' ? 0 : 1) - (b.severity === 'high' ? 0 : 1) || a.time - b.time
+        );
+    },
+
     async fetchAtPoint(lat, lon) {
         const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
         const res = await fetchWithTimeout(url);
