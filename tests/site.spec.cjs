@@ -300,3 +300,29 @@ test('specialized weather sections are present and linked from navigation', asyn
   await expect(page.locator('.nav-link[href="#specialized"]')).toHaveCount(1);
   await expect(page.locator('#specialized .specialized-disclaimer')).toContainText('الجهات الرسمية');
 });
+
+
+test('desktop hourly and five-day forecast cards fit their section containers', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#hourlyForecast .hourly-card')).toHaveCount(8);
+  await expect(page.locator('#forecastContainer .forecast-card')).toHaveCount(5);
+  const layout = await page.evaluate(() => {
+    const measure = selector => {
+      const section = document.querySelector(selector);
+      const container = section.querySelector(':scope > .container');
+      const cards = [...section.querySelectorAll('.hourly-card, .forecast-card')];
+      const bounds = container.getBoundingClientRect();
+      const first = cards[0]?.getBoundingClientRect();
+      const last = cards.at(-1)?.getBoundingClientRect();
+      return { containerWidth: bounds.width, firstLeft: first?.left, lastRight: last?.right, count: cards.length, scrollWidth: section.scrollWidth, clientWidth: section.clientWidth };
+    };
+    return { hourly: measure('.hourly-section'), forecast: measure('.forecast-section') };
+  });
+  for (const section of [layout.hourly, layout.forecast]) {
+    expect(section.count).toBeGreaterThan(0);
+    expect(section.firstLeft).toBeGreaterThanOrEqual(-1);
+    expect(section.lastRight).toBeLessThanOrEqual(1441);
+    expect(section.lastRight - section.firstLeft).toBeLessThanOrEqual(section.containerWidth + 2);
+  }
+});
