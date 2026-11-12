@@ -120,6 +120,7 @@
                     <li><a href="#maps" class="nav-link">الخرائط</a></li>
                     <li><a href="#stats" class="nav-link">الإحصائيات</a></li>
                     <li><a href="#warnings" class="nav-link">التحذيرات</a></li>
+                    <li><a href="#specialized" class="nav-link">الأقسام المتخصصة</a></li>
                     <li><a href="#news" class="nav-link">الأخبار</a></li>
                 </ul>
             </nav>
@@ -295,6 +296,60 @@
                             </ul>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- الأقسام المتخصصة -->
+            <section class="specialized-section" id="specialized">
+                <div class="container">
+                    <div class="section-header">
+                        <h2 class="section-title">الأقسام المتخصصة</h2>
+                        <span class="specialized-location" id="specializedLocation">حسب الموقع المختار</span>
+                    </div>
+                    <p class="specialized-intro">بيانات بيئية وزراعية وبحرية مساندة، تُحدّث وفق إحداثيات المدينة الحالية.</p>
+                    <div class="specialized-grid">
+                        <article class="specialized-card agriculture-card" id="agricultureCard">
+                            <div class="specialized-card-head"><span class="specialized-icon"><i class="fas fa-seedling"></i></span><div><h3>الطقس الزراعي ومواعيد الري</h3><p>التبخر والأمطار ورطوبة التربة</p></div></div>
+                            <div class="specialized-metrics">
+                                <div><strong id="agriEt0">--</strong><span>التبخر المرجعي (مم/يوم)</span></div>
+                                <div><strong id="agriSoil">--</strong><span>رطوبة التربة (م³/م³)</span></div>
+                                <div><strong id="agriRain">--</strong><span>أمطار 24 ساعة (مم)</span></div>
+                            </div>
+                            <p class="specialized-advice" id="agriAdvice" aria-live="polite">جارٍ تحميل المؤشرات الزراعية...</p>
+                            <small class="specialized-source">المصدر: Open-Meteo Forecast · إرشادات استرشادية وليست بديلاً عن قياس التربة.</small>
+                        </article>
+                        <article class="specialized-card marine-card" id="marineCard">
+                            <div class="specialized-card-head"><span class="specialized-icon"><i class="fas fa-water"></i></span><div><h3>الطقس البحري وحالة الأمواج</h3><p>حالة سطح البحر للمناطق الساحلية</p></div></div>
+                            <div class="specialized-metrics">
+                                <div><strong id="marineWave">--</strong><span>ارتفاع الموج (م)</span></div>
+                                <div><strong id="marineDirection">--</strong><span>اتجاه الموج</span></div>
+                                <div><strong id="marinePeriod">--</strong><span>فترة الموج (ث)</span></div>
+                            </div>
+                            <p class="specialized-advice" id="marineAdvice" aria-live="polite">جارٍ تحميل بيانات البحر...</p>
+                            <small class="specialized-source">المصدر: Open-Meteo Marine · قد لا تتوفر بيانات للمواقع الداخلية.</small>
+                        </article>
+                        <article class="specialized-card air-card" id="airCard">
+                            <div class="specialized-card-head"><span class="specialized-icon"><i class="fas fa-smog"></i></span><div><h3>جودة الهواء والتلوث</h3><p>مؤشر الهواء والجسيمات الدقيقة</p></div></div>
+                            <div class="specialized-metrics">
+                                <div><strong id="airAqi">--</strong><span>مؤشر جودة الهواء الأوروبي</span></div>
+                                <div><strong id="airPm25">--</strong><span>PM2.5 (µg/m³)</span></div>
+                                <div><strong id="airPm10">--</strong><span>PM10 (µg/m³)</span></div>
+                            </div>
+                            <p class="specialized-advice" id="airAdvice" aria-live="polite">جارٍ تحميل جودة الهواء...</p>
+                            <small class="specialized-source">المصدر: Open-Meteo Air Quality · بيانات نمذجة وليست قياس محطة محلية.</small>
+                        </article>
+                        <article class="specialized-card rainfall-card" id="rainfallCard">
+                            <div class="specialized-card-head"><span class="specialized-icon"><i class="fas fa-cloud-showers-heavy"></i></span><div><h3>توقعات الأمطار ومؤشرات السيول</h3><p>الهطول المتوقع واحتمالاته</p></div></div>
+                            <div class="specialized-metrics">
+                                <div><strong id="rainNext24">--</strong><span>أمطار 24 ساعة (مم)</span></div>
+                                <div><strong id="rainProbability">--</strong><span>احتمال الهطول (%)</span></div>
+                                <div><strong id="rainNext7">--</strong><span>أمطار 7 أيام (مم)</span></div>
+                            </div>
+                            <p class="specialized-advice" id="rainAdvice" aria-live="polite">جارٍ تحليل توقعات الأمطار...</p>
+                            <small class="specialized-source">المصدر: Open-Meteo Forecast · مؤشر الهطول لا يمثل نموذجاً هيدرولوجياً للفيضانات أو إنذاراً رسمياً.</small>
+                        </article>
+                    </div>
+                    <p class="specialized-disclaimer">قد تختلف دقة البيانات حسب المنطقة وتوفر النماذج. في حالات الطوارئ، اعتمد نشرات الجهات الرسمية المختصة.</p>
                 </div>
             </section>
 
@@ -551,6 +606,7 @@
     <script src="assets/js/map-service.js" defer></script>
     <script src="assets/js/search-news.js" defer></script>
     <script src="assets/js/effects.js" defer></script>
+    <script src="assets/js/specialized-weather.js" defer></script>
     <script src="assets/js/app.js" defer></script>
     <!-- AdSense إعلان  -->
     <script defer src="assets/js/adsData.js"></script>
