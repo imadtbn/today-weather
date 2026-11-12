@@ -3,26 +3,25 @@
     'use strict';
 
     const AD_SELECTOR = 'ins.adsbygoogle';
-    const AD_CONTAINER_SELECTOR = '.ad-container';
+    const PLACEMENT_SELECTOR = '.google-auto-placed, ins.adsbygoogle, iframe[id^="google_ads_iframe"], iframe[src*="doubleclick.net"]';
 
-    function removeHeaderAds() {
-        const header = document.querySelector('.site-header');
-        if (!header) return;
+    function removeUnapprovedPlacements() {
+        document.querySelectorAll(PLACEMENT_SELECTOR).forEach(element => {
+            const insideHeader = element.closest('.site-header');
+            const insideAdContainer = element.closest('.ad-container');
 
-        header.querySelectorAll(
-            '.google-auto-placed, ins.adsbygoogle, iframe[id^="google_ads_iframe"], iframe[src*="doubleclick.net"]'
-        ).forEach(element => {
-            const wrapper = element.closest('.google-auto-placed');
-            (wrapper || element).remove();
+            if (insideHeader || !insideAdContainer) {
+                const wrapper = element.closest('.google-auto-placed');
+                (wrapper || element).remove();
+            }
         });
     }
 
     function initializeAds() {
-        removeHeaderAds();
+        removeUnapprovedPlacements();
 
-        // أي وحدة خارج حاوية الإعلانات المعتمدة لا يُسمح بتهيئتها.
         document.querySelectorAll(AD_SELECTOR).forEach(ad => {
-            if (!ad.closest(AD_CONTAINER_SELECTOR)) {
+            if (!ad.closest('.ad-container') || ad.closest('.site-header')) {
                 ad.remove();
                 return;
             }
@@ -40,14 +39,10 @@
     function start() {
         initializeAds();
 
-        // منع الإعلانات التلقائية من الظهور داخل الهيدر بعد تحميل الصفحة.
-        const observer = new MutationObserver(() => {
-            removeHeaderAds();
-        });
-
+        // مراقبة الإضافات الديناميكية لمنع الإعلانات التلقائية خارج الحاويات.
+        const observer = new MutationObserver(removeUnapprovedPlacements);
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // إعادة فحص وحدات الإعلانات بعد اكتمال تحميل الموارد.
         window.addEventListener('load', initializeAds, { once: true });
     }
 
