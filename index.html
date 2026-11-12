@@ -403,30 +403,18 @@
             <section class="tips-section">
                 <div class="container">
                     <div class="section-header">
-                        <h2 class="section-title">نصائح طقسية</h2>
+                        <div>
+                            <h2 class="section-title">نصائح الطقس الذكية</h2>
+                            <p class="tips-intro" id="weatherTipsContext">تظهر النصائح تلقائياً وفق حالة الطقس والتوقعات للموقع المختار.</p>
+                        </div>
+                        <span class="tips-live-status" id="weatherTipsStatus"><i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i> جارٍ التحليل</span>
                     </div>
-                    <div class="tips-grid" id="weatherTips">
-                        <div class="tip-card">
-                            <div class="tip-icon"><i class="fas fa-sun"></i></div>
-                            <h3 class="tip-title">حماية من الشمس</h3>
-                            <p class="tip-text">مؤشر الأشعة فوق البنفسجية مرتفع. استخدم واقي الشمس وارتدي نظارات شمسية
-                                وقبعة
-                                للحماية.</p><span class="tip-severity medium">تنبيه متوسط</span>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon"><i class="fas fa-tint"></i></div>
-                            <h3 class="tip-title">ترطيب الجسم</h3>
-                            <p class="tip-text">اشرب 8-10 أكواب من الماء يومياً خاصة مع ارتفاع درجات الحرارة لتجنب
-                                الجفاف.
-                            </p><span class="tip-severity low">نصيحة عامة</span>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon"><i class="fas fa-umbrella"></i></div>
-                            <h3 class="tip-title">استعد للأمطار</h3>
-                            <p class="tip-text">توقعات بهطول أمطار غداً. احمل مظلتك وتجنب القيادة في المناطق المنخفضة.
-                            </p>
-                            <span class="tip-severity medium">تنبيه متوسط</span>
-                        </div>
+                    <div class="tips-grid" id="weatherTips" aria-live="polite" aria-busy="true">
+                        <div class="tip-card tip-card-loading"><div class="tip-icon"><i class="fas fa-cloud-sun"></i></div><h3 class="tip-title">تحليل حالة الطقس</h3><p class="tip-text">سيتم عرض النصائح المناسبة بعد تحميل بيانات الطقس.</p></div>
+                    </div>
+                    <div class="tips-footer">
+                        <span class="tips-disclaimer">إرشادات آلية مستنتجة من بيانات الطقس وليست تحذيرات رسمية.</span>
+                        <button class="btn btn-secondary btn-sm" id="weatherTipsToggle" type="button" hidden aria-expanded="false">عرض جميع النصائح <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
                     </div>
                 </div>
             </section>
@@ -566,6 +554,7 @@
         <script src="assets/js/core.js" defer></script>
     <script src="assets/js/geo-service.js" defer></script>
     <script src="assets/js/weather-service.js" defer></script>
+    <script src="assets/js/weather-tips-engine.js" defer></script>
     <script src="assets/js/ui.js" defer></script>
     <script src="assets/js/map-service.js" defer></script>
     <script src="assets/js/search-news.js" defer></script>
