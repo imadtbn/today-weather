@@ -1,0 +1,63 @@
+name: Lighthouse performance audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 4 * * 1'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'assets/**'
+      - '.github/workflows/lighthouse.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    name: Published site Lighthouse audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install Lighthouse
+        run: npm install --global lighthouse
+      - name: Create report directory
+        run: mkdir -p lighthouse-reports
+      - name: Run mobile Lighthouse
+        run: |
+          lighthouse https://imadtbn.github.io/today-weather/ \
+            --preset=perf \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output=html \
+            --output-path=./lighthouse-reports/mobile
+      - name: Run desktop Lighthouse
+        run: |
+          lighthouse https://imadtbn.github.io/today-weather/ \
+            --preset=desktop \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output=html \
+            --output-path=./lighthouse-reports/desktop
+      - name: Print score summary
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for (const device of ['mobile', 'desktop']) {
+            const report = JSON.parse(fs.readFileSync(`lighthouse-reports/${device}.report.json`, 'utf8'));
+            const scores = report.categories;
+            const value = key => Math.round((scores[key]?.score ?? 0) * 100);
+            console.log(`${device}: Performance ${value('performance')} | Accessibility ${value('accessibility')} | Best Practices ${value('best-practices')} | SEO ${value('seo')}`);
+            for (const id of ['largest-contentful-paint', 'total-blocking-time', 'cumulative-layout-shift', 'speed-index']) {
+              const audit = report.audits[id];
+              if (audit) console.log(`  ${audit.title}: ${audit.displayValue || audit.numericValue}`);
+            }
+          }
+          NODE
+      - name: Upload Lighthouse HTML and JSON reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports/
+          retention-days: 30

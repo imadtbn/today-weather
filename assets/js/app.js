@@ -216,19 +216,28 @@ const App = {
         // زر العودة للأعلى
         document.getElementById('scrollTop')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-        // إخفاء/إظهار الهيدر
-        let lastScroll = 0;
+        // إبقاء الهيدر متاحاً أثناء التمرير مع تقليل زخرفته بعد تجاوز أعلى الصفحة.
         window.addEventListener('scroll', () => {
             const cur = window.pageYOffset;
             const header = document.getElementById('siteHeader');
             const topBtn = document.getElementById('scrollTop');
             if (header) {
-                if (cur > lastScroll && cur > 100) header.classList.add('hidden');
-                else header.classList.remove('hidden');
+                header.classList.remove('hidden');
                 header.classList.toggle('scrolled', cur > 50);
             }
             if (topBtn) topBtn.classList.toggle('visible', cur > 300);
-            lastScroll = cur;
+        }, { passive: true });
+
+        // إغلاق قائمة الهاتف بزر Escape.
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Escape') return;
+            const nav = document.getElementById('mainNav');
+            if (nav?.classList.contains('active')) {
+                nav.classList.remove('active');
+                menuButton?.setAttribute('aria-expanded', 'false');
+                menuButton?.setAttribute('aria-label', 'فتح قائمة التنقل');
+                menuButton?.focus();
+            }
         });
     }
 };

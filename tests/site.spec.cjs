@@ -32,6 +32,29 @@ test('mobile navigation is immediately interactive and accessible', async ({ pag
   await expect(page.locator('#mainNav')).toHaveClass(/active/);
 });
 
+test('header remains available after scrolling down', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect(page.locator('#siteHeader')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#searchInput')).toBeVisible();
+});
+
+test('city search supports accessible keyboard navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const input = page.locator('#searchInput');
+  await input.fill('وهران');
+  const option = page.getByRole('option', { name: /وهران/ });
+  await expect(option).toBeVisible();
+  await expect(input).toHaveAttribute('aria-expanded', 'true');
+  await input.press('ArrowDown');
+  await expect(option).toHaveAttribute('aria-selected', 'true');
+  await expect(input).toHaveAttribute('aria-activedescendant', await option.getAttribute('id'));
+  await input.press('Escape');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('layout has no horizontal page overflow on common screen widths', async ({ page }) => {
   for (const width of [320, 360, 390, 430, 768, 1024]) {
     await page.setViewportSize({ width, height: 850 });

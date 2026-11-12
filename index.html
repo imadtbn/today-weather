@@ -125,9 +125,9 @@
             </nav>
             <div class="header-controls">
                 <div class="search-wrapper">
-                    <input type="search" class="search-input" id="searchInput" placeholder="ابحث عن مدينة..." aria-label="ابحث عن مدينة">
+                    <input type="search" class="search-input" id="searchInput" placeholder="ابحث عن مدينة..." aria-label="ابحث عن مدينة" role="combobox" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="citySuggestions" aria-expanded="false">
                     <i class="fas fa-search search-icon"></i>
-                    <div class="city-suggestions" id="citySuggestions"></div>
+                    <div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="نتائج البحث عن المدن" aria-live="polite"></div>
                 </div>
                 <button class="icon-btn" id="locationBtn" type="button" title="تحديد موقعك" aria-label="تحديد موقعي الحالي"><i
                         class="fas fa-location-crosshairs"></i></button>
