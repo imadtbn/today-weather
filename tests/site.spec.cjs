@@ -326,3 +326,41 @@ test('desktop hourly and five-day forecast cards fit their section containers', 
     expect(section.lastRight - section.firstLeft).toBeLessThanOrEqual(section.containerWidth + 2);
   }
 });
+
+
+test('weather tips are generated from current conditions and the next 24-hour forecast', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
+  });
+  await page.route('https://api.openweathermap.org/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/forecast')) {
+      const now = Math.floor(Date.now() / 1000);
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        city: { timezone: 3600 },
+        list: [
+          { dt: now + 3600, main: { temp: 39, temp_max: 40, temp_min: 30, humidity: 60 }, wind: { speed: 18 }, rain: { '3h': 22 }, weather: [{ id: 211, description: 'عاصفة رعدية' }] },
+          { dt: now + 7200, main: { temp: 37, temp_max: 38, temp_min: 29, humidity: 65 }, wind: { speed: 16 }, rain: { '3h': 12 }, weather: [{ id: 600, description: 'ثلوج' }] }
+        ]
+      }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      main: { temp: 39, feels_like: 41, humidity: 60, pressure: 1008 },
+      weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+      wind: { speed: 3, deg: 90 }, visibility: 10000, clouds: { all: 0 }, name: 'Algeria', timezone: 3600
+    }) });
+  });
+  await page.route('https://tile.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#weatherTips')).toHaveAttribute('aria-busy', 'false', { timeout: 15000 });
+  await expect(page.locator('#weatherTips')).toContainText('حرارة شديدة حالياً');
+  await expect(page.locator('#weatherTips')).toContainText('عواصف رعدية متوقعة');
+  await expect(page.locator('#weatherTipsContext')).toContainText('الجزائر العاصمة');
+  await expect(page.locator('#weatherTipsToggle')).toBeVisible();
+  await page.locator('#weatherTipsToggle').click();
+  await expect(page.locator('#weatherTipsToggle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#weatherTips [data-tip-extra]').first()).toBeVisible();
+});
