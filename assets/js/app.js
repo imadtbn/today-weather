@@ -91,17 +91,16 @@ const App = {
 
         try {
             const loc = { ...AppState.currentLocation };
-            const [current, forecast, extraMetrics] = await Promise.all([
+            const [current, forecast] = await Promise.all([
                 WeatherService.fetchCurrent(loc.lat, loc.lon),
-                WeatherService.fetchForecast(loc.lat, loc.lon),
-                WeatherService.fetchExtraMetrics(loc.lat, loc.lon)
+                WeatherService.fetchForecast(loc.lat, loc.lon)
             ]);
 
             if (requestId !== this.weatherRequestId) return;
             AppState.setWeather(current);
             AppState.forecastData = forecast;
 
-            UI.updateCurrentWeather(current, loc, extraMetrics);
+            UI.updateCurrentWeather(current, loc);
             UI.updateHourly(forecast);
             UI.updateDaily(forecast);
             UI.updateSea(current);
