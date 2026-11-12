@@ -292,3 +292,11 @@ test('favorite locations can be saved, revisited, and removed', async ({ page })
   await page.locator('[data-favorite-remove="0"]').click();
   await expect(page.locator('#favoriteCitiesPanel')).toBeHidden();
 });
+
+test('specialized weather sections are present and linked from navigation', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#specialized')).toBeAttached();
+  for (const id of ['agricultureCard', 'marineCard', 'airCard', 'rainfallCard']) await expect(page.locator('#' + id)).toBeAttached();
+  await expect(page.locator('.nav-link[href="#specialized"]')).toHaveCount(1);
+  await expect(page.locator('#specialized .specialized-disclaimer')).toContainText('الجهات الرسمية');
+});
