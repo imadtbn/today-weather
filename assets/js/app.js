@@ -9,6 +9,7 @@ const App = {
         console.log('%c[Algeria Weather Pro] Starting...', 'color:#d4a853; font-size:14px; font-weight:bold;');
         Notify.init();
         UI.init();
+        CubeWeather.init();
         SearchService.init();
         AppState.init();
         UI.renderFavoriteLocations(AppState.currentLocation);
