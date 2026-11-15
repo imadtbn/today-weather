@@ -137,7 +137,7 @@ assert.equal((cityCss.match(/{/g) || []).length, (cityCss.match(/}/g) || []).len
 const jsFiles = [
   'assets/js/core.js', 'assets/js/geo-service.js', 'assets/js/weather-service.js', 'assets/js/weather-tips-engine.js',
   'assets/js/ui.js', 'assets/js/map-service.js', 'assets/js/search-news.js',
-  'assets/js/effects.js', 'assets/js/app.js', 'assets/js/adsData.js', 'assets/js/city-page.js', 'sw.js'
+  'assets/js/effects.js', 'assets/js/global-search.js', 'assets/js/app.js', 'assets/js/adsData.js', 'assets/js/city-page.js', 'sw.js'
 ];
 for (const file of jsFiles) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, file)], { encoding: 'utf8' });
