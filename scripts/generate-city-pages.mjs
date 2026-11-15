@@ -6,6 +6,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = 'https://imadtbn.github.io/today-weather';
 const BASE = '/today-weather';
 const TODAY = new Date().toISOString().slice(0, 10);
+const missingImages = [];
 const readJson = path => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -39,7 +40,9 @@ const groups = [
 function imagePath(city) {
   const raw = String(city.countryImages || '').replace(/^\/+/, '');
   const local = raw.startsWith('today-weather/') ? raw.slice('today-weather/'.length) : raw;
-  return local && existsSync(join(ROOT, local)) ? `${BASE}/${local}` : `${BASE}/assets/images/icon1.webp`;
+  if (local && existsSync(join(ROOT, local))) return `${BASE}/${local}`;
+  missingImages.push({ slug: city.slug, expected: local || 'countryImages not set' });
+  return `${BASE}/assets/images/icon1.webp`;
 }
 function writePage(path, html) {
   const absolute = join(ROOT, path);
@@ -157,3 +160,4 @@ const uniqueUrls = [...new Set(sitemapUrls)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.map(url => `  <url><loc>${url}</loc><lastmod>${TODAY}</lastmod></url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(ROOT, 'sitemap.xml'), sitemap, 'utf8');
 console.log(`Generated ${groups.reduce((sum, group) => sum + group.items.length, 0)} city pages, ${groups.length} directories and sitemap (${uniqueUrls.length} URLs).`);
+if (missingImages.length) console.warn(`Image fallback used for ${missingImages.length} cities: ${missingImages.slice(0, 20).map(item => item.slug + ' (' + item.expected + ')').join(', ')}`);
