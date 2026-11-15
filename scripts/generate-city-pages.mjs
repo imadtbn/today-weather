@@ -122,7 +122,8 @@ function buildDirectory(group) {
   const links = group.items.map(city => {
     const image = imagePath(city);
     const englishName = city.englishName || city.name_en || city.name_fr || '';
-    const continent = city.continentName || (group.key === 'algeria' ? 'إفريقيا' : '');
+    const worldCountry = groups.find(item => item.key === 'world')?.items.find(item => item.countryCode === city.countryCode);
+    const continent = city.continentName || city.continent || worldCountry?.continentName || (group.key === 'algeria' ? 'إفريقيا' : '');
     const phone = city.countryPhone || '';
     const code = city.countryCode || '';
     const subtitle = [group.country(city), continent].filter(Boolean).join(' · ');
