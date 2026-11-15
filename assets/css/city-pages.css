@@ -175,3 +175,18 @@ body.city-page {
 @media(max-width:1050px){.city-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:600px){.city-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}.directory-city-body{padding:8px;}.directory-city-body strong{font-size:.84rem;}.directory-country{font-size:.7rem;}.directory-city-meta{gap:3px;}.directory-city-meta span{font-size:.6rem;padding:2px 4px;}}
 @media(prefers-reduced-motion:reduce){.city-directory-grid.directory-progressive .city-directory-item{animation:none!important;transition:none!important;}}
+
+
+/* Compact, deterministic city directory layout: 4 desktop / 3 medium / 2 phone. */
+.city-directory .city-directory-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:stretch;gap:10px}
+.city-directory .city-directory-item{min-width:0;min-height:0;padding:0;overflow:hidden;display:flex;flex-direction:column}
+.city-directory .directory-city-image{display:block;width:100%;height:clamp(76px,9vw,132px);max-height:132px;aspect-ratio:16/7;object-fit:cover}
+.city-directory .directory-city-body{min-width:0;gap:2px;padding:7px 8px}
+.city-directory .directory-city-body strong{font-size:.86rem;line-height:1.35}
+.city-directory .directory-country{margin-top:1px;font-size:.7rem;line-height:1.3}
+.city-directory .directory-city-meta{gap:3px;margin-top:4px}
+.city-directory .directory-city-meta span{padding:2px 4px;font-size:.6rem;line-height:1.25}
+.city-directory .city-directory-grid.directory-progressive .city-directory-item[hidden]{display:none!important}
+@media(min-width:601px) and (max-width:1050px){.city-directory .city-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px}}
+@media(max-width:600px){.city-directory .city-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}.city-directory .directory-city-image{height:clamp(68px,20vw,104px);max-height:104px}.city-directory .directory-city-body{padding:6px}.city-directory .directory-city-body strong{font-size:.78rem}.city-directory .directory-country{font-size:.66rem}}
+@media(prefers-reduced-motion:reduce){.city-directory .city-directory-grid .city-directory-item,.city-directory .city-directory-grid .city-directory-item.is-visible{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
