@@ -150,7 +150,7 @@
     return items.map(function (item) { return { item: item, score: score(item, query) }; })
       .filter(function (entry) { return entry.score > 0; })
       .sort(function (a, b) { return b.score - a.score || a.item.name.localeCompare(b.item.name, 'ar'); })
-      .slice(0, MAX_SUGGESTIONS).map(function (entry) { return entry.item; });
+      .slice(0, 2).map(function (entry) { return entry.item; });
   }
 
   async function searchGlobal(rawQuery) {
