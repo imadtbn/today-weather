@@ -131,6 +131,109 @@ function commonFooter() {
     '})();</script>';
 }
 
+
+function buildSitemapPage() {
+  const pageLinks = [
+    { name: 'الصفحة الرئيسية', detail: 'حالة الطقس اليوم والتحديثات الجوية', path: '/', terms: 'الرئيسية الطقس اليوم' },
+    { name: 'دليل الطقس', detail: 'جميع أدلة المدن والولايات والعواصم', path: '/weather/', terms: 'دليل الطقس المدن' },
+    { name: 'الولايات الجزائرية', detail: 'دليل الطقس في الولايات الجزائرية', path: '/weather/algeria/', terms: 'الجزائر الولايات' },
+    { name: 'العواصم العربية', detail: 'توقعات الطقس في العواصم العربية', path: '/weather/arab/', terms: 'العواصم العربية' },
+    { name: 'المدن والعواصم العالمية', detail: 'توقعات الطقس حول العالم', path: '/weather/world/', terms: 'مدن العالم عواصم' },
+    { name: 'توقعات الطقس', detail: 'التوقعات الجوية للأيام القادمة', path: '/#forecast', terms: 'توقعات forecast' },
+    { name: 'خرائط الطقس', detail: 'الخرائط الجوية التفاعلية', path: '/#maps', terms: 'خرائط رادار' },
+    { name: 'الإحصائيات', detail: 'مؤشرات وإحصائيات الطقس', path: '/#stats', terms: 'إحصائيات' },
+    { name: 'التحذيرات الجوية', detail: 'التنبيهات والتحذيرات الجوية', path: '/#warnings', terms: 'تحذيرات تنبيهات' },
+    { name: 'أخبار الطقس', detail: 'أخبار الطقس والمناخ', path: '/#news', terms: 'أخبار مناخ' },
+    { name: 'الأقسام المتخصصة', detail: 'الطقس الزراعي والبحري وجودة الهواء والأمطار', path: '/#specialized', terms: 'زراعي بحري هواء أمطار' }
+  ];
+  const pageItems = pageLinks.map(item =>
+    '<a class="sitemap-entry sitemap-page-entry" href="' + BASE + item.path + '" data-search="' +
+    escapeHtml([item.name, item.detail, item.terms].join(' ').toLowerCase()) + '">' +
+    '<span class="sitemap-entry-icon"><i class="fas fa-link" aria-hidden="true"></i></span>' +
+    '<span class="sitemap-entry-copy"><strong>' + escapeHtml(item.name) + '</strong><small>' +
+    escapeHtml(item.detail) + '</small></span><i class="fas fa-arrow-left sitemap-entry-arrow" aria-hidden="true"></i></a>'
+  ).join('');
+  const groupSections = groups.map(group => {
+    const entries = group.items.map(city => {
+      const name = group.name(city);
+      const country = group.country(city);
+      const english = city.englishName || city.name_en || city.name_fr || city.slug || '';
+      const terms = [name, country, english, city.slug, city.countryCode, city.name_fr].filter(Boolean).join(' ').toLowerCase();
+      const href = BASE + '/weather/' + group.key + '/' + encodeURIComponent(city.slug) + '/';
+      return '<a class="sitemap-entry sitemap-city-entry" href="' + href + '" data-search="' +
+        escapeHtml(terms) + '"><span class="sitemap-entry-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>' +
+        '<span class="sitemap-entry-copy"><strong>' + escapeHtml(name) + '</strong><small>' +
+        escapeHtml([country, english].filter(Boolean).join(' · ')) +
+        '</small></span><i class="fas fa-arrow-left sitemap-entry-arrow" aria-hidden="true"></i></a>';
+    }).join('');
+    return '<details class="sitemap-group" open><summary><span class="sitemap-group-title">' +
+      escapeHtml(group.title) + '</span><span class="sitemap-group-count">' + group.items.length +
+      ' رابطاً</span></summary><div class="sitemap-group-grid">' + entries + '</div></details>';
+  }).join('');
+  const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const totalLinks = totalCities + pageLinks.length;
+  const schema = {
+    '@context': 'https://schema.org', '@type': 'CollectionPage',
+    name: 'خريطة الموقع | أحوال الطقس',
+    description: 'دليل شامل لجميع صفحات الطقس والولايات الجزائرية والعواصم العربية والمدن العالمية.',
+    url: SITE + '/sitemap.html', inLanguage: 'ar',
+    mainEntity: { '@type': 'ItemList', numberOfItems: totalLinks,
+      itemListElement: pageLinks.map((item, index) => ({
+        '@type': 'ListItem', position: index + 1, name: item.name, url: SITE + item.path
+      }))
+    }
+  };
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>خريطة الموقع | جميع المدن والولايات والعواصم - أحوال الطقس</title>' +
+    '<meta name="description" content="تصفح جميع صفحات أحوال الطقس: الولايات الجزائرية والعواصم العربية والمدن العالمية، وابحث عن أي مدينة بالعربية أو الإنجليزية.">' +
+    '<meta name="robots" content="index,follow,max-image-preview:large">' +
+    '<link rel="canonical" href="' + SITE + '/sitemap.html">' +
+    '<meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ">' +
+    '<meta property="og:title" content="خريطة الموقع | أحوال الطقس">' +
+    '<meta property="og:description" content="دليل شامل لجميع صفحات الطقس والمدن والولايات والعواصم.">' +
+    '<meta property="og:url" content="' + SITE + '/sitemap.html">' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/style-main.css">' +
+    '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/city-pages.css">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/sitemap.css">' +
+    trackingTags() + '<script type="application/ld+json">' + safeJson(schema) + '</script></head>' +
+    '<body class="city-page sitemap-page">' + commonHeader() + adBlock("top") +
+    '<main class="city-container sitemap-container"><nav class="city-breadcrumb" aria-label="مسار التنقل">' +
+    '<a href="' + BASE + '/">الرئيسية</a> / خريطة الموقع</nav>' +
+    '<header class="sitemap-hero"><span class="city-kicker">دليل التصفح</span>' +
+    '<h1 class="city-title">خريطة الموقع</h1><p class="city-directory-intro">استكشف جميع أقسام وصفحات أحوال الطقس، ' +
+    'أو ابحث عن أي ولاية أو عاصمة أو مدينة باسمها العربي أو الإنجليزي.</p>' +
+    '<div class="sitemap-stats"><div><strong>' + totalCities + '</strong><span>مدينة وعاصمة</span></div>' +
+    '<div><strong>' + groups.length + '</strong><span>أدلة جغرافية</span></div>' +
+    '<div><strong>' + totalLinks + '</strong><span>رابطاً قابلاً للتصفح</span></div></div></header>' +
+    '<section class="sitemap-search-panel" aria-label="البحث في خريطة الموقع">' +
+    '<label for="sitemapSearch">ابحث عن مدينة أو قسم</label><div class="sitemap-search-box">' +
+    '<i class="fas fa-search" aria-hidden="true"></i><input id="sitemapSearch" type="search" ' +
+    'placeholder="مثال: الجزائر، Paris، Cairo..." autocomplete="off" aria-controls="sitemapContent">' +
+    '<button id="sitemapClear" type="button" aria-label="مسح البحث" hidden><i class="fas fa-times" aria-hidden="true"></i></button>' +
+    '</div><p id="sitemapSearchStatus" role="status" aria-live="polite">تصفح ' + totalLinks + ' رابطاً.</p></section>' +
+    '<div id="sitemapContent"><section class="sitemap-section"><h2><i class="fas fa-compass" aria-hidden="true"></i> الصفحات والأقسام</h2>' +
+    '<div class="sitemap-page-grid">' + pageItems + '</div></section>' +
+    '<section class="sitemap-section"><h2><i class="fas fa-earth-africa" aria-hidden="true"></i> المدن والوجهات</h2>' +
+    '<div class="sitemap-groups">' + groupSections + '</div></section></div>' +
+    '<p class="sitemap-no-results" id="sitemapNoResults" hidden>لا توجد نتائج مطابقة. جرّب اسماً آخر بالعربية أو الإنجليزية.</p>' +
+    '</main>' + adBlock("bottom") + commonFooter() +
+    '<script>(function(){var input=document.getElementById("sitemapSearch"),clear=document.getElementById("sitemapClear"),' +
+    'status=document.getElementById("sitemapSearchStatus"),empty=document.getElementById("sitemapNoResults");' +
+    'var entries=Array.from(document.querySelectorAll(".sitemap-entry")),groupsList=Array.from(document.querySelectorAll(".sitemap-group"));' +
+    'function normalize(value){return String(value||"").toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();}' +
+    'function filter(){var query=normalize(input.value),shown=0;entries.forEach(function(entry){var match=!query||normalize(entry.dataset.search+" "+entry.textContent).includes(query);entry.hidden=!match;if(match)shown++;});' +
+    'groupsList.forEach(function(group){var visible=group.querySelectorAll(".sitemap-entry:not([hidden])").length;group.hidden=visible===0;if(query&&visible)group.open=true;});' +
+    'var pages=document.querySelector(".sitemap-page-grid"),pageVisible=pages&&pages.querySelectorAll(".sitemap-entry:not([hidden])").length; ' +
+    'var pageSection=pages&&pages.closest(".sitemap-section");if(pageSection)pageSection.hidden=pageVisible===0;' +
+    'var citySection=groupsList[0]&&groupsList[0].closest(".sitemap-section");if(citySection)citySection.hidden=groupsList.every(function(group){return group.hidden;});' +
+    'empty.hidden=shown!==0;clear.hidden=!input.value;status.textContent=query?("عدد النتائج: "+shown):("تصفح "+entries.length+" رابطاً.");}' +
+    'input.addEventListener("input",filter);clear.addEventListener("click",function(){input.value="";filter();input.focus();});})();</script>' +
+    '</body></html>';
+}
+
 function adBlock(position) {
   const unit = position === 'top'
     ? '<ins class="adsbygoogle" style="display:block;width:100%;min-height:90px" data-ad-format="fluid" data-ad-layout-key="-fr+56+4k-d4+74" data-ad-client="ca-pub-5656416032906373" data-ad-slot="7867079394"></ins>'
@@ -285,8 +388,9 @@ mkdirSync(weatherRoot, { recursive: true });
 writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الطقس في المدن والولايات | أحوال الطقس</title><meta name="description" content="اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام."><meta name="robots" content="index,follow"><link rel="canonical" href="${SITE}/weather/"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">${trackingTags()}</head><body class="city-page">${commonHeader()}${adBlock("top")}<main class="city-container city-directory"><nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / دليل الطقس</nav><header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل المدن والطقس</span><h1 class="city-title">الطقس في الجزائر والعالم</h1><p class="city-directory-intro">تصفح أدلة الطقس للولايات الجزائرية والعواصم العربية والمدن العالمية، وانتقل إلى صفحات مستقلة تعرض حالة الطقس والتوقعات المحلية.</p><span class="directory-count">3 أدلة رئيسية لاستكشاف المدن</span></div><figure class="directory-hero-media"><img src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم دلالي لمدن العالم ومعالمها العمرانية" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header><div class="city-directory-grid directory-feature-grid"><a class="city-directory-item directory-feature-card" href="${BASE}/weather/algeria/"><img class="directory-city-image" src="${BASE}/images/algiers.jpg" alt="منظر مدينة الجزائر العاصمة" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>ولايات الجزائر الـ69</strong><small class="directory-country">حالة الطقس في الولايات الجزائرية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/arab/"><img class="directory-city-image" src="${BASE}/images/amman.jpg" alt="مشهد عمراني من عمّان يمثل العواصم العربية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>العواصم العربية</strong><small class="directory-country">طقس العواصم والمدن العربية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/world/"><img class="directory-city-image" src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم لمدن عالمية ومعالم عمرانية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>المدن والعواصم العالمية</strong><small class="directory-country">توقعات الطقس للمدن العالمية</small></span></a></div></main>${adBlock("bottom")}${commonFooter()}</body></html>`);
 
 writePage('data/global-search-index.json', JSON.stringify(buildGlobalSearchIndex(), null, 2) + '\n');
+writePage('sitemap.html', buildSitemapPage());
 
-const sitemapUrls = [`${SITE}/`, `${SITE}/weather/`];
+const sitemapUrls = [`${SITE}/`, `${SITE}/weather/`, `${SITE}/sitemap.html`];
 for (const group of groups) {
   writePage(`weather/${group.key}/index.html`, buildDirectory(group));
   sitemapUrls.push(`${SITE}/weather/${group.key}/`);
