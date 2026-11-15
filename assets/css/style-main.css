@@ -3038,3 +3038,29 @@ body {
     display: block;
     max-width: 100%;
 }
+
+
+/* Live data status for the rotating weather cube. */
+.weather-cube-status {
+    margin: 12px auto 0;
+    max-width: 320px;
+    color: var(--text-muted);
+    font-size: .76rem;
+    line-height: 1.6;
+    text-align: center;
+}
+.cube-face .cube-label {
+    max-width: 90%;
+    text-align: center;
+    line-height: 1.5;
+}
+@media (max-width: 600px) {
+    .weather-cube-container { width: 240px; height: 240px; }
+    .cube-face { width: 240px; height: 240px; }
+    .cube-face.front { transform: translateZ(120px); }
+    .cube-face.back { transform: rotateY(180deg) translateZ(120px); }
+    .cube-face.right { transform: rotateY(90deg) translateZ(120px); }
+    .cube-face.left { transform: rotateY(-90deg) translateZ(120px); }
+    .cube-face.top { transform: rotateX(90deg) translateZ(120px); }
+    .cube-face.bottom { transform: rotateX(-90deg) translateZ(120px); }
+}
