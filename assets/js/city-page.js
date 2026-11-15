@@ -1,3 +1,11 @@
+/* Load the shared site search on every generated city detail page. */
+(function () {
+  if (document.querySelector('script[src*="global-search.js"]') || window.GlobalSearch) return;
+  var script = document.createElement('script');
+  script.src = '/today-weather/assets/js/global-search.js?v=20261115';
+  script.async = true;
+  document.head.appendChild(script);
+})();
 (() => {
   const root=document.querySelector("[data-city-weather]"); if(!root)return;
   const city=JSON.parse(root.dataset.cityWeather),key="1151122405b6f7be33bf0de4b22bb5a4";
