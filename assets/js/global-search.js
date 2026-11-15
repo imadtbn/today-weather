@@ -113,9 +113,9 @@
 
   function init() {
     if (window.__todayWeatherGlobalSearchInitialized) return;
-    window.__todayWeatherGlobalSearchInitialized = true;
     ensureSearch();
     if (!input || !panel) return;
+    window.__todayWeatherGlobalSearchInitialized = true;
     input.placeholder = 'ابحث في الموقع والمدن العالمية...';
     input.setAttribute('aria-label', 'ابحث في الموقع والمدن العالمية');
     input.addEventListener('input', function () {
@@ -136,20 +136,29 @@
     document.addEventListener('click', function (event) {
       if (!event.target.closest('.search-wrapper')) hide();
     });
-    var menu = document.getElementById('mobileMenuBtn');
-    var nav = document.getElementById('mainNav');
-    if (menu && nav && !menu.dataset.globalSearchMenuBound) {
-      menu.dataset.globalSearchMenuBound = 'true';
-      menu.addEventListener('click', function () {
-        var open = nav.classList.toggle('active');
-        menu.setAttribute('aria-expanded', String(open));
-      });
+    // The homepage app controller owns these controls to avoid duplicate click handlers.
+    // Standalone directory pages do not load app.js, so bind their header controls here.
+    var hasAppController = !!document.querySelector('script[src$="app.js"]');
+    if (!hasAppController) {
+      var menu = document.getElementById('mobileMenuBtn');
+      var nav = document.getElementById('mainNav');
+      if (menu && nav && !menu.dataset.globalSearchMenuBound) {
+        menu.dataset.globalSearchMenuBound = 'true';
+        menu.addEventListener('click', function () {
+          var open = nav.classList.toggle('active');
+          menu.setAttribute('aria-expanded', String(open));
+          menu.setAttribute('aria-label', open ? 'إغلاق قائمة التنقل' : 'فتح قائمة التنقل');
+        });
+      }
+      var locationButton = document.getElementById('locationBtn');
+      if (locationButton && !locationButton.dataset.globalSearchLocationBound) {
+        locationButton.dataset.globalSearchLocationBound = 'true';
+        locationButton.addEventListener('click', function () { window.location.href = BASE + '/#home'; });
+      }
     }
-    var locationButton = document.getElementById('locationBtn');
-    if (locationButton && !locationButton.dataset.globalSearchLocationBound) {
-      locationButton.dataset.globalSearchLocationBound = 'true';
-      locationButton.addEventListener('click', function () { window.location.href = BASE + '/#home'; });
-    }
+    input.addEventListener('focus', function () {
+      if (input.value.trim().length >= 2) render();
+    });
     fetch(BASE + '/data/global-search-index.json', { credentials: 'same-origin' })
       .then(function (response) { if (!response.ok) throw new Error('Search index unavailable'); return response.json(); })
       .then(function (data) { items = Array.isArray(data) ? data : []; ready = true; if (input.value.trim().length >= 2) render(); })
