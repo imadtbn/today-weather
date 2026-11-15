@@ -8,7 +8,7 @@ test('city directory renders compact responsive cards and reveals images in batc
   await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(12);
   await expect(grid.locator('.directory-city-image[src]')).toHaveCount(12);
   await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(57);
-  await expect(page.locator('.directory-hero-media img')).toHaveAttribute('src', /images\\/algiers\\.jpg$/);
+  await expect(page.locator('.directory-hero-media img')).toHaveAttribute('src', /images\/algiers\.jpg$/);
   for (const [width, expectedColumns] of [[1440, 4], [1024, 3], [390, 2]]) {
     await page.setViewportSize({ width, height: 900 });
     const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
