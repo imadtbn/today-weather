@@ -2,7 +2,7 @@
 (function () {
   if (document.querySelector('script[src*="global-search.js"]') || window.GlobalSearch) return;
   var script = document.createElement('script');
-  script.src = '/today-weather/assets/js/global-search.js?v=20261115';
+  script.src = '/today-weather/assets/js/global-search.js';
   script.async = true;
   document.head.appendChild(script);
 })();
