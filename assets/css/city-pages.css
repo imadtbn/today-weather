@@ -150,3 +150,24 @@ body.city-page {
     .city-main-nav { max-width: calc(100% - 98px); }
     .city-main-nav .nav-link { padding-inline: 7px; font-size: .74rem; }
 }
+
+
+/* Directory landing pages: shared hero, image cards and progressive reveal. */
+.city-directory .directory-hero{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:10px 0 26px;padding:clamp(22px,4vw,38px);overflow:hidden;border:1px solid var(--city-border);border-radius:22px;background:linear-gradient(135deg,rgba(212,168,83,.13),var(--city-panel) 58%);}
+.city-directory .directory-hero:after{content:"";position:absolute;inset:auto -35px -95px auto;width:230px;height:230px;border-radius:50%;background:rgba(212,168,83,.08);pointer-events:none;}
+.directory-hero .city-title{margin:0;font-size:clamp(1.8rem,4vw,2.6rem);}
+.directory-hero .city-directory-intro{max-width:820px;margin:0;line-height:1.9;}
+.directory-count{display:inline-flex;align-items:center;padding:7px 13px;border:1px solid var(--city-border);border-radius:999px;color:var(--city-gold);font-size:.82rem;font-weight:800;}
+.city-directory-grid{align-items:stretch;gap:16px;}
+.city-directory-item{padding:0;overflow:hidden;display:flex;flex-direction:column;opacity:.25;transform:translateY(14px);transition:opacity .35s ease,transform .35s ease,border-color .2s ease;}
+.city-directory-item.is-visible{opacity:1;transform:translateY(0);}
+.directory-city-image{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--city-surface,rgba(127,127,127,.08));}
+.directory-city-body{display:flex;flex:1;flex-direction:column;gap:5px;padding:13px;}
+.directory-city-body strong{font-size:1rem;line-height:1.5;}
+.directory-country{color:var(--city-muted);font-size:.82rem;}
+.directory-city-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.directory-city-meta span{max-width:100%;padding:4px 7px;border:1px solid var(--city-border);border-radius:7px;color:var(--city-muted);font-size:.7rem;overflow-wrap:anywhere;}
+.city-directory-item:hover .directory-city-image{filter:saturate(1.08);}
+@media(max-width:850px){.city-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:600px){.city-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.directory-city-body{padding:10px;}.directory-city-body strong{font-size:.9rem;}.directory-city-meta{gap:4px;}.directory-city-meta span{font-size:.65rem;padding:3px 5px;}}
+@media(prefers-reduced-motion:reduce){.city-directory-item{transition:none;transform:none;opacity:1;}}
