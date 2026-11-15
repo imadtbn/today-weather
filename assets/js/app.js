@@ -45,21 +45,22 @@ const App = {
             .catch(error => console.warn('[PWA] Service worker registration failed:', error));
     },
 
-    async _checkLocation() {
+    _getCachedLocation() {
         const cached = LocationCache.get();
-        const timestamp = Number(cached?.timestamp);
         const location = cached?.data;
-        const age = Date.now() - timestamp;
         const lat = Number(location?.lat);
         const lon = Number(location?.lon);
-        const validCache = Number.isFinite(timestamp) && age >= 0 && age < CONFIG.CACHE_DURATION &&
-            Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-        if (validCache) {
-            AppState.currentLocation = { ...location, lat, lon };
-            Notify.success(`مرحباً بك في ${location.displayName || location.name}`);
-            return;
-        }
-        // لا يوجد cache صالح: نطلب GPS
+        const timestamp = Number(cached?.timestamp);
+        const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 && timestamp <= Date.now();
+        const validCoordinates = Number.isFinite(lat) && Number.isFinite(lon) &&
+            Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+        if (!validTimestamp || !validCoordinates) return null;
+        return { ...location, lat, lon };
+    },
+
+    async _checkLocation() {
+        // اطلب GPS عند كل زيارة فعلية؛ المتصفح لا يعيد إظهار نافذة الإذن
+        // إذا سبق للزائر اتخاذ قرار، بل يطبق الإذن المحفوظ لديه.
         await this.updateFromGPS(false);
     },
 
@@ -74,11 +75,28 @@ const App = {
             MapService.setView(lat, lon, 10);
             MapService.updateMarker(lat, lon, loc.displayName);
         } catch (err) {
-            console.error('[App] GPS error:', err);
-            Notify.error(err.message);
-            // Fallback
-            AppState.setLocation({ ...CONFIG.DEFAULT_LOCATION });
-            Notify.warning('تم استخدام الموقع الافتراضي: الجزائر العاصمة');
+            console.warn('[App] GPS unavailable; using saved/default location:', err);
+            const cachedLocation = this._getCachedLocation();
+            if (cachedLocation) {
+                // استخدم آخر إحداثيات محفوظة حتى لو تجاوزت مدة تحديث الطقس.
+                AppState.currentLocation = cachedLocation;
+                MapService.setView(cachedLocation.lat, cachedLocation.lon, 10);
+                MapService.updateMarker(
+                    cachedLocation.lat,
+                    cachedLocation.lon,
+                    cachedLocation.displayName || cachedLocation.name
+                );
+                Notify.warning('تعذر تحديد موقعك عبر GPS؛ نعرض الطقس لآخر موقع محفوظ.');
+            } else {
+                AppState.currentLocation = { ...CONFIG.DEFAULT_LOCATION };
+                MapService.setView(CONFIG.DEFAULT_LOCATION.lat, CONFIG.DEFAULT_LOCATION.lon, 10);
+                MapService.updateMarker(
+                    CONFIG.DEFAULT_LOCATION.lat,
+                    CONFIG.DEFAULT_LOCATION.lon,
+                    CONFIG.DEFAULT_LOCATION.displayName
+                );
+                Notify.warning('لم تتوفر إحداثيات محفوظة؛ تم اختيار الجزائر العاصمة مؤقتاً.');
+            }
         } finally {
             UI.setLocLoading(false);
         }
