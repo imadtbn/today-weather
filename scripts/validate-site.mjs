@@ -129,7 +129,7 @@ for (const file of jsFiles) {
   assert.equal(result.status, 0, file + ': ' + (result.stderr || result.stdout));
 }
 
-const scriptRefs = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map(m => m[1]);
+const scriptRefs = [...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map(m => m[1].split(/[?#]/, 1)[0]);
 for (const stale of ['assets/js/main.js', 'assets/js/main22script.js', 'assets/js/mainscript.js', 'assets/js/mainscript1.js']) {
   assert.ok(!scriptRefs.includes(stale), 'Legacy script still referenced: ' + stale);
 }
