@@ -5,10 +5,10 @@
 
   function normalize(value) {
     return String(value || '').toLocaleLowerCase()
-      .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
-      .replace(/[\\u064B-\\u065F\\u0670]/g, '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u064B-\u065F\u0670]/g, '')
       .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
-      .replace(/ـ/g, '').replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+      .replace(/ـ/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   }
 
   function ensureSearch() {
