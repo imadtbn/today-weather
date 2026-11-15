@@ -1,62 +1,23 @@
 (() => {
-  const root = document.querySelector("[data-city-weather]");
-  if (!root) return;
-  const city = JSON.parse(root.dataset.cityWeather);
-  const key = "1151122405b6f7be33bf0de4b22bb5a4";
-  const base = "https://api.openweathermap.org/data/2.5";
-  const $ = id => document.getElementById(id);
-  const number = value => Number.isFinite(Number(value)) ? Math.round(Number(value)) : "--";
-  const icon = code => code >= 200 && code < 300 ? "fa-cloud-bolt" : code >= 300 && code < 600 ? "fa-cloud-rain" : code >= 600 && code < 700 ? "fa-snowflake" : code >= 700 && code < 800 ? "fa-smog" : code === 800 ? "fa-sun" : "fa-cloud";
-  const setStatus = message => { const node=$("cityStatus"); if(node) node.textContent=message; };
-  async function load() {
-    try {
-      const query = `lat=${encodeURIComponent(city.lat)}&lon=${encodeURIComponent(city.lon)}&units=metric&lang=ar&appid=${key}`;
-      const [currentResponse, forecastResponse] = await Promise.all([
-        fetch(`${base}/weather?${query}`, {cache:"no-store"}),
-        fetch(`${base}/forecast?${query}`, {cache:"no-store"})
-      ]);
-      if (!currentResponse.ok || !forecastResponse.ok) throw new Error("تعذر الوصول إلى خدمة الطقس");
-      const [current, forecast] = await Promise.all([currentResponse.json(),forecastResponse.json()]);
-      if (!current.main || !Array.isArray(current.weather) || !forecast.list?.length) throw new Error("بيانات الطقس غير مكتملة");
-      $("cityTemp").textContent = number(current.main.temp) + "°";
-      $("cityCondition").textContent = current.weather[0].description || "حالة الطقس الحالية";
-      $("cityWeatherIcon").className = "fa-solid " + icon(Number(current.weather[0].id));
-      $("cityFeels").textContent = number(current.main.feels_like) + "°C";
-      $("cityHumidity").textContent = number(current.main.humidity) + "%";
-      $("cityWind").textContent = number(Number(current.wind?.speed || 0) * 3.6) + " كم/س";
-      $("cityPressure").textContent = number(current.main.pressure) + " hPa";
-      const dayGroups = new Map();
-      for (const item of forecast.list) {
-        const date = item.dt_txt?.slice(0,10);
-        if (!date) continue;
-        if (!dayGroups.has(date)) dayGroups.set(date, []);
-        dayGroups.get(date).push(item);
-      }
-      const entries = [...dayGroups.entries()].slice(0,5).map(([date, items]) => {
-        const representative = items.reduce((best, item) => {
-          const hour = Number(item.dt_txt?.slice(11,13) || 0);
-          const bestHour = Number(best.dt_txt?.slice(11,13) || 0);
-          return Math.abs(hour - 12) < Math.abs(bestHour - 12) ? item : best;
-        }, items[0]);
-        const max = Math.max(...items.map(item => Number(item.main?.temp_max ?? item.main?.temp ?? -100)));
-        const min = Math.min(...items.map(item => Number(item.main?.temp_min ?? item.main?.temp ?? 100)));
-        const rainChance = Math.round(Math.max(...items.map(item => Number(item.pop || 0))) * 100);
-        return { date, representative, max, min, rainChance };
-      });
-      $("cityForecast").innerHTML = entries.map(day => {
-        const weekday = new Date(day.date + "T12:00:00").toLocaleDateString("ar-DZ",{weekday:"short"});
-        const description = day.representative.weather?.[0]?.description || "";
-        return `<div class="city-day"><span>${weekday}</span><i class="fa-solid ${icon(Number(day.representative.weather?.[0]?.id))}" aria-hidden="true"></i><strong>${number(day.max)}° / ${number(day.min)}°</strong><small>${description}</small><small>احتمال المطر ${day.rainChance}%</small></div>`;
-      }).join("");
-      const updated = new Date((current.dt || Date.now()/1000)*1000).toLocaleString("ar-DZ",{dateStyle:"medium",timeStyle:"short"});
-      $("cityUpdated").textContent = "آخر تحديث للبيانات: " + updated;
-      setStatus("البيانات الحالية والتوقعات من OpenWeatherMap");
-    } catch (error) {
-      console.error("[CityWeather]",error);
-      setStatus("تعذر تحميل الطقس الآن. أعد المحاولة لاحقاً؛ معلومات المدينة الأساسية ما زالت متاحة.");
-      $("cityForecast").innerHTML = '<p class="city-status">التوقعات غير متاحة مؤقتاً.</p>';
-    }
-  }
-  load();
-  $("cityRefresh")?.addEventListener("click",load);
+  const root=document.querySelector("[data-city-weather]"); if(!root)return;
+  const city=JSON.parse(root.dataset.cityWeather),key="1151122405b6f7be33bf0de4b22bb5a4";
+  const base="https://api.openweathermap.org/data/2.5", $=id=>document.getElementById(id);
+  const num=v=>Number.isFinite(Number(v))?Math.round(Number(v)):"--";
+  const icon=code=>code>=200&&code<300?"fa-cloud-bolt":code>=300&&code<600?"fa-cloud-rain":code>=600&&code<700?"fa-snowflake":code>=700&&code<800?"fa-smog":code===800?"fa-sun":"fa-cloud";
+  const direction=deg=>{if(!Number.isFinite(Number(deg)))return"--";const dirs=["شمال","شمال شرقي","شرق","جنوب شرقي","جنوب","جنوب غربي","غرب","شمال غربي"];return dirs[Math.round((Number(deg)%360)/45)%8];};
+  const time=ts=>ts?new Date(ts*1000).toLocaleTimeString("ar-DZ",{hour:"2-digit",minute:"2-digit"}):"--";
+  const status=m=>{if($("cityStatus"))$("cityStatus").textContent=m;};
+  let currentData=null,forecastData=null,map=null,marker=null,weatherLayer=null;
+  async function json(url){const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json();}
+  function dewPoint(t,rh){const a=17.625,b=243.04,g=Math.log(Math.max(1,Math.min(100,rh))/100)+a*t/(b+t);return b*g/(a-g);}
+  function renderHourly(list){const now=Date.now()/1000,items=list.filter(x=>Number(x.dt)>=now&&Number(x.dt)<=now+86400).slice(0,8);$("hourlyForecast").innerHTML=items.length?items.map(x=>'<article class="hourly-item"><strong>'+time(x.dt)+'</strong><i class="fa-solid '+icon(Number(x.weather?.[0]?.id))+'"></i><b>'+num(x.main?.temp)+'°</b><span>'+String(x.weather?.[0]?.description||"")+'</span><small>رطوبة '+num(x.main?.humidity)+'%</small><small>رياح '+num(Number(x.wind?.speed||0)*3.6)+' كم/س</small></article>').join(""):'<p class="city-status">لا توجد توقعات متاحة خلال الساعات القادمة.</p>'; }
+  function renderFiveDays(list){const groups=new Map();for(const x of list){const d=x.dt_txt?.slice(0,10);if(d){if(!groups.has(d))groups.set(d,[]);groups.get(d).push(x);}}const days=[...groups.entries()].slice(0,5).map(([date,items])=>{const mid=items.reduce((a,b)=>Math.abs(Number(b.dt_txt.slice(11,13))-12)<Math.abs(Number(a.dt_txt.slice(11,13))-12)?b:a,items[0]);return{date,mid,max:Math.max(...items.map(x=>Number(x.main?.temp_max??x.main?.temp))),min:Math.min(...items.map(x=>Number(x.main?.temp_min??x.main?.temp))),rain:Math.max(...items.map(x=>Number(x.pop||0)))};});$("cityForecast").innerHTML=days.map(d=>'<article class="city-day"><span>'+new Date(d.date+"T12:00:00").toLocaleDateString("ar-DZ",{weekday:"short"})+'</span><i class="fa-solid '+icon(Number(d.mid.weather?.[0]?.id))+'"></i><strong>'+num(d.max)+'° / '+num(d.min)+'°</strong><small>'+String(d.mid.weather?.[0]?.description||"")+'</small><small>احتمال المطر '+Math.round(d.rain*100)+'%</small></article>').join("");return days;}
+  function renderStats(list){const max=Math.max(...list.map(x=>Number(x.main?.temp_max??x.main?.temp))),min=Math.min(...list.map(x=>Number(x.main?.temp_min??x.main?.temp))),avg=list.reduce((s,x)=>s+Number(x.main?.temp||0),0)/list.length,rain=list.reduce((s,x)=>s+Number(x.rain?.["3h"]||0),0),wind=Math.max(...list.map(x=>Number(x.wind?.speed||0)*3.6)),pop=Math.max(...list.map(x=>Number(x.pop||0)));[["statMaxTemp",num(max)+"°"],["statMinTemp",num(min)+"°"],["statAvgTemp",num(avg)+"°"],["statRain",rain.toFixed(1)+" مم"],["statWind",num(wind)+" كم/س"],["statRainChance",num(pop*100)+"%"]].forEach(([id,v])=>{if($(id))$(id).textContent=v;});}
+  function renderTips(current,forecast){const upcoming=forecast.list.filter(x=>x.dt>=Date.now()/1000&&x.dt<=Date.now()/1000+86400),tips=[];const max=Math.max(...upcoming.map(x=>Number(x.main?.temp_max??x.main?.temp??-99))),wind=Math.max(...upcoming.map(x=>Number(x.wind?.speed||0)*3.6)),rain=Math.max(...upcoming.map(x=>Number(x.rain?.["3h"]||0))),ids=upcoming.flatMap(x=>(x.weather||[]).map(w=>Number(w.id)));if(Number(current.main.temp)>=35||max>=38)tips.push(["حرارة مرتفعة","اشرب الماء بانتظام وتجنب التعرض المباشر للشمس وقت الظهيرة."]);if(rain>=5)tips.push(["أمطار متوقعة","خطط للتنقل بحذر وتجنب الطرق المنخفضة ومجاري الأودية."]);if(wind>=45)tips.push(["رياح نشطة","ثبت الأغراض الخفيفة وتوخ الحذر أثناء القيادة." ]);if(ids.some(x=>x>=200&&x<300))tips.push(["عواصف رعدية","ابتعد عن الأماكن المكشوفة والأشجار أثناء العواصف."]);if(ids.some(x=>x>=600&&x<700))tips.push(["احتمال تساقط الثلوج","تحقق من حالة الطرق قبل التنقل."]);if(!tips.length)tips.push(["أجواء مستقرة نسبياً","الظروف المتوقعة ملائمة للأنشطة المعتادة مع متابعة التحديثات."]);$("weatherTips").innerHTML=tips.slice(0,5).map(([t,d])=>'<article class="tip-card"><h3>'+t+'</h3><p>'+d+'</p></article>').join("");$("weatherTipsContext").textContent="تحليل آلي للطقس الحالي وتوقعات الـ24 ساعة القادمة."; $("weatherTipsStatus").textContent="تم تحديث النصائح";}
+  async function loadUV(){try{const d=await json("https://api.open-meteo.com/v1/forecast?latitude="+city.lat+"&longitude="+city.lon+"&current=uv_index&timezone=auto");$("cityUv").textContent=Number.isFinite(Number(d.current?.uv_index))?Number(d.current.uv_index).toFixed(1):"غير متاح";}catch{$("cityUv").textContent="غير متاح";}}
+  function renderCurrent(c){$("cityTemp").textContent=num(c.main.temp)+"°";$("cityCondition").textContent=c.weather?.[0]?.description||"حالة الطقس الحالية";$("cityWeatherIcon").className="fa-solid "+icon(Number(c.weather?.[0]?.id))+" city-weather-icon";$("cityFeels").textContent=num(c.main.feels_like)+"°C";$("cityHumidity").textContent=num(c.main.humidity)+"%";$("cityWind").textContent=num(Number(c.wind?.speed||0)*3.6)+" كم/س";$("cityPressure").textContent=num(c.main.pressure)+" hPa";$("cityVisibility").textContent=Number.isFinite(Number(c.visibility))?(Number(c.visibility)/1000).toFixed(1)+" كم":"غير متاح";$("cityDewPoint").textContent=Number.isFinite(Number(c.main.temp))&&Number.isFinite(Number(c.main.humidity))?dewPoint(Number(c.main.temp),Number(c.main.humidity)).toFixed(1)+"°C":"غير متاح";$("cityClouds").textContent=num(c.clouds?.all)+"%";$("cityWindDirection").textContent=direction(c.wind?.deg);$("citySunrise").textContent=time(c.sys?.sunrise);$("citySunset").textContent=time(c.sys?.sunset);$("cityCountryCode").textContent=city.countryCode||c.sys?.country||"غير متاح";$("cityUpdated").textContent="آخر تحديث: "+new Date((c.dt||Date.now()/1000)*1000).toLocaleString("ar-DZ",{dateStyle:"medium",timeStyle:"short"});}
+  function initMap(){const el=$("cityWeatherMap");if(!el||!window.L){$("cityMapStatus").textContent="تعذر تحميل مكتبة الخريطة.";return;}map=L.map(el).setView([city.lat,city.lon],9);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map);weatherLayer=L.tileLayer("https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid="+key,{opacity:.55,maxZoom:18,attribution:"© OpenWeatherMap"}).addTo(map);marker=L.marker([city.lat,city.lon]).addTo(map).bindPopup(city.name+" · "+city.country).openPopup();document.querySelectorAll("[data-city-layer]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-city-layer]").forEach(x=>x.classList.toggle("active",x===b));if(weatherLayer)map.removeLayer(weatherLayer);weatherLayer=L.tileLayer("https://tile.openweathermap.org/map/"+b.dataset.cityLayer+"/{z}/{x}/{y}.png?appid="+key,{opacity:.55,maxZoom:18,attribution:"© OpenWeatherMap"}).addTo(map);}));setTimeout(()=>map.invalidateSize(),250);}
+  $("cityGps")?.addEventListener("click",()=>{if(!navigator.geolocation){$("cityMapStatus").textContent="المتصفح لا يدعم GPS.";return;}$("cityMapStatus").textContent="جارٍ تحديد موقعك...";navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;map?.setView([lat,lon],11);if(marker)marker.setLatLng([lat,lon]);$("cityMapStatus").textContent="تم تحديد موقعك على الخريطة؛ بيانات صفحة المدينة تبقى مرتبطة بالمدينة المحددة.";},()=>{$("cityMapStatus").textContent="تعذر تحديد الموقع. تحقق من أذونات GPS.";},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});});
+  async function load(){try{status("جارٍ تحميل بيانات الطقس...");const q="lat="+encodeURIComponent(city.lat)+"&lon="+encodeURIComponent(city.lon)+"&units=metric&lang=ar&appid="+key;const [c,f]=await Promise.all([json(base+"/weather?"+q),json(base+"/forecast?"+q)]);if(!c.main||!Array.isArray(c.weather)||!Array.isArray(f.list))throw Error("بيانات الطقس غير مكتملة");currentData=c;forecastData=f;renderCurrent(c);renderHourly(f.list);renderFiveDays(f.list);renderStats(f.list);renderTips(c,f);$("cityStatus").textContent="مصدر البيانات: OpenWeatherMap؛ المؤشرات المتخصصة من Open-Meteo.";initMap();await Promise.all([loadUV(),window.SpecializedWeather?.load({lat:city.lat,lon:city.lon,name:city.name,displayName:city.name+" · "+city.country})]);}catch(e){console.error("[CityWeather]",e);status("تعذر تحميل بيانات الطقس الآن؛ أعد المحاولة لاحقاً.");$("cityForecast").innerHTML='<p class="city-status">التوقعات غير متاحة مؤقتاً.</p>';}}
+  load();$("cityRefresh")?.addEventListener("click",load);
 })();
