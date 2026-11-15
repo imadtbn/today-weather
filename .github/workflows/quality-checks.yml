@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Generate static SEO city pages
+        run: node scripts/generate-city-pages.mjs
       - name: Validate site files
         run: node scripts/validate-site.mjs
 
