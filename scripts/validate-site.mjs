@@ -110,8 +110,10 @@ function collectCityPages(directory) {
   }
 }
 collectCityPages(resolve(root, 'weather'));
-assert.ok(generatedCityPages.length >= 286, 'Expected generated city pages before validation; found ' + generatedCityPages.length);
-const cityPagesUseWeatherScript = generatedCityPages.every(path => readFileSync(path, 'utf8').includes('assets/js/city-page.js'));
+// Directory landing pages also contain index.html; identify actual city pages by their weather config.
+const cityPageFiles = generatedCityPages.filter(path => readFileSync(path, 'utf8').includes('data-city-weather='));
+assert.equal(cityPageFiles.length, 286, 'Expected exactly 286 generated city pages; found ' + cityPageFiles.length);
+const cityPagesUseWeatherScript = cityPageFiles.every(path => readFileSync(path, 'utf8').includes('assets/js/city-page.js'));
 assert.ok(cityPagesUseWeatherScript, 'One or more generated city pages do not reference city-page.js');
 const unreferenced = activeJs.filter(file =>
   !scriptRefs.includes('assets/js/' + file) &&
