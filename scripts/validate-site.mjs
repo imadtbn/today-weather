@@ -72,4 +72,12 @@ const activeJs = readdirSync(resolve(root, 'assets/js')).filter(file => file.end
 const unreferenced = activeJs.filter(file => !scriptRefs.includes('assets/js/' + file));
 assert.deepEqual(unreferenced, [], 'Unreferenced JavaScript files remain: ' + unreferenced.join(', '));
 
+
+assert.ok(html.includes('href="tel:+213697743721"'), 'Clickable contact phone missing');
+assert.ok(html.includes('href="mailto:tabaniimadeddine@gmail.com"'), 'Clickable contact email missing');
+const organization = JSON.parse(jsonLd[0][1])['@graph'].find(item => item['@type'] === 'Organization');
+assert.ok(organization?.telephone === '+213697743721', 'Organization telephone schema missing');
+assert.ok(organization?.email === 'tabaniimadeddine@gmail.com', 'Organization email schema missing');
+assert.ok(html.includes('weather forecast') && html.includes('météo Algérie'), 'Multilingual weather search terms missing');
+assert.ok(html.includes('id="weather-guide-title"'), 'Indexable weather guide content missing');
 console.log('Site validation passed: HTML, SEO, JSON-LD, sitemap, PWA cache, CSS and JavaScript.');
