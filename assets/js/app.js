@@ -60,8 +60,29 @@ const App = {
     },
 
     async _checkLocation() {
-        // اطلب GPS عند كل زيارة فعلية؛ المتصفح لا يعيد إظهار نافذة الإذن
-        // إذا سبق للزائر اتخاذ قرار، بل يطبق الإذن المحفوظ لديه.
+        // A globally searched city is applied before GPS and saved as the active location.
+        const params = new URLSearchParams(window.location.search);
+        const lat = Number(params.get('weather_lat'));
+        const lon = Number(params.get('weather_lon'));
+        if (params.has('weather_lat') && params.has('weather_lon') &&
+            Number.isFinite(lat) && Number.isFinite(lon) &&
+            Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+            const name = params.get('weather_name') || 'مدينة مختارة';
+            const country = params.get('weather_country') || '';
+            const state = params.get('weather_admin') || '';
+            const location = {
+                lat, lon, name, state, country,
+                displayName: [name, state, country].filter(Boolean).join(' · ')
+            };
+            AppState.setLocation(location);
+            UI.renderFavoriteLocations(location);
+            MapService.setView(lat, lon, 10);
+            MapService.updateMarker(lat, lon, location.displayName);
+            // Keep the selected coordinates in local storage without leaving tracking parameters in the URL.
+            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+            return;
+        }
+        // Ask for GPS only when the visitor did not choose a city from global search.
         await this.updateFromGPS(false);
     },
 
