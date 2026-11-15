@@ -41,13 +41,30 @@ const cityGroups = [
 
 function assertSharedPageShell(page, pagePath) {
   for (const marker of [
-    'google-site-verification', 'msvalidate.01', 'GTM-PTCXG7CG',
+    'name="google-site-verification" content="f5Xi4oFx0v5dN6iPZd9qCw-7vnc3vIbAeYF9jr4vwVM"',
+    'name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2"',
+    'googletagmanager.com/gtm.js?id=GTM-PTCXG7CG',
+    'window.dataLayer = window.dataLayer || []',
     'adsbygoogle.js?client=ca-pub-5656416032906373',
-    'class="site-header"', 'class="site-footer"',
-    'assets/css/style-main.css', 'assets/js/adsData.js',
-    'data-ad-slot="7867079394"', 'data-ad-slot="3143411927"'
-  ]) assert.ok(page.includes(marker), 'Shared shell marker missing (' + marker + '): ' + pagePath);
-  assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two approved ad containers: ' + pagePath);
+    'class="site-header"', 'id="siteHeader"', 'id="mainNav"',
+    'id="mobileMenuBtn"', 'id="searchInput"', 'id="citySuggestions"',
+    'id="locationBtn"', 'class="site-footer"', 'class="footer-grid"',
+    'class="footer-title"', 'class="footer-contact-item"',
+    'href="tel:+213697743721"', 'href="mailto:tabaniimadeddine@gmail.com"',
+    'OpenWeatherMap', 'Leaflet', 'OpenStreetMap contributors',
+    'assets/css/style-main.css', 'assets/js/adsData.js'
+  ]) assert.ok(page.includes(marker), 'Homepage shell marker missing (' + marker + '): ' + pagePath);
+
+  assert.equal((page.match(/class="site-header"/g) || []).length, 1, 'Expected one homepage header: ' + pagePath);
+  assert.equal((page.match(/class="site-footer"/g) || []).length, 1, 'Expected one homepage footer: ' + pagePath);
+  assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two ad containers: ' + pagePath);
+  assert.equal((page.match(/data-ad-slot="7867079394"/g) || []).length, 1, 'Top ad slot must appear exactly once: ' + pagePath);
+  assert.equal((page.match(/data-ad-slot="3143411927"/g) || []).length, 1, 'Footer ad slot must appear exactly once: ' + pagePath);
+  assert.equal((page.match(/adsbygoogle.js\?client=ca-pub-5656416032906373/g) || []).length, 1, 'AdSense loader must appear once: ' + pagePath);
+  assert.equal((page.match(/assets\/js\/adsData.js/g) || []).length, 1, 'Ad placement guard must appear once: ' + pagePath);
+  assert.ok(page.indexOf('data-ad-slot="7867079394"') < page.indexOf('<main'), 'Top ad must be below header and above main content: ' + pagePath);
+  assert.ok(page.indexOf('data-ad-slot="3143411927"') > page.indexOf('</main>') && page.indexOf('data-ad-slot="3143411927"') < page.indexOf('<footer'), 'Bottom ad must be after main content and before footer: ' + pagePath);
+  assert.ok(!page.includes('data-city='), 'Homepage footer city links must be normal links on static pages: ' + pagePath);
 }
 const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
 assert.equal(expectedCityCount, 286, 'Expected 286 source city records');
