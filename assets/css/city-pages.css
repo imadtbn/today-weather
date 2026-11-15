@@ -192,6 +192,16 @@ body.city-page {
 @media(prefers-reduced-motion:reduce){.city-directory .city-directory-grid .city-directory-item,.city-directory .city-directory-grid .city-directory-item.is-visible{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 
+/* Larger three-card layout for the main weather directory. */
+.city-directory .directory-feature-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:clamp(14px,2vw,22px)}
+.city-directory .directory-feature-grid .directory-feature-card{min-height:300px}
+.city-directory .directory-feature-grid .directory-city-image{width:100%;height:auto;max-height:none;aspect-ratio:16/9;object-fit:cover}
+.city-directory .directory-feature-grid .directory-city-body{gap:7px;padding:16px 18px}
+.city-directory .directory-feature-grid .directory-city-body strong{font-size:1.08rem;line-height:1.5}
+.city-directory .directory-feature-grid .directory-country{font-size:.88rem;line-height:1.6}
+@media(min-width:681px) and (max-width:1000px){.city-directory .directory-feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.city-directory .directory-feature-grid .directory-feature-card:last-child{grid-column:1/-1}}
+@media(max-width:680px){.city-directory .directory-feature-grid{grid-template-columns:1fr!important;gap:12px}.city-directory .directory-feature-grid .directory-feature-card{min-height:0}.city-directory .directory-feature-grid .directory-city-image{aspect-ratio:16/8}.city-directory .directory-feature-grid .directory-city-body{padding:12px 14px}}
+ 
 /* Semantic image hero for each city directory. */
 .city-directory .directory-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.8fr);align-items:center;gap:clamp(18px,3vw,34px);width:100%;}
 .directory-hero-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0;}
