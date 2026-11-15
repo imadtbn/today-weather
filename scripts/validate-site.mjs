@@ -54,7 +54,7 @@ for (const group of cityGroups) {
     assert.ok(page.includes('<h1 class="city-title">طقس '), 'City H1 missing: ' + pagePath);
     assert.ok(page.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/"'), 'City canonical missing: ' + pagePath);
     assert.ok(page.includes('id="cityTemp"') && page.includes('id="cityForecast"'), 'Live weather fields missing: ' + pagePath);
-    const pageJsonLd = [...page.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
+    const pageJsonLd = [...page.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
     assert.equal(pageJsonLd.length, 1, 'Expected one JSON-LD block in ' + pagePath);
     const pageSchema = JSON.parse(pageJsonLd[0][1]);
     assert.ok(pageSchema['@graph']?.some(item => item['@type'] === 'Place' && item.geo), 'Place/GeoCoordinates schema missing: ' + pagePath);
