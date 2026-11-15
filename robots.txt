@@ -1,4 +1,6 @@
+# Robots policy: allow all compliant search-engine crawlers to access the site.
 User-agent: *
 Allow: /
 
+# XML sitemap
 Sitemap: https://imadtbn.github.io/today-weather/sitemap.xml
