@@ -131,7 +131,7 @@ function buildDirectory(group) {
     const deferredImage = index >= batchSize;
     const imageSource = deferredImage ? 'data-src' : 'src';
     const hidden = deferredImage ? ' hidden' : '';
-    return `<a class="city-directory-item${''}" href="${BASE}/weather/${group.key}/${encodeURIComponent(city.slug)}/"${hidden}
+    return `<a class="city-directory-item" href="${BASE}/weather/${group.key}/${encodeURIComponent(city.slug)}/"${hidden}
       data-country-code="${escapeHtml(code)}" data-country-phone="${escapeHtml(phone)}"
       data-english-name="${escapeHtml(englishName)}" data-continent="${escapeHtml(continent)}">
       <img class="directory-city-image" ${imageSource}="${image}" alt="${escapeHtml('صورة ' + group.name(city) + ' - ' + group.country(city))}"
