@@ -3064,3 +3064,18 @@ body {
     .cube-face.top { transform: rotateX(90deg) translateZ(120px); }
     .cube-face.bottom { transform: rotateX(-90deg) translateZ(120px); }
 }
+
+/* Search-focused editorial content and contact links */
+.seo-guide-section { padding: var(--space-3xl) 0; background: rgba(255,255,255,.015); border-top: 1px solid rgba(212,168,83,.12); }
+.seo-guide-lead { color: var(--text-secondary); max-width: 760px; line-height: 1.9; margin: var(--space-md) 0; }
+.seo-guide-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-lg); margin: var(--space-xl) 0; }
+.seo-guide-card, .seo-guide-search, .seo-guide-faq { background: rgba(255,255,255,.035); border: 1px solid rgba(212,168,83,.14); border-radius: var(--radius-md); padding: var(--space-lg); }
+.seo-guide-card h3, .seo-guide-search h3, .seo-guide-faq h3 { color: var(--parchment); font-size: 1.05rem; margin-bottom: var(--space-sm); }
+.seo-guide-card p, .seo-guide-search p, .seo-guide-faq details p { color: var(--text-secondary); line-height: 1.9; font-size: .94rem; }
+.seo-guide-search { margin-bottom: var(--space-lg); }
+.seo-guide-faq details { border-top: 1px solid rgba(255,255,255,.08); padding: var(--space-md) 0; }
+.seo-guide-faq summary { color: var(--parchment); cursor: pointer; font-weight: 700; }
+.seo-guide-faq details p { margin-top: var(--space-sm); }
+.footer-contact-item a { color: var(--text-secondary); text-decoration: none; overflow-wrap: anywhere; }
+.footer-contact-item a:hover { color: var(--gold); }
+@media(max-width:640px) { .seo-guide-grid { grid-template-columns: 1fr; } }
