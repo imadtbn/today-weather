@@ -38,11 +38,25 @@ const cityGroups = [
   { key: 'arab', file: 'data/arab-capitals.json', count: 22 },
   { key: 'world', file: 'data/world-capitals.json', count: 195 }
 ];
+
+function assertSharedPageShell(page, pagePath) {
+  for (const marker of [
+    'google-site-verification', 'msvalidate.01', 'GTM-PTCXG7CG',
+    'adsbygoogle.js?client=ca-pub-5656416032906373',
+    'class="site-header"', 'class="site-footer"',
+    'assets/css/style-main.css', 'assets/js/adsData.js',
+    'data-ad-slot="7867079394"', 'data-ad-slot="3143411927"'
+  ]) assert.ok(page.includes(marker), 'Shared shell marker missing (' + marker + '): ' + pagePath);
+  assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two approved ad containers: ' + pagePath);
+}
 const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
 assert.equal(expectedCityCount, 286, 'Expected 286 source city records');
 assert.equal(urls.length, expectedCityCount + 5, 'Sitemap must include home, directory index, three category indexes and every city page');
 assert.equal(new Set(urls).size, urls.length, 'Sitemap contains duplicate URLs');
 assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/'));
+assertSharedPageShell(read('weather/index.html'), 'weather/index.html');
+for (const group of cityGroups) assertSharedPageShell(read('weather/' + group.key + '/index.html'), 'weather/' + group.key + '/index.html');
+
 for (const group of cityGroups) {
   const cities = JSON.parse(read(group.file));
   assert.equal(cities.length, group.count, 'Unexpected city count for ' + group.key);
@@ -60,6 +74,7 @@ for (const group of cityGroups) {
     assert.ok(pageSchema['@graph']?.some(item => item['@type'] === 'Place' && item.geo), 'Place/GeoCoordinates schema missing: ' + pagePath);
     assert.ok(pageSchema['@graph']?.some(item => item['@type'] === 'BreadcrumbList'), 'Breadcrumb schema missing: ' + pagePath);
     assert.ok(page.includes('assets/css/city-pages.css') && page.includes('assets/js/city-page.js'), 'City page assets missing: ' + pagePath);
+    assertSharedPageShell(page, pagePath);
     assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/'), 'City URL missing from sitemap: ' + city.slug);
   }
 }
