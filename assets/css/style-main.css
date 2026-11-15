@@ -3183,3 +3183,12 @@ body {
 /* Accessible image-led discovery cards. */
 .city-discovery-image img{object-position:center 45%;}
 .city-discovery-card:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
+
+
+/* Slightly larger, equal-height weather discovery cards. */
+.city-discovery-grid{grid-auto-rows:1fr;align-items:stretch;}
+.city-discovery-card{height:100%;min-height:340px;}
+.city-discovery-image{aspect-ratio:16/10;}
+.city-discovery-content{padding:1.25rem 1.3rem 1.35rem;gap:.62rem;}
+@media(max-width:640px){.city-discovery-card{min-height:164px;}.city-discovery-image{min-height:150px;}}
+@media(max-width:360px){.city-discovery-card{min-height:154px;}.city-discovery-image{min-height:140px;}}
