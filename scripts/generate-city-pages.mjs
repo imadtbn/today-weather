@@ -119,7 +119,24 @@ function adBlock(position) {
 }
 
 function buildDirectory(group) {
-  const links = group.items.map(city => `<a class="city-directory-item" href="${BASE}/weather/${group.key}/${encodeURIComponent(city.slug)}/"><strong>${escapeHtml(group.name(city))}</strong><small>${escapeHtml(group.country(city))}${city.region ? ' · ' + escapeHtml(city.region) : city.continentName ? ' · ' + escapeHtml(city.continentName) : ''}</small></a>`).join('\n');
+  const links = group.items.map(city => {
+    const image = imagePath(city);
+    const englishName = city.englishName || city.name_en || city.name_fr || '';
+    const continent = city.continentName || (group.key === 'algeria' ? 'إفريقيا' : '');
+    const phone = city.countryPhone || '';
+    const code = city.countryCode || '';
+    const subtitle = [group.country(city), continent].filter(Boolean).join(' · ');
+    return `<a class="city-directory-item" href="${BASE}/weather/${group.key}/${encodeURIComponent(city.slug)}/"
+      data-country-code="${escapeHtml(code)}" data-country-phone="${escapeHtml(phone)}"
+      data-english-name="${escapeHtml(englishName)}" data-continent="${escapeHtml(continent)}">
+      <img class="directory-city-image" src="${image}" alt="${escapeHtml('صورة ' + group.name(city) + ' - ' + group.country(city))}"
+        width="640" height="400" loading="lazy" decoding="async">
+      <span class="directory-city-body"><strong>${escapeHtml(group.name(city))}</strong>
+      <small class="directory-country">${escapeHtml(subtitle)}</small>
+      <span class="directory-city-meta"><span><bdi>${escapeHtml(code || '—')}</bdi></span>
+      <span><bdi>${escapeHtml(phone || '—')}</bdi></span>
+      <span lang="en" dir="ltr">${escapeHtml(englishName || '')}</span></span></span></a>`;
+  }).join('\\n');
   const url = `${SITE}/weather/${group.key}/`;
   const schema = {
     '@context': 'https://schema.org', '@type': 'CollectionPage',
@@ -137,8 +154,12 @@ function buildDirectory(group) {
 <link rel="canonical" href="${url}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ"><meta property="og:title" content="الطقس في ${escapeHtml(group.title)}"><meta property="og:description" content="${escapeHtml(group.description)}"><meta property="og:url" content="${url}">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script></head>
 <body class="city-page">${commonHeader()}${adBlock("top")}
-<main class="city-container city-directory"><nav class="city-breadcrumb"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / ${escapeHtml(group.title)}</nav><span class="city-kicker">صفحات الطقس المستقلة</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)} تضم هذه القائمة ${group.items.length} صفحة مدينة مرتبطة بإحداثياتها الجغرافية.</p><div class="city-directory-grid">${links}</div></main>
-${adBlock("bottom")}${commonFooter()}</body></html>`;
+<main class="city-container city-directory"><nav class="city-breadcrumb"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / ${escapeHtml(group.title)}</nav>
+<header class="directory-hero"><span class="city-kicker">دليل الطقس · ${escapeHtml(group.kind)}</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)}</p><span class="directory-count">استكشف ${group.items.length} مدينة</span></header>
+<div class="city-directory-grid">${links}</div></main>
+${adBlock("bottom")}${commonFooter()}
+<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);if(!('IntersectionObserver'in window)){cards.forEach(function(card){card.classList.add('is-visible');});return;}var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target);}});},{rootMargin:'180px 0px',threshold:0.01});cards.forEach(function(card){observer.observe(card);});})();<\\/script>
+</body></html>`;
 }
 
 function buildCityPage(group, index) {
