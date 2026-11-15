@@ -1,21 +1,3 @@
-
-
-  const grid = page.locator('.city-directory-grid');
-  await expect(grid.locator('.city-directory-item')).toHaveCount(69);
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(12);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(12);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(57);
-  for (const [width, expectedColumns] of [[1440, 4], [1024, 3], [390, 2]]) {
-    await page.setViewportSize({ width, height: 900 });
-    const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
-    expect(columns, 'wrong city-card column count at ' + width + 'px').toBe(expectedColumns);
-  }
-  await page.locator('.directory-load-sentinel').scrollIntoViewIfNeeded();
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(24);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(24);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(45);
-});
-
 const { test, expect } = require('@playwright/test');
 
 test('city directory renders compact responsive cards and reveals images in batches', async ({ page }) => {
