@@ -119,7 +119,7 @@ function adBlock(position) {
 }
 
 function buildDirectory(group) {
-  const batchSize = 12;
+  const batchSize = 4;
   const links = group.items.map((city, index) => {
     const image = imagePath(city);
     const englishName = city.englishName || city.name_en || city.name_fr || '';
@@ -165,7 +165,7 @@ function buildDirectory(group) {
 <header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل الطقس · ${escapeHtml(group.kind)}</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)}</p><span class="directory-count">استكشف ${group.items.length} مدينة</span></div><figure class="directory-hero-media"><img src="${BASE}/${directoryImage}" alt="${escapeHtml(directoryImageAlt)}" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header>
 <div class="city-directory-grid">${links}</div></main>
 ${adBlock("bottom")}${commonFooter()}
-<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=12;var shown=0;var observer=null;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';function revealCard(card){card.hidden=false;var img=card.querySelector('img[data-src]');if(img){img.setAttribute('src',img.dataset.src);img.removeAttribute('data-src');}card.classList.add('is-visible');}function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++)revealCard(cards[i]);shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}grid.classList.add('directory-progressive');grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(revealCard);sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
+<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=window.matchMedia('(max-width: 600px)').matches?4:12;var shown=0;var observer=null;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';function revealCard(card){card.hidden=false;var img=card.querySelector('img[data-src]');if(img){img.setAttribute('src',img.dataset.src);img.removeAttribute('data-src');}card.classList.add('is-visible');}function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++)revealCard(cards[i]);shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}grid.classList.add('directory-progressive');grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(revealCard);sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
 </body></html>`;
 }
 
