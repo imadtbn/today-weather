@@ -177,7 +177,7 @@ function buildCityPage(group, index) {
       { '@type': 'BreadcrumbList', itemListElement: breadcrumb }
     ]
   };
-  const config = safeJson({ lat: latitude, lon: longitude, name, country });
+  const config = safeJson({ lat: latitude, lon: longitude, name, country, countryCode: city.countryCode || city.country_code || (group.key === 'algeria' ? 'DZ' : '') });
   const imageAlt = `صورة ${name} في ${country}`;
   const groupLabel = group.key === 'algeria' ? 'الولايات الجزائرية' : group.key === 'arab' ? 'العواصم العربية' : 'المدن العالمية';
   return `<!doctype html>
@@ -195,14 +195,40 @@ ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script>
 <figure class="city-image-wrap"><img src="${image}" alt="${escapeHtml(imageAlt)}" width="960" height="600" fetchpriority="high" decoding="async"></figure></div></section>
 <section class="city-weather" aria-labelledby="cityWeatherTitle"><div class="city-weather-card"><div class="city-weather-head"><h2 id="cityWeatherTitle">حالة الطقس الحالية في ${escapeHtml(name)}</h2><span class="city-live-label"><i class="fa-solid fa-circle" aria-hidden="true"></i> بيانات مباشرة</span></div>
 <div class="city-current"><div><div class="city-temp" id="cityTemp" aria-live="polite">--°</div><p class="city-condition" id="cityCondition">جارٍ تحميل حالة الطقس...</p></div><i id="cityWeatherIcon" class="fa-solid fa-cloud city-weather-icon" aria-hidden="true"></i></div>
-<div class="city-metrics"><div class="city-metric"><strong id="cityFeels">--</strong><span>الحرارة المحسوسة</span></div><div class="city-metric"><strong id="cityHumidity">--</strong><span>الرطوبة</span></div><div class="city-metric"><strong id="cityWind">--</strong><span>سرعة الرياح</span></div><div class="city-metric"><strong id="cityPressure">--</strong><span>الضغط الجوي</span></div></div>
+<div class="city-metrics">
+<div class="city-metric"><strong id="cityFeels">--</strong><span>الحرارة المحسوسة</span></div>
+<div class="city-metric"><strong id="cityHumidity">--</strong><span>الرطوبة</span></div>
+<div class="city-metric"><strong id="cityWind">--</strong><span>سرعة الرياح</span></div>
+<div class="city-metric"><strong id="cityPressure">--</strong><span>الضغط الجوي</span></div>
+<div class="city-metric"><strong id="cityVisibility">--</strong><span>مدى الرؤية</span></div>
+<div class="city-metric"><strong id="cityDewPoint">--</strong><span>نقطة الندى التقديرية</span></div>
+<div class="city-metric"><strong id="cityUv">--</strong><span>مؤشر الأشعة UV</span></div>
+<div class="city-metric"><strong id="cityClouds">--</strong><span>الغطاء السحابي</span></div>
+<div class="city-metric"><strong id="cityWindDirection">--</strong><span>اتجاه الرياح</span></div>
+<div class="city-metric"><strong id="citySunrise">--</strong><span>الشروق</span></div>
+<div class="city-metric"><strong id="citySunset">--</strong><span>الغروب</span></div>
+<div class="city-metric"><strong id="cityCountryCode">--</strong><span>رمز الدولة</span></div>
+</div>
 <p class="city-status" id="cityStatus" role="status">يتم الاتصال بمصدر بيانات الطقس...</p><p class="city-status" id="cityUpdated"></p><button id="cityRefresh" type="button" class="city-refresh">تحديث الطقس</button></div>
+<div class="city-hourly city-forecast-card"><h2 class="city-section-title">توقعات الطقس كل 3 ساعات خلال 24 ساعة القادمة</h2><div class="hourly-scroll"><div class="hourly-container" id="hourlyForecast"><p class="city-status">جارٍ تحميل التوقعات الساعية...</p></div></div></div>
 <div class="city-forecast city-forecast-card"><h2 class="city-section-title">توقعات الطقس لمدة خمسة أيام في ${escapeHtml(name)}</h2><div class="city-forecast-grid" id="cityForecast"><p class="city-status">جارٍ تحميل التوقعات...</p></div></div></section>
+<section class="specialized-section city-extra-section" id="specialized"><div class="city-section-heading"><h2 class="city-section-title">الأقسام المتخصصة</h2><span id="specializedLocation">${escapeHtml(name)} · ${escapeHtml(country)}</span></div>
+<div class="specialized-grid">
+<article class="specialized-card agriculture-card" id="agricultureCard"><h3>المؤشرات الزراعية</h3><div class="city-extra-values"><span>التبخر المرجعي <b id="agriEt0">--</b></span><span>رطوبة التربة <b id="agriSoil">--</b></span><span>الأمطار المتوقعة <b id="agriRain">--</b></span></div><p class="specialized-advice" id="agriAdvice">جارٍ تحميل البيانات الزراعية...</p></article>
+<article class="specialized-card marine-card" id="marineCard"><h3>حالة البحر والأمواج</h3><div class="city-extra-values"><span>ارتفاع الموج <b id="marineWave">--</b></span><span>اتجاه الموج <b id="marineDirection">--</b></span><span>فترة الموج <b id="marinePeriod">--</b></span></div><p class="specialized-advice" id="marineAdvice">جارٍ تحميل البيانات البحرية...</p></article>
+<article class="specialized-card air-card" id="airCard"><h3>جودة الهواء</h3><div class="city-extra-values"><span>المؤشر الأوروبي <b id="airAqi">--</b></span><span>PM2.5 <b id="airPm25">--</b></span><span>PM10 <b id="airPm10">--</b></span></div><p class="specialized-advice" id="airAdvice">جارٍ تحميل جودة الهواء...</p></article>
+<article class="specialized-card rainfall-card" id="rainfallCard"><h3>مؤشرات الأمطار</h3><div class="city-extra-values"><span>خلال 24 ساعة <b id="rainNext24">--</b></span><span>احتمال الهطول <b id="rainProbability">--</b></span><span>خلال 7 أيام <b id="rainNext7">--</b></span></div><p class="specialized-advice" id="rainAdvice">جارٍ تحليل الأمطار...</p></article>
+</div></section>
+<section class="map-section city-extra-section" id="maps"><div class="city-section-heading"><h2 class="city-section-title">خريطة الطقس التفاعلية</h2><button type="button" id="cityGps" class="city-refresh">تحديد موقعي عبر GPS</button></div><div class="map-controls city-map-controls"><button type="button" class="map-btn active" data-city-layer="temp_new">الحرارة</button><button type="button" class="map-btn" data-city-layer="precipitation_new">الأمطار</button><button type="button" class="map-btn" data-city-layer="wind_new">الرياح</button><button type="button" class="map-btn" data-city-layer="clouds_new">السحب</button></div><div id="cityWeatherMap" class="city-weather-map" role="application" aria-label="خريطة الطقس للمدينة"></div><p class="city-status" id="cityMapStatus">الخريطة تعرض طبقة الطقس فوق موقع المدينة.</p></section>
+<section class="stats-section city-extra-section" id="stats"><h2 class="city-section-title">إحصائيات الطقس</h2><p class="stats-period-note">إحصائيات محسوبة من التوقعات المتاحة للأيام الخمسة القادمة.</p><div class="stats-grid city-stats-grid">
+<article class="stat-card"><strong id="statMaxTemp">--</strong><span>أعلى حرارة</span></article><article class="stat-card"><strong id="statMinTemp">--</strong><span>أدنى حرارة</span></article><article class="stat-card"><strong id="statAvgTemp">--</strong><span>متوسط الحرارة</span></article><article class="stat-card"><strong id="statRain">--</strong><span>إجمالي الأمطار المتوقع</span></article><article class="stat-card"><strong id="statWind">--</strong><span>أقصى سرعة رياح</span></article><article class="stat-card"><strong id="statRainChance">--</strong><span>أعلى احتمال للأمطار</span></article>
+</div></section>
+<section class="tips-section city-extra-section"><div class="city-section-heading"><div><h2 class="city-section-title">نصائح الطقس الذكية</h2><p id="weatherTipsContext">نصائح تتغير وفق الطقس الحالي والتوقعات.</p></div><span id="weatherTipsStatus">جارٍ التحليل</span></div><div class="tips-grid" id="weatherTips" aria-live="polite"><p class="city-status">جارٍ إعداد النصائح...</p></div></section>
 <section class="city-content"><article class="city-info-card"><h2 class="city-section-title">حالة الطقس والمناخ في ${escapeHtml(name)}</h2><p>تقع ${escapeHtml(name)} ضمن ${escapeHtml(group.region(city))} في ${escapeHtml(country)}. تساعدك هذه الصفحة على متابعة الطقس اليومي في المنطقة من خلال عرض درجة الحرارة، والحرارة المحسوسة، والرطوبة، وسرعة الرياح، والضغط الجوي، إضافة إلى توقعات الأيام المقبلة.</p><p>تتغير الظروف الجوية من يوم إلى آخر؛ لذلك يُنصح بمراجعة التحديثات قبل التنقل أو التخطيط للأنشطة الخارجية. تُعرض القيم الجوية عند توفرها من مزود البيانات، وقد تختلف دقة التوقعات بحسب الموقع والفترة الزمنية.</p></article>
 <aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p><p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
 <section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${BASE}/weather/${group.key}/">جميع ${groupLabel}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
 </main>${adBlock("bottom")}${commonFooter()}
-<script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script><script src="${BASE}/assets/js/specialized-weather.js" defer></script><script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
 }
 
 const weatherRoot = join(ROOT, 'weather');
