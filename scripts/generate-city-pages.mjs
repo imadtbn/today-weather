@@ -172,15 +172,24 @@ function buildSitemapPage() {
   }).join('');
   const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0);
   const totalLinks = totalCities + pageLinks.length;
+  const pageSchemaItems = pageLinks.map((item, index) => ({
+    '@type': 'ListItem', position: index + 1, name: item.name, url: SITE + item.path
+  }));
+  let schemaPosition = pageSchemaItems.length;
+  const citySchemaItems = groups.flatMap(group => group.items.map(city => {
+    schemaPosition++;
+    return {
+      '@type': 'ListItem', position: schemaPosition,
+      name: group.name(city), url: pageUrl(group.key, city.slug)
+    };
+  }));
   const schema = {
     '@context': 'https://schema.org', '@type': 'CollectionPage',
     name: 'خريطة الموقع | أحوال الطقس',
     description: 'دليل شامل لجميع صفحات الطقس والولايات الجزائرية والعواصم العربية والمدن العالمية.',
     url: SITE + '/sitemap.html', inLanguage: 'ar',
     mainEntity: { '@type': 'ItemList', numberOfItems: totalLinks,
-      itemListElement: pageLinks.map((item, index) => ({
-        '@type': 'ListItem', position: index + 1, name: item.name, url: SITE + item.path
-      }))
+      itemListElement: [...pageSchemaItems, ...citySchemaItems]
     }
   };
   return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
@@ -223,7 +232,7 @@ function buildSitemapPage() {
     '<script>(function(){var input=document.getElementById("sitemapSearch"),clear=document.getElementById("sitemapClear"),' +
     'status=document.getElementById("sitemapSearchStatus"),empty=document.getElementById("sitemapNoResults");' +
     'var entries=Array.from(document.querySelectorAll(".sitemap-entry")),groupsList=Array.from(document.querySelectorAll(".sitemap-group"));' +
-    'function normalize(value){return String(value||"").toLocaleLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim();}' +
+    'function normalize(value){return String(value||"").toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u064b-\u065f\u0670]/g,"").trim();}' +
     'function filter(){var query=normalize(input.value),shown=0;entries.forEach(function(entry){var match=!query||normalize(entry.dataset.search+" "+entry.textContent).includes(query);entry.hidden=!match;if(match)shown++;});' +
     'groupsList.forEach(function(group){var visible=group.querySelectorAll(".sitemap-entry:not([hidden])").length;group.hidden=visible===0;if(query&&visible)group.open=true;});' +
     'var pages=document.querySelector(".sitemap-page-grid"),pageVisible=pages&&pages.querySelectorAll(".sitemap-entry:not([hidden])").length; ' +
