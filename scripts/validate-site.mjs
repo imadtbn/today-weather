@@ -59,6 +59,7 @@ function assertSharedPageShell(page, pagePath) {
 
   assert.equal((page.match(/class="site-header"/g) || []).length, 1, 'Expected one homepage header: ' + pagePath);
   assert.equal((page.match(/class="site-footer"/g) || []).length, 1, 'Expected one homepage footer: ' + pagePath);
+  assert.ok(page.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing: ' + pagePath);
   assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two ad containers: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="7867079394"/g) || []).length, 1, 'Top ad slot must appear exactly once: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="3143411927"/g) || []).length, 1, 'Footer ad slot must appear exactly once: ' + pagePath);
@@ -70,7 +71,16 @@ function assertSharedPageShell(page, pagePath) {
 }
 const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
 assert.equal(expectedCityCount, 286, 'Expected 286 source city records');
-assert.equal(urls.length, expectedCityCount + 5, 'Sitemap must include home, directory index, three category indexes and every city page');
+assert.equal(urls.length, expectedCityCount + 6, 'Sitemap must include home, sitemap.html, directory index, three category indexes and every city page');
+assert.ok(urls.includes('https://imadtbn.github.io/today-weather/sitemap.html'), 'HTML sitemap URL missing from XML sitemap');
+const htmlSitemap = read('sitemap.html');
+assert.ok(htmlSitemap.includes('<h1 class="city-title">خريطة الموقع</h1>'), 'HTML sitemap H1 missing');
+assert.ok(htmlSitemap.includes('id="sitemapSearch"') && htmlSitemap.includes('sitemap-group-grid'), 'HTML sitemap search or city groups missing');
+assert.ok(htmlSitemap.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/sitemap.html"'), 'HTML sitemap canonical missing');
+assert.ok(htmlSitemap.includes('assets/css/sitemap.css'), 'HTML sitemap stylesheet missing');
+assert.ok(htmlSitemap.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing from generated pages');
+const sitemapCss = read('assets/css/sitemap.css');
+assert.equal((sitemapCss.match(/{/g) || []).length, (sitemapCss.match(/}/g) || []).length, 'Unbalanced sitemap CSS braces');
 assert.equal(new Set(urls).size, urls.length, 'Sitemap contains duplicate URLs');
 assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/'));
 assertSharedPageShell(read('weather/index.html'), 'weather/index.html');
