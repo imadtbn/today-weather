@@ -6,6 +6,7 @@ const SearchService = {
     init() {
         this.input = document.getElementById('searchInput');
         this.suggestions = document.getElementById('citySuggestions');
+        if (window.GlobalSearch) { window.GlobalSearch.init(); return; }
         if (!this.input || !this.suggestions) return;
         this.input.addEventListener('input', e => this._onInput(e));
         this.input.addEventListener('keydown', e => this._onKeyDown(e));
