@@ -297,7 +297,7 @@ test('specialized weather sections are present and linked from navigation', asyn
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#specialized')).toBeAttached();
   for (const id of ['agricultureCard', 'marineCard', 'airCard', 'rainfallCard']) await expect(page.locator('#' + id)).toBeAttached();
-  await expect(page.locator('.nav-link[href="#specialized"]')).toHaveCount(1);
+  await expect(page.locator('.nav-link[href$="#specialized"]')).toHaveCount(1);
   await expect(page.locator('#specialized .specialized-disclaimer')).toContainText('الجهات الرسمية');
 });
 
