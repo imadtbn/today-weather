@@ -3146,3 +3146,35 @@ body {
     .city-discovery-image { min-height: 124px; }
     .city-discovery-content { padding: .7rem; }
 }
+
+
+/* Unified main navigation: keep desktop links on one horizontal line. */
+@media (min-width: 769px) {
+    .main-nav {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: min(56vw, 780px);
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        white-space: nowrap;
+    }
+    .main-nav::-webkit-scrollbar { display: none; }
+    .main-nav .nav-list {
+        display: flex;
+        flex-wrap: nowrap;
+        width: max-content;
+        min-width: max-content;
+        gap: 2px;
+    }
+    .main-nav .nav-link {
+        display: block;
+        padding: .48rem .58rem;
+        font-size: clamp(.72rem, .78vw, .86rem);
+        white-space: nowrap;
+    }
+}
+@media (max-width: 768px) {
+    .main-nav .nav-list { flex-wrap: wrap; }
+    .main-nav .nav-link { white-space: nowrap; }
+}
