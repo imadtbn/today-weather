@@ -154,8 +154,8 @@ function buildCityPage(group, index) {
 <link rel="canonical" href="${url}"><meta name="theme-color" content="#0a0e1a">
 <meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ"><meta property="og:site_name" content="أحوال الطقس"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${SITE + image}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${SITE + image}">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">
-<script type="application/ld+json">${safeJson(schema)}</script></head>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">
+${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script></head>
 <body class="city-page">${commonHeader()}${adBlock("top")}
 <main class="city-container" data-city-weather='${escapeHtml(config)}'>
 <nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / <a href="${BASE}/weather/${group.key}/">${groupLabel}</a> / ${escapeHtml(name)}</nav>
