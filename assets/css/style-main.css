@@ -3082,3 +3082,67 @@ body {
 
 /* روابط دليل صفحات الطقس */
 .city-discovery-section{padding:var(--space-3xl) 0;background:rgba(255,255,255,.015);border-top:1px solid rgba(212,168,83,.12)}.city-discovery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-lg)}.city-discovery-card{display:flex;flex-direction:column;gap:.45rem;padding:1.2rem;border:1px solid rgba(212,168,83,.2);border-radius:var(--radius-md);background:rgba(255,255,255,.035);color:var(--parchment);text-decoration:none;min-width:0}.city-discovery-card strong{color:var(--gold-light)}.city-discovery-card span{color:var(--text-muted);font-size:.85rem;line-height:1.7}.city-discovery-card:hover{border-color:var(--gold)}@media(max-width:640px){.city-discovery-grid{grid-template-columns:1fr;gap:var(--space-md)}}
+
+
+/* Main navigation: direct links to the three weather directories. */
+.main-nav .nav-list { flex-wrap: wrap; }
+.main-nav .nav-link { white-space: nowrap; }
+@media (max-width: 1100px) {
+    .main-nav .nav-list { gap: 6px 10px; }
+    .main-nav .nav-link { font-size: .84rem; }
+}
+
+/* Image-led weather directory cards. Images are served locally from /images/. */
+.city-discovery-grid { align-items: stretch; }
+.city-discovery-card {
+    display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(155deg, rgba(30,58,95,.42), rgba(10,14,26,.88));
+    box-shadow: var(--shadow-sm);
+    transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.city-discovery-card:hover {
+    transform: translateY(-4px); border-color: var(--gold); box-shadow: var(--shadow-md);
+}
+.city-discovery-image {
+    position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
+    background: rgba(255,255,255,.05);
+}
+.city-discovery-image::after {
+    content: ""; position: absolute; inset: 45% 0 0;
+    background: linear-gradient(180deg, transparent, rgba(7,12,23,.58));
+    pointer-events: none;
+}
+.city-discovery-image img {
+    display: block; width: 100%; height: 100%; object-fit: cover;
+    transition: transform .45s ease;
+}
+.city-discovery-card:hover .city-discovery-image img { transform: scale(1.045); }
+.city-discovery-content {
+    display: flex; flex: 1; flex-direction: column; align-items: flex-start;
+    gap: .55rem; padding: 1.1rem 1.2rem 1.2rem;
+}
+.city-discovery-content strong { color: var(--gold-light); font-size: 1.05rem; line-height: 1.6; }
+.city-discovery-content > span:not(.city-discovery-action) {
+    color: var(--text-muted); font-size: .85rem; line-height: 1.7;
+}
+.city-discovery-content .city-discovery-action {
+    display: inline-flex; align-items: center; gap: .5rem; margin-top: auto;
+    padding-top: .45rem; color: var(--gold); font-size: .82rem; font-weight: 700;
+}
+.city-discovery-action i { transition: transform .2s ease; }
+.city-discovery-card:hover .city-discovery-action i { transform: translateX(-4px); }
+@media (max-width: 640px) {
+    .city-discovery-grid { grid-template-columns: minmax(0,1fr); }
+    .city-discovery-card { display: grid; grid-template-columns: minmax(112px,38%) minmax(0,1fr); }
+    .city-discovery-image { height: 100%; min-height: 132px; aspect-ratio: auto; }
+    .city-discovery-content { justify-content: center; padding: .85rem; gap: .35rem; }
+    .city-discovery-content strong { font-size: .92rem; }
+    .city-discovery-content > span:not(.city-discovery-action) { font-size: .76rem; }
+    .city-discovery-content .city-discovery-action { font-size: .74rem; padding-top: .25rem; }
+}
+@media (max-width: 360px) {
+    .city-discovery-card { grid-template-columns: 104px minmax(0,1fr); }
+    .city-discovery-image { min-height: 124px; }
+    .city-discovery-content { padding: .7rem; }
+}
