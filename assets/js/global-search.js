@@ -2,6 +2,9 @@
   'use strict';
   var BASE = '/today-weather';
   var input, panel, items = [], results = [], active = -1, ready = false, timer;
+  var geoController = null, searchToken = 0;
+  var MAX_SUGGESTIONS = 4;
+  var GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 
   function normalize(value) {
     return String(value || '').toLocaleLowerCase()
@@ -19,7 +22,7 @@
     if (!host) return;
     var wrapper = document.createElement('div');
     wrapper.className = 'search-wrapper global-search-wrapper';
-    wrapper.innerHTML = '<input type="search" class="search-input" id="searchInput" placeholder="ابحث في الموقع والمدن العالمية..." aria-label="ابحث في الموقع والمدن العالمية" role="combobox" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="citySuggestions" aria-expanded="false"><i class="fas fa-search search-icon" aria-hidden="true"></i><div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="نتائج البحث الشامل" aria-live="polite"></div>';
+    wrapper.innerHTML = '<input type="search" class="search-input" id="searchInput" placeholder="ابحث عن أي مدينة في العالم..." aria-label="ابحث عن أي مدينة في العالم" role="combobox" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="citySuggestions" aria-expanded="false"><i class="fas fa-search search-icon" aria-hidden="true"></i><div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="أربعة اقتراحات للمدن والصفحات" aria-live="polite"></div>';
     host.appendChild(wrapper);
     input = wrapper.querySelector('#searchInput');
     panel = wrapper.querySelector('#citySuggestions');
@@ -53,28 +56,36 @@
 
   function select(index) {
     var item = results[index];
-    if (!item || !item.path) return;
+    if (!item) return;
+    if (item.type === 'global-city') {
+      var params = new URLSearchParams({
+        weather_lat: String(item.latitude),
+        weather_lon: String(item.longitude),
+        weather_name: item.name || '',
+        weather_country: item.country || '',
+        weather_admin: item.admin1 || ''
+      });
+      window.location.href = BASE + '/?' + params.toString();
+      return;
+    }
+    if (!item.path) return;
     var target = item.path.charAt(0) === '/' ? BASE + item.path : item.path;
     window.location.href = target;
   }
 
-  function render() {
+  function render(loading) {
     var query = normalize(input.value);
     if (query.length < 2) { results = []; hide(); return; }
-    results = items.map(function (item) { return { item: item, score: score(item, query) }; })
-      .filter(function (entry) { return entry.score > 0; })
-      .sort(function (a, b) { return b.score - a.score || a.item.name.localeCompare(b.item.name, 'ar'); })
-      .slice(0, 10).map(function (entry) { return entry.item; });
     active = -1;
     panel.textContent = '';
     if (!results.length) {
       var empty = document.createElement('div');
       empty.className = 'city-suggestion-empty';
       empty.setAttribute('role', 'status');
-      empty.textContent = ready ? 'لا توجد نتائج مطابقة. جرّب اسماً آخر.' : 'جارٍ تحميل فهرس البحث…';
+      empty.textContent = loading ? 'جارٍ البحث في المدن حول العالم…' : (ready ? 'لا توجد نتائج. جرّب اسماً أو لغة أخرى.' : 'جارٍ تحميل فهرس البحث…');
       panel.appendChild(empty);
     } else {
-      results.forEach(function (item, index) {
+      results.slice(0, MAX_SUGGESTIONS).forEach(function (item, index) {
         var button = document.createElement('button');
         button.type = 'button';
         button.className = 'city-suggestion-item';
@@ -87,11 +98,21 @@
         name.textContent = item.name || '';
         var detail = document.createElement('span');
         detail.className = 'city-region';
-        detail.textContent = (item.type === 'city' ? 'مدينة · ' : item.type === 'section' ? 'قسم · ' : 'صفحة · ') + (item.detail || '');
+        if (item.type === 'global-city') {
+          detail.textContent = [item.admin1, item.country].filter(Boolean).join(' · ') + ' · مدينة عالمية';
+        } else {
+          detail.textContent = (item.type === 'city' ? 'مدينة · ' : item.type === 'section' ? 'قسم · ' : 'صفحة · ') + (item.detail || '');
+        }
         button.appendChild(name);
         button.appendChild(detail);
         panel.appendChild(button);
       });
+      if (loading) {
+        var status = document.createElement('div');
+        status.className = 'city-suggestion-status';
+        status.textContent = 'جارٍ استكمال البحث العالمي…';
+        panel.appendChild(status);
+      }
     }
     panel.classList.add('visible');
     input.setAttribute('aria-expanded', 'true');
@@ -111,16 +132,98 @@
     });
   }
 
+  function queryLanguages(value) {
+    if (/[\u0600-\u06FF]/.test(value)) return ['ar', 'en'];
+    if (/[\u0400-\u04FF]/.test(value)) return ['ru', 'en'];
+    if (/[\u0370-\u03FF]/.test(value)) return ['el', 'en'];
+    if (/[\u0590-\u05FF]/.test(value)) return ['he', 'en'];
+    if (/[\u0900-\u097F]/.test(value)) return ['hi', 'en'];
+    if (/[\u0E00-\u0E7F]/.test(value)) return ['th', 'en'];
+    if (/[\u3040-\u30FF]/.test(value)) return ['ja', 'en'];
+    if (/[\uAC00-\uD7AF]/.test(value)) return ['ko', 'en'];
+    if (/[\u4E00-\u9FFF]/.test(value)) return ['zh', 'en'];
+    var browserLanguage = String(navigator.language || 'en').slice(0, 2).toLowerCase();
+    return Array.from(new Set(['en', 'fr', browserLanguage])).slice(0, 3);
+  }
+
+  function localMatches(query) {
+    return items.map(function (item) { return { item: item, score: score(item, query) }; })
+      .filter(function (entry) { return entry.score > 0; })
+      .sort(function (a, b) { return b.score - a.score || a.item.name.localeCompare(b.item.name, 'ar'); })
+      .slice(0, MAX_SUGGESTIONS).map(function (entry) { return entry.item; });
+  }
+
+  async function searchGlobal(rawQuery) {
+    var query = normalize(rawQuery);
+    if (query.length < 2) { results = []; hide(); return; }
+    var token = ++searchToken;
+    if (geoController) geoController.abort();
+    geoController = new AbortController();
+    results = localMatches(query);
+    render(true);
+
+    var languages = queryLanguages(rawQuery);
+    var requests = languages.map(function (language) {
+      var params = new URLSearchParams({ name: rawQuery.trim(), count: '8', language: language, format: 'json' });
+      return fetch(GEOCODING_URL + '?' + params.toString(), {
+        signal: geoController.signal,
+        headers: { Accept: 'application/json' }
+      }).then(function (response) {
+        if (!response.ok) throw new Error('Geocoding request failed: ' + response.status);
+        return response.json();
+      });
+    });
+
+    try {
+      var responses = await Promise.allSettled(requests);
+      if (token !== searchToken || normalize(input.value) !== query) return;
+      var globalCities = [];
+      responses.forEach(function (response) {
+        if (response.status !== 'fulfilled' || !Array.isArray(response.value.results)) return;
+        response.value.results.forEach(function (place) {
+          if (!Number.isFinite(Number(place.latitude)) || !Number.isFinite(Number(place.longitude))) return;
+          var city = {
+            type: 'global-city',
+            id: place.id,
+            name: place.name || '',
+            country: place.country || '',
+            countryCode: place.country_code || '',
+            admin1: place.admin1 || '',
+            latitude: Number(place.latitude),
+            longitude: Number(place.longitude),
+            population: Number(place.population || 0)
+          };
+          var duplicate = globalCities.some(function (existing) {
+            return existing.id === city.id || (Math.abs(existing.latitude - city.latitude) < 0.01 &&
+              Math.abs(existing.longitude - city.longitude) < 0.01);
+          });
+          if (!duplicate) globalCities.push(city);
+        });
+      });
+      globalCities.sort(function (a, b) { return b.population - a.population; });
+      var localCityKeys = results.filter(function (item) { return item.type === 'city'; })
+        .map(function (item) { return normalize(item.name); });
+      globalCities = globalCities.filter(function (place) {
+        return !localCityKeys.includes(normalize(place.name));
+      });
+      results = results.concat(globalCities).slice(0, MAX_SUGGESTIONS);
+      render(false);
+    } catch (error) {
+      if (error.name === 'AbortError' || token !== searchToken) return;
+      render(false);
+    }
+  }
+
   function init() {
     if (window.__todayWeatherGlobalSearchInitialized) return;
     ensureSearch();
     if (!input || !panel) return;
     window.__todayWeatherGlobalSearchInitialized = true;
-    input.placeholder = 'ابحث في الموقع والمدن العالمية...';
-    input.setAttribute('aria-label', 'ابحث في الموقع والمدن العالمية');
+    input.placeholder = 'ابحث عن أي مدينة في العالم…';
+    input.setAttribute('aria-label', 'ابحث عن أي مدينة في العالم');
     input.addEventListener('input', function () {
       clearTimeout(timer);
-      timer = setTimeout(render, 90);
+      timer = setTimeout(function () { searchGlobal(input.value); }, 220);
     });
     input.addEventListener('keydown', function (event) {
       if (event.key === 'ArrowDown') { event.preventDefault(); setActive(active + 1); }
@@ -136,8 +239,6 @@
     document.addEventListener('click', function (event) {
       if (!event.target.closest('.search-wrapper')) hide();
     });
-    // The homepage app controller owns these controls to avoid duplicate click handlers.
-    // Standalone directory pages do not load app.js, so bind their header controls here.
     var hasAppController = !!document.querySelector('script[src$="app.js"]');
     if (!hasAppController) {
       var menu = document.getElementById('mobileMenuBtn');
@@ -157,15 +258,19 @@
       }
     }
     input.addEventListener('focus', function () {
-      if (input.value.trim().length >= 2) render();
+      if (input.value.trim().length >= 2) searchGlobal(input.value);
     });
     fetch(BASE + '/data/global-search-index.json', { credentials: 'same-origin' })
       .then(function (response) { if (!response.ok) throw new Error('Search index unavailable'); return response.json(); })
-      .then(function (data) { items = Array.isArray(data) ? data : []; ready = true; if (input.value.trim().length >= 2) render(); })
-      .catch(function () { ready = true; panel.textContent = 'تعذر تحميل البحث حالياً. أعد تحميل الصفحة.'; panel.classList.add('visible'); });
+      .then(function (data) {
+        items = Array.isArray(data) ? data : [];
+        ready = true;
+        if (input.value.trim().length >= 2) searchGlobal(input.value);
+      })
+      .catch(function () { ready = true; if (input.value.trim().length >= 2) searchGlobal(input.value); });
   }
 
-  window.GlobalSearch = { init: init, search: function (query) { if (input) { input.value = query || ''; render(); } } };
+  window.GlobalSearch = { init: init, search: function (query) { if (input) { input.value = query || ''; searchGlobal(input.value); } } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
