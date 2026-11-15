@@ -26,7 +26,7 @@ self.addEventListener('fetch',event=>{
  const url=new URL(request.url),sameOrigin=url.origin===self.location.origin,externalStatic=!sameOrigin&&STATIC_EXTERNAL_HOSTS.has(url.hostname);
  if(!sameOrigin&&!externalStatic)return;
  event.respondWith((async()=>{
-  const cache=await caches.open(CACHE_NAME),cached=await cache.match(request);
+  const cache=await caches.open(CACHE_NAME),normalizedRequest=url.pathname.endsWith('/assets/js/global-search.js')?new Request(url.origin+url.pathname):request,cached=await cache.match(request)||await cache.match(normalizedRequest);
   if(externalStatic&&cached)return cached;
   const controller=new AbortController(),timeoutId=setTimeout(()=>controller.abort(),5000);
   try{const response=await fetch(request,{signal:controller.signal});if(response&&(response.ok||response.type==='opaque')){try{await cache.put(request,response.clone());}catch(cacheError){console.warn('[PWA] Cache write failed:',request.url,cacheError);}}return response;}
