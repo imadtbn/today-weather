@@ -80,10 +80,12 @@ for (const host of ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fo
 }
 
 assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, 'Unbalanced CSS braces');
+const cityCss = read('assets/css/city-pages.css');
+assert.equal((cityCss.match(/{/g) || []).length, (cityCss.match(/}/g) || []).length, 'Unbalanced city page CSS braces');
 const jsFiles = [
   'assets/js/core.js', 'assets/js/geo-service.js', 'assets/js/weather-service.js', 'assets/js/weather-tips-engine.js',
   'assets/js/ui.js', 'assets/js/map-service.js', 'assets/js/search-news.js',
-  'assets/js/effects.js', 'assets/js/app.js', 'assets/js/adsData.js', 'sw.js'
+  'assets/js/effects.js', 'assets/js/app.js', 'assets/js/adsData.js', 'assets/js/city-page.js', 'sw.js'
 ];
 for (const file of jsFiles) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, file)], { encoding: 'utf8' });
@@ -95,7 +97,7 @@ for (const stale of ['assets/js/main.js', 'assets/js/main22script.js', 'assets/j
   assert.ok(!scriptRefs.includes(stale), 'Legacy script still referenced: ' + stale);
 }
 const activeJs = readdirSync(resolve(root, 'assets/js')).filter(file => file.endsWith('.js'));
-const unreferenced = activeJs.filter(file => !scriptRefs.includes('assets/js/' + file));
+const unreferenced = activeJs.filter(file => !scriptRefs.includes('assets/js/' + file) && file !== 'city-page.js');
 assert.deepEqual(unreferenced, [], 'Unreferenced JavaScript files remain: ' + unreferenced.join(', '));
 
 
