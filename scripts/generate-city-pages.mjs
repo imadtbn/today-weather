@@ -64,9 +64,9 @@ function homeSection(tag) {
 function trackingTags() {
   return '<meta name="google-site-verification" content="f5Xi4oFx0v5dN6iPZd9qCw-7vnc3vIbAeYF9jr4vwVM">' +
     '<meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
-    '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"><\/script>' +
-    '<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date());<\/script>' +
-    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous"><\/script>';
+    '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"></script>' +
+    '<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date());</script>' +
+    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous"></script>';
 }
 function commonHeader() {
   let header = homeSection('header')
@@ -93,7 +93,7 @@ function commonFooter() {
     latin: city.name_en || city.name_fr || '', country: group.country(city)
   })));
   return footer +
-    '<script defer src="' + BASE + '/assets/js/adsData.js"><\/script>' +
+    '<script defer src="' + BASE + '/assets/js/adsData.js"></script>' +
     '<script>(function(){' +
     'var menu=document.getElementById("mobileMenuBtn"),nav=document.getElementById("mainNav");' +
     'if(menu&&nav){menu.addEventListener("click",function(){var open=nav.classList.toggle("active");menu.setAttribute("aria-expanded",String(open));menu.setAttribute("aria-label",open?"إغلاق قائمة التنقل":"فتح قائمة التنقل");});' +
@@ -108,7 +108,7 @@ function commonFooter() {
     'input.addEventListener("input",render);input.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go(0);}else if(e.key==="Escape"){suggestions.classList.remove("visible");input.setAttribute("aria-expanded","false");}});' +
     'suggestions.addEventListener("click",function(e){var item=e.target.closest("[data-index]");if(item)go(Number(item.dataset.index));});' +
     'document.addEventListener("click",function(e){if(!e.target.closest(".search-wrapper"))suggestions.classList.remove("visible");});}' +
-    '})();<\/script>';
+    '})();</script>';
 }
 
 function adBlock(position) {
@@ -159,7 +159,7 @@ function buildDirectory(group) {
 <header class="directory-hero"><span class="city-kicker">دليل الطقس · ${escapeHtml(group.kind)}</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)}</p><span class="directory-count">استكشف ${group.items.length} مدينة</span></header>
 <div class="city-directory-grid">${links}</div></main>
 ${adBlock("bottom")}${commonFooter()}
-<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=12;var shown=0;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';grid.classList.add('directory-progressive');function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++){var card=cards[i];card.hidden=false;card.classList.add('is-visible');var img=card.querySelector('img[data-src]');if(img&&!img.getAttribute('src'))img.setAttribute('src',img.dataset.src); }shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}var observer=null;cards.forEach(function(card,index){var img=card.querySelector('img');if(img){img.dataset.src=img.getAttribute('src')||'';if(index>=batchSize)img.removeAttribute('src');}if(index>=batchSize)card.hidden=true;});grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(function(card){card.hidden=false;var img=card.querySelector('img');if(img&&!img.getAttribute('src'))img.setAttribute('src',img.dataset.src);card.classList.add('is-visible');});sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'300px 0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();<\\/script>
+<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=12;var shown=0;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';grid.classList.add('directory-progressive');function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++){var card=cards[i];card.hidden=false;card.classList.add('is-visible');var img=card.querySelector('img[data-src]');if(img&&!img.getAttribute('src'))img.setAttribute('src',img.dataset.src); }shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}var observer=null;cards.forEach(function(card,index){var img=card.querySelector('img');if(img){img.dataset.src=img.getAttribute('src')||'';if(index>=batchSize)img.removeAttribute('src');}if(index>=batchSize)card.hidden=true;});grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(function(card){card.hidden=false;var img=card.querySelector('img');if(img&&!img.getAttribute('src'))img.setAttribute('src',img.dataset.src);card.classList.add('is-visible');});sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'300px 0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
 </body></html>`;
 }
 
