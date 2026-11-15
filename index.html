@@ -615,29 +615,44 @@
                 </div>
             </div>
         </section>
-    <section class="city-discovery-section" aria-labelledby="city-discovery-title">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-badge">دليل الطقس</span>
-                <h2 class="section-title" id="city-discovery-title">صفحات الطقس حسب المدينة</h2>
-                <p class="section-subtitle">انتقل إلى صفحة مستقلة لكل ولاية جزائرية أو عاصمة عربية أو مدينة عالمية، مع حالة الطقس والتوقعات الخاصة بإحداثياتها.</p>
+        <section class="city-discovery-section" aria-labelledby="city-discovery-title">
+            <div class="container">
+                <div class="section-header">
+                    <span class="section-badge">دليل الطقس</span>
+                    <h2 class="section-title" id="city-discovery-title">صفحات الطقس حسب المدينة</h2>
+                    <p class="section-subtitle">انتقل إلى صفحة مستقلة لكل ولاية جزائرية أو عاصمة عربية أو مدينة عالمية،
+                        مع حالة الطقس والتوقعات الخاصة بإحداثياتها.</p>
+                </div>
+                <div class="city-discovery-grid">
+                    <a href="weather/algeria/" class="city-discovery-card"
+                        aria-label="استكشف الطقس في الولايات الجزائرية">
+                        <div class="city-discovery-image"><img src="images/algiers.jpg"
+                                alt="منظر حضري لمدينة الجزائر العاصمة" loading="lazy" decoding="async" width="640"
+                                height="360"></div>
+                        <div class="city-discovery-content"><strong>الولايات الجزائرية الـ69</strong><span>طقس الولايات
+                                وتوقعات خمسة أيام</span><span class="city-discovery-action">استكشف الولايات <i
+                                    class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
+                    </a>
+                    <a href="weather/arab/" class="city-discovery-card" aria-label="استكشف الطقس في العواصم العربية">
+                        <div class="city-discovery-image"><img src="images/amman.jpg"
+                                alt="مشهد عمراني من عمّان، إحدى العواصم العربية" loading="lazy" decoding="async"
+                                width="640" height="360"></div>
+                        <div class="city-discovery-content"><strong>العواصم العربية</strong><span>حالة الطقس في 22 عاصمة
+                                عربية</span><span class="city-discovery-action">استكشف العواصم <i
+                                    class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
+                    </a>
+                    <a href="weather/world/" class="city-discovery-card"
+                        aria-label="استكشف الطقس في المدن والعواصم العالمية">
+                        <div class="city-discovery-image"><img src="images/world-cities2.jpg?v=20261115"
+                                alt="رسم توضيحي لمدن عالمية ومعالم عمرانية" loading="lazy" decoding="async" width="640"
+                                height="360"></div>
+                        <div class="city-discovery-content"><strong>المدن والعواصم العالمية</strong><span>طقس 195 عاصمة
+                                ومدينة عالمية</span><span class="city-discovery-action">استكشف مدن العالم <i
+                                    class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
+                    </a>
+                </div>
             </div>
-            <div class="city-discovery-grid">
-                <a href="weather/algeria/" class="city-discovery-card" aria-label="استكشف الطقس في الولايات الجزائرية">
-                    <div class="city-discovery-image"><img src="images/algiers.jpg" alt="منظر حضري لمدينة الجزائر العاصمة" loading="lazy" decoding="async" width="640" height="360"></div>
-                    <div class="city-discovery-content"><strong>الولايات الجزائرية الـ69</strong><span>طقس الولايات وتوقعات خمسة أيام</span><span class="city-discovery-action">استكشف الولايات <i class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
-                </a>
-                <a href="weather/arab/" class="city-discovery-card" aria-label="استكشف الطقس في العواصم العربية">
-                    <div class="city-discovery-image"><img src="images/amman.jpg" alt="مشهد عمراني من عمّان، إحدى العواصم العربية" loading="lazy" decoding="async" width="640" height="360"></div>
-                    <div class="city-discovery-content"><strong>العواصم العربية</strong><span>حالة الطقس في 22 عاصمة عربية</span><span class="city-discovery-action">استكشف العواصم <i class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
-                </a>
-                <a href="weather/world/" class="city-discovery-card" aria-label="استكشف الطقس في المدن والعواصم العالمية">
-                    <div class="city-discovery-image"><img src="images/world-cities2.jpg?v=20261115" alt="رسم توضيحي لمدن عالمية ومعالم عمرانية" loading="lazy" decoding="async" width="640" height="360"></div>
-                    <div class="city-discovery-content"><strong>المدن والعواصم العالمية</strong><span>طقس 195 عاصمة ومدينة عالمية</span><span class="city-discovery-action">استكشف مدن العالم <i class="fas fa-arrow-left" aria-hidden="true"></i></span></div>
-                </a>
-            </div>
-        </div>
-    </section>
+        </section>
     </main>
 
     <button class="scroll-top" id="scrollTop" type="button" title="العودة للأعلى" aria-label="العودة إلى أعلى الصفحة"><i
@@ -677,12 +692,30 @@
                 <div>
                     <h3 class="footer-title">المدن الرئيسية</h3>
                     <ul class="footer-links">
-                        <li><a href="#" data-city="Algiers"><i class="fas fa-chevron-left"></i> الجزائر العاصمة</a></li>
-                        <li><a href="#" data-city="Oran"><i class="fas fa-chevron-left"></i> وهران</a></li>
-                        <li><a href="#" data-city="Constantine"><i class="fas fa-chevron-left"></i> قسنطينة</a></li>
-                        <li><a href="#" data-city="Annaba"><i class="fas fa-chevron-left"></i> عنابة</a></li>
-                        <li><a href="#" data-city="Blida"><i class="fas fa-chevron-left"></i> البليدة</a></li>
-                        <li><a href="#" data-city="Setif"><i class="fas fa-chevron-left"></i> سطيف</a></li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/algeria/algiers/">
+                                <i class="fas fa-chevron-left"></i>الجزائر العاصمة</a>
+                        </li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/algeria/adrar/">
+                                <i class="fas fa-chevron-left"></i>أدرار</a>
+                        </li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/arab/amman/">
+                                <i class="fas fa-chevron-left"></i>عمان</a>
+                        </li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/algeria/">
+                                <i class="fas fa-chevron-left"></i> الولايات الجزائرية</a>
+                        </li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/arab/">
+                                <i class="fas fa-chevron-left"></i>عواصم عربية</a>
+                        </li>
+                        <li>
+                            <a href="https://imadtbn.github.io/today-weather/weather/world/">
+                                <i class="fas fa-chevron-left"></i>عواصم عالمية</a>
+                        </li>
                     </ul>
                 </div>
                 <div>
