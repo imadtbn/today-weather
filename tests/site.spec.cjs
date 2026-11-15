@@ -1,6 +1,5 @@
 
-test('city directory renders compact responsive cards and reveals images in batches', async ({ page }) => {
-  await page.goto('/weather/algeria/', { waitUntil: 'domcontentloaded' });
+
   const grid = page.locator('.city-directory-grid');
   await expect(grid.locator('.city-directory-item')).toHaveCount(69);
   await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(12);
@@ -18,6 +17,9 @@ test('city directory renders compact responsive cards and reveals images in batc
 });
 
 const { test, expect } = require('@playwright/test');
+
+test('city directory renders compact responsive cards and reveals images in batches', async ({ page }) => {
+  await page.goto('/weather/algeria/', { waitUntil: 'domcontentloaded' });
 
 test('homepage exposes valid SEO and PWA metadata', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
