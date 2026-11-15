@@ -121,7 +121,7 @@ function commonFooter() {
     .replace(/href="#([^"]+)"([^>]*>)/g, 'href="' + BASE + '/#$1"$2');
   return footer +
     '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261115-ads-fix"></script>' +
-    '<script defer src="' + BASE + '/assets/js/global-search.js?v=20261115-search-fix"></script>' +
+    '<script defer src="' + BASE + '/assets/js/global-search.js?v=20261115-global-worldwide"></script>' +
     '<script>(function(){' +
     'var menu=document.getElementById("mobileMenuBtn"),nav=document.getElementById("mainNav");' +
     'if(menu&&nav){menu.addEventListener("click",function(){var open=nav.classList.toggle("active");menu.setAttribute("aria-expanded",String(open));menu.setAttribute("aria-label",open?"إغلاق قائمة التنقل":"فتح قائمة التنقل");});' +
