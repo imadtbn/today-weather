@@ -90,3 +90,63 @@ body.city-page {
 .city-stats-grid .stat-card span{color:var(--city-muted);font-size:.85rem;}
 .city-page .city-weather-card,.city-page .city-forecast-card{min-width:0;}
 @media(max-width:600px){.city-extra-section{width:calc(100% - 24px);padding:15px;margin-block:20px;}.city-weather-map{height:310px;}.city-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.hourly-item{min-width:104px;}}
+
+
+/* Shared primary navigation across all weather directory and city pages. */
+.city-topbar-inner { flex-wrap: nowrap; }
+.city-main-nav {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 150px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+}
+.city-main-nav::-webkit-scrollbar { display: none; }
+.city-main-nav .nav-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 3px;
+    width: max-content;
+    min-width: max-content;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.city-main-nav .nav-link {
+    display: block;
+    padding: 9px 10px;
+    border-radius: 9px;
+    color: var(--city-muted);
+    text-decoration: none;
+    font-size: .82rem;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+    transition: color .2s ease, background .2s ease;
+}
+.city-main-nav .nav-link:hover,
+.city-main-nav .nav-link:focus-visible {
+    color: var(--city-gold);
+    background: rgba(212,168,83,.09);
+    outline: none;
+}
+@media (min-width: 769px) {
+    .city-main-nav { max-width: calc(100% - 145px); }
+    .city-main-nav .nav-link { padding-inline: clamp(6px,.75vw,11px); font-size: clamp(.72rem,.8vw,.86rem); }
+}
+@media (max-width: 768px) {
+    .city-topbar-inner { min-height: 62px; gap: 10px; }
+    .city-brand { flex: 0 0 auto; font-size: .92rem; }
+    .city-main-nav { max-width: calc(100% - 112px); }
+    .city-main-nav .nav-link { padding: 8px 9px; font-size: .78rem; }
+}
+@media (max-width: 380px) {
+    .city-topbar-inner { width: calc(100% - 20px); gap: 7px; }
+    .city-brand { font-size: .82rem; }
+    .city-main-nav { max-width: calc(100% - 98px); }
+    .city-main-nav .nav-link { padding-inline: 7px; font-size: .74rem; }
+}
