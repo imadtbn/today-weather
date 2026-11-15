@@ -53,6 +53,39 @@ function pageUrl(group, slug) {
   return `${SITE}/weather/${group}/${slug}/`;
 }
 
+
+function trackingTags() {
+  return '<meta name="google-site-verification" content="f5Xi4oFx0v5dN6iPZd9qCw-7vnc3vIbAeYF9jr4vwVM"><meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
+    '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"><\/script>' +
+    '<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());<\/script>' +
+    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous"><\/script>';
+}
+function commonHeader() {
+  return '<header class="site-header" id="siteHeader"><div class="header-inner">' +
+    '<a href="' + BASE + '/" class="brand"><img src="' + BASE + '/assets/images/icon1.webp" alt="أحوال الطقس" class="brand-icon"><div class="brand-text"><span class="brand-name">أحوال الطقس</span><span class="brand-tagline">توقعات طقس محدثة</span></div></a>' +
+    '<button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="فتح قائمة التنقل" aria-controls="mainNav" aria-expanded="false"><i class="fas fa-bars" aria-hidden="true"></i></button>' +
+    '<nav class="main-nav" id="mainNav" aria-label="التنقل الرئيسي"><ul class="nav-list">' +
+    '<li><a href="' + BASE + '/" class="nav-link">الرئيسية</a></li><li><a href="' + BASE + '/#forecast" class="nav-link">التنبؤات</a></li><li><a href="' + BASE + '/#maps" class="nav-link">الخرائط</a></li><li><a href="' + BASE + '/#stats" class="nav-link">الإحصائيات</a></li><li><a href="' + BASE + '/#warnings" class="nav-link">التحذيرات</a></li><li><a href="' + BASE + '/weather/" class="nav-link">دليل المدن</a></li>' +
+    '</ul></nav><div class="header-controls"><a class="icon-btn" href="' + BASE + '/" aria-label="العودة إلى الصفحة الرئيسية"><i class="fas fa-house"></i></a></div></div></header>';
+}
+function adBlock(position) {
+  const unit = position === 'top'
+    ? '<ins class="adsbygoogle" style="display:block" data-ad-format="fluid" data-ad-layout-key="-fr+56+4k-d4+74" data-ad-client="ca-pub-5656416032906373" data-ad-slot="7867079394"></ins>'
+    : '<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-5656416032906373" data-ad-slot="3143411927" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+  return '<div class="container city-ad-wrap"><div class="ad-container"><span class="ad-label">إعلان</span><div class="ad-placeholder">' + unit + '</div></div></div>';
+}
+function commonFooter() {
+  const labels = ['الجزائر العاصمة','وهران','قسنطينة','عنابة','البليدة','سطيف'];
+  const links = labels.map((label, i) => '<li><a href="' + BASE + '/weather/algeria/' + encodeURIComponent(groups[0].items[i].slug) + '/"><i class="fas fa-chevron-left"></i> ' + label + '</a></li>').join('');
+  return '<footer class="site-footer" id="contact"><div class="container"><div class="footer-grid">' +
+    '<div class="footer-brand"><a href="' + BASE + '/" class="brand"><img src="' + BASE + '/assets/images/icon1.webp" alt="أحوال الطقس" class="brand-icon"><div class="brand-text"><span class="brand-name">أحوال الطقس</span><span class="brand-tagline">توقعات طقس محدثة</span></div></a><p>منصة لمتابعة حالة الطقس اليوم وتوقعات الطقس في الجزائر والمدن العالمية، تشمل درجات الحرارة والأمطار والرياح والخرائط الجوية ومؤشرات الطقس المتخصصة.</p></div>' +
+    '<div><h3 class="footer-title">روابط سريعة</h3><ul class="footer-links"><li><a href="' + BASE + '/"><i class="fas fa-chevron-left"></i> الرئيسية</a></li><li><a href="' + BASE + '/#forecast"><i class="fas fa-chevron-left"></i> التنبؤات</a></li><li><a href="' + BASE + '/#maps"><i class="fas fa-chevron-left"></i> الخرائط</a></li><li><a href="' + BASE + '/weather/"><i class="fas fa-chevron-left"></i> دليل المدن</a></li></ul></div>' +
+    '<div><h3 class="footer-title">المدن الرئيسية</h3><ul class="footer-links">' + links + '</ul></div>' +
+    '<div><h3 class="footer-title">معلومات التواصل</h3><div class="footer-contact-item"><i class="fas fa-map-marker-alt"></i><span>الجزائر العاصمة، الجزائر</span></div><div class="footer-contact-item"><i class="fas fa-phone"></i><a href="tel:+213697743721" dir="ltr">+213 697 743 721</a></div><div class="footer-contact-item"><i class="fas fa-envelope"></i><a href="mailto:tabaniimadeddine@gmail.com">tabaniimadeddine@gmail.com</a></div><div class="footer-contact-item"><i class="fas fa-globe"></i><a href="https://imadtbn.github.io/dz_portal/" target="_blank" rel="noopener noreferrer">البوابة الجزائرية</a></div></div>' +
+    '</div><div class="footer-bottom"><div class="footer-copyright">© ' + new Date().getFullYear() + ' أحوال الطقس. جميع الحقوق محفوظة.</div><div class="footer-copyright">بيانات الطقس من <a href="https://openweathermap.org">OpenWeatherMap</a> | الخرائط عبر <a href="https://leafletjs.com">Leaflet</a> | البحث الجغرافي <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></div></div></div></footer>' +
+    '<script defer src="' + BASE + '/assets/js/adsData.js"><\/script><script>(function(){var b=document.getElementById("mobileMenuBtn"),n=document.getElementById("mainNav");if(b&&n){b.addEventListener("click",function(){var o=n.classList.toggle("active");b.setAttribute("aria-expanded",String(o));});n.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){n.classList.remove("active");b.setAttribute("aria-expanded","false");});});}})();<\/script>';
+}
+
 function buildDirectory(group) {
   const links = group.items.map(city => `<a class="city-directory-item" href="${BASE}/weather/${group.key}/${encodeURIComponent(city.slug)}/"><strong>${escapeHtml(group.name(city))}</strong><small>${escapeHtml(group.country(city))}${city.region ? ' · ' + escapeHtml(city.region) : city.continentName ? ' · ' + escapeHtml(city.continentName) : ''}</small></a>`).join('\n');
   const url = `${SITE}/weather/${group.key}/`;
@@ -70,10 +103,10 @@ function buildDirectory(group) {
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>الطقس في ${escapeHtml(group.title)} | أحوال الطقس</title><meta name="description" content="${escapeHtml(group.description)}"><meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="${url}"><meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ"><meta property="og:title" content="الطقس في ${escapeHtml(group.title)}"><meta property="og:description" content="${escapeHtml(group.description)}"><meta property="og:url" content="${url}">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css"><script type="application/ld+json">${safeJson(schema)}</script></head>
-<body class="city-page"><header class="city-topbar"><div class="city-topbar-inner"><a class="city-brand" href="${BASE}/">أحوال <span>الطقس</span></a><a class="city-home-link" href="${BASE}/weather/">دليل المدن</a></div></header>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script></head>
+<body class="city-page">${commonHeader()}${adBlock("top")}
 <main class="city-container city-directory"><nav class="city-breadcrumb"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / ${escapeHtml(group.title)}</nav><span class="city-kicker">صفحات الطقس المستقلة</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)} تضم هذه القائمة ${group.items.length} صفحة مدينة مرتبطة بإحداثياتها الجغرافية.</p><div class="city-directory-grid">${links}</div></main>
-<footer class="city-footer"><div class="city-container">© ${new Date().getFullYear()} أحوال الطقس · <a href="${BASE}/">العودة للرئيسية</a></div></footer></body></html>`;
+${adBlock("bottom")}${commonFooter()}</body></html>`;
 }
 
 function buildCityPage(group, index) {
@@ -123,7 +156,7 @@ function buildCityPage(group, index) {
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${SITE + image}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">
 <script type="application/ld+json">${safeJson(schema)}</script></head>
-<body class="city-page"><header class="city-topbar"><div class="city-topbar-inner"><a class="city-brand" href="${BASE}/">أحوال <span>الطقس</span></a><a class="city-home-link" href="${BASE}/weather/">دليل المدن والولايات</a></div></header>
+<body class="city-page">${commonHeader()}${adBlock("top")}
 <main class="city-container" data-city-weather='${escapeHtml(config)}'>
 <nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / <a href="${BASE}/weather/${group.key}/">${groupLabel}</a> / ${escapeHtml(name)}</nav>
 <section class="city-hero"><div class="city-hero-grid"><div><span class="city-kicker">${escapeHtml(group.kind)} · ${escapeHtml(country)}</span><h1 class="city-title">طقس ${escapeHtml(name)} اليوم</h1><p class="city-subtitle">تابع حالة الطقس في ${escapeHtml(name)}، ${escapeHtml(country)}، واطلع على درجات الحرارة الحالية وتوقعات الأيام الخمسة القادمة. تعتمد بيانات هذه الصفحة على الإحداثيات الجغرافية للمدينة (${latitude.toFixed(4)}، ${longitude.toFixed(4)}) لعرض معلومات جوية مرتبطة بموقعها.</p></div>
@@ -136,14 +169,14 @@ function buildCityPage(group, index) {
 <section class="city-content"><article class="city-info-card"><h2 class="city-section-title">حالة الطقس والمناخ في ${escapeHtml(name)}</h2><p>تقع ${escapeHtml(name)} ضمن ${escapeHtml(group.region(city))} في ${escapeHtml(country)}. تساعدك هذه الصفحة على متابعة الطقس اليومي في المنطقة من خلال عرض درجة الحرارة، والحرارة المحسوسة، والرطوبة، وسرعة الرياح، والضغط الجوي، إضافة إلى توقعات الأيام المقبلة.</p><p>تتغير الظروف الجوية من يوم إلى آخر؛ لذلك يُنصح بمراجعة التحديثات قبل التنقل أو التخطيط للأنشطة الخارجية. تُعرض القيم الجوية عند توفرها من مزود البيانات، وقد تختلف دقة التوقعات بحسب الموقع والفترة الزمنية.</p></article>
 <aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p><p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
 <section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${BASE}/weather/${group.key}/">جميع ${groupLabel}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
-</main><footer class="city-footer"><div class="city-container">© ${new Date().getFullYear()} أحوال الطقس · مصدر البيانات الجوية: <a href="https://openweathermap.org" rel="noopener noreferrer">OpenWeatherMap</a> · <a href="${BASE}/">الرئيسية</a></div></footer>
+</main>${adBlock("bottom")}${commonFooter()}
 <script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
 }
 
 const weatherRoot = join(ROOT, 'weather');
 for (const group of groups) rmSync(join(weatherRoot, group.key), { recursive: true, force: true });
 mkdirSync(weatherRoot, { recursive: true });
-writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الطقس في المدن والولايات | أحوال الطقس</title><meta name="description" content="اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام."><meta name="robots" content="index,follow"><link rel="canonical" href="${SITE}/weather/"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css"></head><body class="city-page"><header class="city-topbar"><div class="city-topbar-inner"><a class="city-brand" href="${BASE}/">أحوال <span>الطقس</span></a><a class="city-home-link" href="${BASE}/">الصفحة الرئيسية</a></div></header><main class="city-container city-directory"><span class="city-kicker">دليل المدن</span><h1 class="city-title">الطقس في الجزائر والعالم</h1><p class="city-directory-intro">تصفح صفحات الطقس المستقلة للولايات الجزائرية والعواصم العربية والمدن العالمية. تتضمن كل صفحة حالة الطقس الحالية والتوقعات اليومية وفق إحداثيات المدينة، إلى جانب معلوماتها وروابط المدن الأخرى.</p><div class="city-directory-grid"><a class="city-directory-item" href="${BASE}/weather/algeria/"><strong>ولايات الجزائر الـ69</strong><small>حالة الطقس في الولايات الجزائرية</small></a><a class="city-directory-item" href="${BASE}/weather/arab/"><strong>العواصم العربية</strong><small>طقس العواصم والمدن العربية</small></a><a class="city-directory-item" href="${BASE}/weather/world/"><strong>مدن العالم</strong><small>توقعات الطقس للمدن العالمية</small></a></div></main><footer class="city-footer"><div class="city-container">© ${new Date().getFullYear()} أحوال الطقس · <a href="${BASE}/">العودة للرئيسية</a></div></footer></body></html>`);
+writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الطقس في المدن والولايات | أحوال الطقس</title><meta name="description" content="اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام."><meta name="robots" content="index,follow"><link rel="canonical" href="${SITE}/weather/"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css"></head><body class="city-page">${commonHeader()}${adBlock("top")}<main class="city-container city-directory"><span class="city-kicker">دليل المدن</span><h1 class="city-title">الطقس في الجزائر والعالم</h1><p class="city-directory-intro">تصفح صفحات الطقس المستقلة للولايات الجزائرية والعواصم العربية والمدن العالمية. تتضمن كل صفحة حالة الطقس الحالية والتوقعات اليومية وفق إحداثيات المدينة، إلى جانب معلوماتها وروابط المدن الأخرى.</p><div class="city-directory-grid"><a class="city-directory-item" href="${BASE}/weather/algeria/"><strong>ولايات الجزائر الـ69</strong><small>حالة الطقس في الولايات الجزائرية</small></a><a class="city-directory-item" href="${BASE}/weather/arab/"><strong>العواصم العربية</strong><small>طقس العواصم والمدن العربية</small></a><a class="city-directory-item" href="${BASE}/weather/world/"><strong>مدن العالم</strong><small>توقعات الطقس للمدن العالمية</small></a></div></main>${adBlock("bottom")}${commonFooter()}</body></html>`);
 
 const sitemapUrls = [`${SITE}/`, `${SITE}/weather/`];
 for (const group of groups) {
