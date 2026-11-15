@@ -212,3 +212,29 @@ body.city-page {
 .directory-feature-card .directory-city-image{width:100%;height:auto;max-height:none;aspect-ratio:16/9;object-fit:cover;}
 .directory-feature-card .directory-city-body{gap:5px;padding:13px 14px;}
 .directory-feature-card .directory-city-body strong{font-size:1rem;}
+
+
+/* Phone directory: one full-width city card per row. */
+@media (max-width: 600px) {
+  .city-directory .city-directory-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px;
+  }
+  .city-directory .directory-city-image {
+    height: auto;
+    max-height: 190px;
+    aspect-ratio: 16 / 8;
+  }
+  .city-directory .directory-city-body {
+    padding: 10px 12px;
+  }
+  .city-directory .directory-city-body strong {
+    font-size: .9rem;
+  }
+  .city-directory .directory-country {
+    font-size: .74rem;
+  }
+  .city-directory .directory-city-meta span {
+    font-size: .66rem;
+  }
+}
