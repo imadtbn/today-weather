@@ -78,6 +78,11 @@ assert.ok(htmlSitemap.includes('<h1 class="city-title">خريطة الموقع</
 assert.ok(htmlSitemap.includes('id="sitemapSearch"') && htmlSitemap.includes('sitemap-group-grid'), 'HTML sitemap search or city groups missing');
 assert.ok(htmlSitemap.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/sitemap.html"'), 'HTML sitemap canonical missing');
 assert.ok(htmlSitemap.includes('assets/css/sitemap.css'), 'HTML sitemap stylesheet missing');
+const sitemapJsonLd = [...htmlSitemap.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+assert.equal(sitemapJsonLd.length, 1, 'Expected one JSON-LD block in HTML sitemap');
+const sitemapSchema = JSON.parse(sitemapJsonLd[0][1]);
+assert.equal(sitemapSchema.mainEntity?.numberOfItems, expectedCityCount + 11, 'HTML sitemap schema item count mismatch');
+assert.equal(sitemapSchema.mainEntity?.itemListElement?.length, expectedCityCount + 11, 'HTML sitemap schema links are incomplete');
 assert.ok(htmlSitemap.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing from generated pages');
 const sitemapCss = read('assets/css/sitemap.css');
 assert.equal((sitemapCss.match(/{/g) || []).length, (sitemapCss.match(/}/g) || []).length, 'Unbalanced sitemap CSS braces');
