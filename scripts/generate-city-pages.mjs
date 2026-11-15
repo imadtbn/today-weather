@@ -159,7 +159,7 @@ function buildDirectory(group) {
 <header class="directory-hero"><span class="city-kicker">دليل الطقس · ${escapeHtml(group.kind)}</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)}</p><span class="directory-count">استكشف ${group.items.length} مدينة</span></header>
 <div class="city-directory-grid">${links}</div></main>
 ${adBlock("bottom")}${commonFooter()}
-<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);if(!('IntersectionObserver'in window)){cards.forEach(function(card){card.classList.add('is-visible');});return;}var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target);}});},{rootMargin:'180px 0px',threshold:0.01});cards.forEach(function(card){observer.observe(card);});})();<\\/script>
+<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);grid.classList.add('directory-progressive');if(!('IntersectionObserver'in window)){cards.forEach(function(card){card.classList.add('is-visible');});return;}var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target);}});},{rootMargin:'180px 0px',threshold:0.01});cards.forEach(function(card){observer.observe(card);});})();<\\/script>
 </body></html>`;
 }
 
