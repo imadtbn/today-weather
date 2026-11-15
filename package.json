@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:seo": "node scripts/generate-city-pages.mjs",
-    "validate": "node scripts/validate-site.mjs",
+    "validate": "npm run build:seo && node scripts/validate-site.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
