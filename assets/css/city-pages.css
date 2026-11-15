@@ -241,7 +241,7 @@ body.city-page {
 
 
 /* Shared global search on generated city and directory pages. */
-.city-topbar-inner .global-search-wrapper{position:relative;flex:0 1 270px;min-width:190px;z-index:30}
+.city-topbar-inner{flex-wrap:wrap;padding-block:10px}.city-topbar-inner .city-brand{order:1}.city-topbar-inner .global-search-wrapper{position:relative;order:2;flex:0 1 270px;min-width:190px;margin-inline-start:auto;z-index:30}.city-topbar-inner .city-main-nav{order:3;flex:1 0 100%;width:100%}
 .city-topbar-inner .global-search-wrapper .search-input{width:100%;min-height:42px;padding:9px 38px 9px 12px;border:1px solid var(--city-border);border-radius:12px;background:rgba(255,255,255,.07);color:var(--city-text);font:inherit;font-size:.82rem;outline:none}
 .city-topbar-inner .global-search-wrapper .search-input::placeholder{color:var(--city-muted)}
 .city-topbar-inner .global-search-wrapper .search-input:focus{border-color:var(--city-gold);box-shadow:0 0 0 3px rgba(212,168,83,.12)}
@@ -252,4 +252,4 @@ body.city-page {
 .city-topbar-inner .global-search-wrapper .city-suggestion-item:hover,.city-topbar-inner .global-search-wrapper .city-suggestion-item[aria-selected="true"]{background:rgba(212,168,83,.13)}
 .city-topbar-inner .global-search-wrapper .city-name{font-weight:700}
 .city-topbar-inner .global-search-wrapper .city-region{color:var(--city-muted);font-size:.75rem}
-@media(max-width:760px){.city-topbar-inner{flex-wrap:wrap;padding-block:10px}.city-topbar-inner .global-search-wrapper{order:3;flex:1 0 100%;min-width:0}.city-topbar-inner .city-main-nav{order:2;width:100%}}
+@media(max-width:760px){.city-topbar-inner .global-search-wrapper{order:3;flex:1 0 100%;min-width:0;margin-inline:0}.city-topbar-inner .city-main-nav{order:2;width:100%}}
