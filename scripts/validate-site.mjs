@@ -100,7 +100,23 @@ for (const stale of ['assets/js/main.js', 'assets/js/main22script.js', 'assets/j
   assert.ok(!scriptRefs.includes(stale), 'Legacy script still referenced: ' + stale);
 }
 const activeJs = readdirSync(resolve(root, 'assets/js')).filter(file => file.endsWith('.js'));
-const unreferenced = activeJs.filter(file => !scriptRefs.includes('assets/js/' + file) && file !== 'city-page.js');
+const generatedCityPages = [];
+function collectCityPages(directory) {
+  if (!existsSync(directory)) return;
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolute = resolve(directory, entry.name);
+    if (entry.isDirectory()) collectCityPages(absolute);
+    else if (entry.isFile() && entry.name === 'index.html') generatedCityPages.push(absolute);
+  }
+}
+collectCityPages(resolve(root, 'weather'));
+assert.ok(generatedCityPages.length >= 286, 'Expected generated city pages before validation; found ' + generatedCityPages.length);
+const cityPagesUseWeatherScript = generatedCityPages.every(path => readFileSync(path, 'utf8').includes('assets/js/city-page.js'));
+assert.ok(cityPagesUseWeatherScript, 'One or more generated city pages do not reference city-page.js');
+const unreferenced = activeJs.filter(file =>
+  !scriptRefs.includes('assets/js/' + file) &&
+  !(file === 'city-page.js' && cityPagesUseWeatherScript)
+);
 assert.deepEqual(unreferenced, [], 'Unreferenced JavaScript files remain: ' + unreferenced.join(', '));
 
 
