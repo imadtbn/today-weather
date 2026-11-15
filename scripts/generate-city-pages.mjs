@@ -108,7 +108,7 @@ function buildGlobalSearchIndex() {
 }
 
 function commonFooter() {
-  let footer = homeSection('footer').replace(/src="assets\\//g, 'src="' + BASE + '/assets/');
+  let footer = homeSection('footer').replace(/src="assets\//g, 'src="' + BASE + '/assets/');
   footer = footer.replace(/<a href="#" data-city="([^"]+)">/g, (match, cityName) => {
     const city = groups[0].items.find(item =>
       String(item.name_en || '').toLowerCase() === cityName.toLowerCase()
