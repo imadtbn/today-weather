@@ -37,5 +37,7 @@ jobs:
         run: npm install --no-audit --no-fund --no-package-lock
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Generate static SEO city pages
+        run: node scripts/generate-city-pages.mjs
       - name: Run browser tests
         run: npm run test:e2e
