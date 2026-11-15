@@ -19,7 +19,9 @@ const refs = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)]
   .map(m => m[1])
   .filter(v => !/^(?:https?:|#|data:|mailto:|tel:|javascript:)/i.test(v));
 for (const ref of refs) {
-  const path = ref.split(/[?#]/)[0].replace(/^\.\//, '');
+  const path = ref.split(/[?#]/)[0]
+    .replace(/^\.\//, '')
+    .replace(/^\/today-weather\/?/, '');
   if (path) assert.ok(existsSync(resolve(root, path)), 'Missing HTML resource: ' + ref);
 }
 
