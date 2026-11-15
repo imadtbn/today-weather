@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const generated = spawnSync(process.execPath, [resolve(root, 'scripts/generate-city-pages.mjs')], { cwd: root, encoding: 'utf8' });
+assert.equal(generated.status, 0, 'SEO city page generation failed: ' + (generated.stderr || generated.stdout));
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const html = read('index.html');
 const css = read('assets/css/style-main.css');
@@ -33,7 +35,31 @@ assert.ok(html.includes('property="og:image" content="https://imadtbn.github.io/
 assert.ok(!html.includes('"@type": "FAQPage"'), 'FAQ schema must match visible FAQ content');
 
 const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
-assert.deepEqual(urls, ['https://imadtbn.github.io/today-weather/'], 'SPA sitemap should list only its canonical page');
+const cityGroups = [
+  { key: 'algeria', file: 'data/cities.json', count: 69 },
+  { key: 'arab', file: 'data/arab-capitals.json', count: 22 },
+  { key: 'world', file: 'data/world-capitals.json', count: 195 }
+];
+const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
+assert.equal(expectedCityCount, 286, 'Expected 286 source city records');
+assert.equal(urls.length, expectedCityCount + 5, 'Sitemap must include home, directory index, three category indexes and every city page');
+assert.equal(new Set(urls).size, urls.length, 'Sitemap contains duplicate URLs');
+assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/'));
+for (const group of cityGroups) {
+  const cities = JSON.parse(read(group.file));
+  assert.equal(cities.length, group.count, 'Unexpected city count for ' + group.key);
+  assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/' + group.key + '/'));
+  for (const city of cities) {
+    const pagePath = 'weather/' + group.key + '/' + city.slug + '/index.html';
+    assert.ok(existsSync(resolve(root, pagePath)), 'Missing generated city page: ' + pagePath);
+    const page = read(pagePath);
+    assert.ok(page.includes('<h1 class="city-title">طقس '), 'City H1 missing: ' + pagePath);
+    assert.ok(page.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/"'), 'City canonical missing: ' + pagePath);
+    assert.ok(page.includes('id="cityTemp"') && page.includes('id="cityForecast"'), 'Live weather fields missing: ' + pagePath);
+    assert.ok(page.includes('application/ld+json') && page.includes('BreadcrumbList'), 'Structured data missing: ' + pagePath);
+    assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/'), 'City URL missing from sitemap: ' + city.slug);
+  }
+}
 assert.ok(!urls.some(url => url.includes('#')));
 assert.ok(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(sitemap));
 
