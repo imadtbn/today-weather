@@ -9,6 +9,9 @@ on:
     paths:
       - 'index.html'
       - 'assets/**'
+      - 'data/**'
+      - 'scripts/generate-city-pages.mjs'
+      - 'sitemap.xml'
       - '.github/workflows/lighthouse.yml'
 
 permissions:
