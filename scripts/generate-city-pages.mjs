@@ -77,10 +77,7 @@ function commonHeader() {
   return header;
 }
 function commonFooter() {
-  let footer = homeSection('footer')
-    .replace(/src="assets\//g, 'src="' + BASE + '/assets/')
-    .replace(/href="#"/g, 'href="' + BASE + '/"')
-    .replace(/href="#([^"]+)"/g, 'href="' + BASE + '/#$1"');
+  let footer = homeSection('footer').replace(/src="assets\//g, 'src="' + BASE + '/assets/');
   footer = footer.replace(/<a href="#" data-city="([^"]+)">/g, (match, cityName) => {
     const city = groups[0].items.find(item =>
       String(item.name_en || '').toLowerCase() === cityName.toLowerCase()
@@ -89,6 +86,8 @@ function commonFooter() {
       ? '<a href="' + BASE + '/weather/algeria/' + encodeURIComponent(city.slug) + '/">'
       : '<a href="' + BASE + '/weather/algeria/">';
   });
+  footer = footer.replace(/href="#"/g, 'href="' + BASE + '/"')
+    .replace(/href="#([^"]+)"/g, 'href="' + BASE + '/#$1"');
   const searchIndex = groups.flatMap(group => group.items.map(city => ({
     group: group.key, slug: city.slug, name: group.name(city),
     latin: city.name_en || city.name_fr || '', country: group.country(city)
@@ -111,6 +110,7 @@ function commonFooter() {
     'document.addEventListener("click",function(e){if(!e.target.closest(".search-wrapper"))suggestions.classList.remove("visible");});}' +
     '})();<\/script>';
 }
+
 function adBlock(position) {
   const unit = position === 'top'
     ? '<ins class="adsbygoogle" style="display:block" data-ad-format="fluid" data-ad-layout-key="-fr+56+4k-d4+74" data-ad-client="ca-pub-5656416032906373" data-ad-slot="7867079394"></ins>'
