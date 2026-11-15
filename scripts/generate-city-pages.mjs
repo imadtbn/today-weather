@@ -54,36 +54,68 @@ function pageUrl(group, slug) {
 }
 
 
+
+const HOME_HTML = readFileSync(join(ROOT, 'index.html'), 'utf8');
+function homeSection(tag) {
+  const match = HOME_HTML.match(new RegExp('<' + tag + '\\b[\\s\\S]*?<\\/' + tag + '>'));
+  if (!match) throw new Error('Homepage ' + tag + ' markup is missing');
+  return match[0];
+}
 function trackingTags() {
-  return '<meta name="google-site-verification" content="f5Xi4oFx0v5dN6iPZd9qCw-7vnc3vIbAeYF9jr4vwVM"><meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
+  return '<meta name="google-site-verification" content="f5Xi4oFx0v5dN6iPZd9qCw-7vnc3vIbAeYF9jr4vwVM">' +
+    '<meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
     '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"><\/script>' +
-    '<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());<\/script>' +
+    '<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date());<\/script>' +
     '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous"><\/script>';
 }
 function commonHeader() {
-  return '<header class="site-header" id="siteHeader"><div class="header-inner">' +
-    '<a href="' + BASE + '/" class="brand"><img src="' + BASE + '/assets/images/icon1.webp" alt="أحوال الطقس" class="brand-icon"><div class="brand-text"><span class="brand-name">أحوال الطقس</span><span class="brand-tagline">توقعات طقس محدثة</span></div></a>' +
-    '<button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="فتح قائمة التنقل" aria-controls="mainNav" aria-expanded="false"><i class="fas fa-bars" aria-hidden="true"></i></button>' +
-    '<nav class="main-nav" id="mainNav" aria-label="التنقل الرئيسي"><ul class="nav-list">' +
-    '<li><a href="' + BASE + '/" class="nav-link">الرئيسية</a></li><li><a href="' + BASE + '/#forecast" class="nav-link">التنبؤات</a></li><li><a href="' + BASE + '/#maps" class="nav-link">الخرائط</a></li><li><a href="' + BASE + '/#stats" class="nav-link">الإحصائيات</a></li><li><a href="' + BASE + '/#warnings" class="nav-link">التحذيرات</a></li><li><a href="' + BASE + '/weather/" class="nav-link">دليل المدن</a></li>' +
-    '</ul></nav><div class="header-controls"><a class="icon-btn" href="' + BASE + '/" aria-label="العودة إلى الصفحة الرئيسية"><i class="fas fa-house"></i></a></div></div></header>';
+  let header = homeSection('header')
+    .replace(/src="assets\//g, 'src="' + BASE + '/assets/')
+    .replace(/href="#"/g, 'href="' + BASE + '/"')
+    .replace(/href="#([^"]+)"/g, 'href="' + BASE + '/#$1"')
+    .replace('class="nav-link active"', 'class="nav-link"');
+  return header;
+}
+function commonFooter() {
+  let footer = homeSection('footer')
+    .replace(/src="assets\//g, 'src="' + BASE + '/assets/')
+    .replace(/href="#"/g, 'href="' + BASE + '/"')
+    .replace(/href="#([^"]+)"/g, 'href="' + BASE + '/#$1"');
+  footer = footer.replace(/<a href="#" data-city="([^"]+)">/g, (match, cityName) => {
+    const city = groups[0].items.find(item =>
+      String(item.name_en || '').toLowerCase() === cityName.toLowerCase()
+    );
+    return city
+      ? '<a href="' + BASE + '/weather/algeria/' + encodeURIComponent(city.slug) + '/">'
+      : '<a href="' + BASE + '/weather/algeria/">';
+  });
+  const searchIndex = groups.flatMap(group => group.items.map(city => ({
+    group: group.key, slug: city.slug, name: group.name(city),
+    latin: city.name_en || city.name_fr || '', country: group.country(city)
+  })));
+  return footer +
+    '<script defer src="' + BASE + '/assets/js/adsData.js"><\/script>' +
+    '<script>(function(){' +
+    'var menu=document.getElementById("mobileMenuBtn"),nav=document.getElementById("mainNav");' +
+    'if(menu&&nav){menu.addEventListener("click",function(){var open=nav.classList.toggle("active");menu.setAttribute("aria-expanded",String(open));menu.setAttribute("aria-label",open?"إغلاق قائمة التنقل":"فتح قائمة التنقل");});' +
+    'nav.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){nav.classList.remove("active");menu.setAttribute("aria-expanded","false");});});' +
+    'document.addEventListener("keydown",function(e){if(e.key==="Escape"){nav.classList.remove("active");menu.setAttribute("aria-expanded","false");}});}' +
+    'var locationButton=document.getElementById("locationBtn");if(locationButton)locationButton.addEventListener("click",function(){location.href="' + BASE + '/#home";});' +
+    'var input=document.getElementById("searchInput"),suggestions=document.getElementById("citySuggestions"),cities=' + safeJson(searchIndex) + ';' +
+    'if(input&&suggestions){var results=[];function render(){var q=input.value.trim().toLocaleLowerCase();results=q.length<2?[]:cities.filter(function(c){return (c.name+" "+c.latin+" "+c.country).toLocaleLowerCase().includes(q);}).slice(0,8);' +
+    'suggestions.innerHTML=results.map(function(c,i){return \'<button type="button" class="city-suggestion-item" role="option" data-index="\' + i + \'"><span class="city-name">\' + c.name + \'</span><span class="city-region">\' + c.country + \'</span></button>\';}).join("");' +
+    'suggestions.classList.toggle("visible",results.length>0);input.setAttribute("aria-expanded",String(results.length>0));}' +
+    'function go(i){var c=results[i];if(c)location.href="' + BASE + '/weather/"+c.group+"/"+encodeURIComponent(c.slug)+"/";}' +
+    'input.addEventListener("input",render);input.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();go(0);}else if(e.key==="Escape"){suggestions.classList.remove("visible");input.setAttribute("aria-expanded","false");}});' +
+    'suggestions.addEventListener("click",function(e){var item=e.target.closest("[data-index]");if(item)go(Number(item.dataset.index));});' +
+    'document.addEventListener("click",function(e){if(!e.target.closest(".search-wrapper"))suggestions.classList.remove("visible");});}' +
+    '})();<\/script>';
 }
 function adBlock(position) {
   const unit = position === 'top'
     ? '<ins class="adsbygoogle" style="display:block" data-ad-format="fluid" data-ad-layout-key="-fr+56+4k-d4+74" data-ad-client="ca-pub-5656416032906373" data-ad-slot="7867079394"></ins>'
     : '<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-5656416032906373" data-ad-slot="3143411927" data-ad-format="auto" data-full-width-responsive="true"></ins>';
   return '<div class="container city-ad-wrap"><div class="ad-container"><span class="ad-label">إعلان</span><div class="ad-placeholder">' + unit + '</div></div></div>';
-}
-function commonFooter() {
-  const labels = ['الجزائر العاصمة','وهران','قسنطينة','عنابة','البليدة','سطيف'];
-  const links = labels.map((label, i) => '<li><a href="' + BASE + '/weather/algeria/' + encodeURIComponent(groups[0].items[i].slug) + '/"><i class="fas fa-chevron-left"></i> ' + label + '</a></li>').join('');
-  return '<footer class="site-footer" id="contact"><div class="container"><div class="footer-grid">' +
-    '<div class="footer-brand"><a href="' + BASE + '/" class="brand"><img src="' + BASE + '/assets/images/icon1.webp" alt="أحوال الطقس" class="brand-icon"><div class="brand-text"><span class="brand-name">أحوال الطقس</span><span class="brand-tagline">توقعات طقس محدثة</span></div></a><p>منصة لمتابعة حالة الطقس اليوم وتوقعات الطقس في الجزائر والمدن العالمية، تشمل درجات الحرارة والأمطار والرياح والخرائط الجوية ومؤشرات الطقس المتخصصة.</p></div>' +
-    '<div><h3 class="footer-title">روابط سريعة</h3><ul class="footer-links"><li><a href="' + BASE + '/"><i class="fas fa-chevron-left"></i> الرئيسية</a></li><li><a href="' + BASE + '/#forecast"><i class="fas fa-chevron-left"></i> التنبؤات</a></li><li><a href="' + BASE + '/#maps"><i class="fas fa-chevron-left"></i> الخرائط</a></li><li><a href="' + BASE + '/weather/"><i class="fas fa-chevron-left"></i> دليل المدن</a></li></ul></div>' +
-    '<div><h3 class="footer-title">المدن الرئيسية</h3><ul class="footer-links">' + links + '</ul></div>' +
-    '<div><h3 class="footer-title">معلومات التواصل</h3><div class="footer-contact-item"><i class="fas fa-map-marker-alt"></i><span>الجزائر العاصمة، الجزائر</span></div><div class="footer-contact-item"><i class="fas fa-phone"></i><a href="tel:+213697743721" dir="ltr">+213 697 743 721</a></div><div class="footer-contact-item"><i class="fas fa-envelope"></i><a href="mailto:tabaniimadeddine@gmail.com">tabaniimadeddine@gmail.com</a></div><div class="footer-contact-item"><i class="fas fa-globe"></i><a href="https://imadtbn.github.io/dz_portal/" target="_blank" rel="noopener noreferrer">البوابة الجزائرية</a></div></div>' +
-    '</div><div class="footer-bottom"><div class="footer-copyright">© ' + new Date().getFullYear() + ' أحوال الطقس. جميع الحقوق محفوظة.</div><div class="footer-copyright">بيانات الطقس من <a href="https://openweathermap.org">OpenWeatherMap</a> | الخرائط عبر <a href="https://leafletjs.com">Leaflet</a> | البحث الجغرافي <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a></div></div></div></footer>' +
-    '<script defer src="' + BASE + '/assets/js/adsData.js"><\/script><script>(function(){var b=document.getElementById("mobileMenuBtn"),n=document.getElementById("mainNav");if(b&&n){b.addEventListener("click",function(){var o=n.classList.toggle("active");b.setAttribute("aria-expanded",String(o));});n.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){n.classList.remove("active");b.setAttribute("aria-expanded","false");});});}})();<\/script>';
 }
 
 function buildDirectory(group) {
