@@ -150,7 +150,7 @@
     return items.map(function (item) { return { item: item, score: score(item, query) }; })
       .filter(function (entry) { return entry.score > 0; })
       .sort(function (a, b) { return b.score - a.score || a.item.name.localeCompare(b.item.name, 'ar'); })
-      .slice(0, 2).map(function (entry) { return entry.item; });
+      .slice(0, MAX_SUGGESTIONS).map(function (entry) { return entry.item; });
   }
 
   async function searchGlobal(rawQuery) {
@@ -159,7 +159,8 @@
     var token = ++searchToken;
     if (geoController) geoController.abort();
     geoController = new AbortController();
-    results = localMatches(query);
+    var localResults = localMatches(query);
+    results = localResults.slice(0, 2);
     render(true);
 
     var languages = queryLanguages(rawQuery);
@@ -207,6 +208,12 @@
         return !localCityKeys.includes(normalize(place.name));
       });
       results = results.concat(globalCities).slice(0, MAX_SUGGESTIONS);
+      if (results.length < MAX_SUGGESTIONS) {
+        localResults.forEach(function (item) {
+          if (results.length >= MAX_SUGGESTIONS) return;
+          if (!results.some(function (existing) { return existing.path === item.path; })) results.push(item);
+        });
+      }
       render(false);
     } catch (error) {
       if (error.name === 'AbortError' || token !== searchToken) return;
