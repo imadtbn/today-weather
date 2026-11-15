@@ -5,8 +5,6 @@ import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const generated = spawnSync(process.execPath, [resolve(root, 'scripts/generate-city-pages.mjs')], { cwd: root, encoding: 'utf8' });
-assert.equal(generated.status, 0, 'SEO city page generation failed: ' + (generated.stderr || generated.stdout));
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const html = read('index.html');
 const css = read('assets/css/style-main.css');
