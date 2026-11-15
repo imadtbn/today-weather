@@ -281,3 +281,25 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+
+// Keep the sitemap link visible on already-generated city pages as well as new builds.
+(function ensureSitemapFooterLink() {
+  var footerLists = document.querySelectorAll('.site-footer .footer-links');
+  footerLists.forEach(function (list) {
+    if (list.querySelector('a[href="/today-weather/sitemap.html"]')) return;
+    var item = document.createElement('li');
+    var link = document.createElement('a');
+    link.href = '/today-weather/sitemap.html';
+    var icon = document.createElement('i');
+    icon.className = 'fas fa-sitemap';
+    icon.setAttribute('aria-hidden', 'true');
+    link.appendChild(icon);
+    link.appendChild(document.createTextNode(' خريطة الموقع'));
+    item.appendChild(link);
+    var newsLink = Array.from(list.querySelectorAll('a')).find(function (anchor) {
+      return anchor.textContent.indexOf('الأخبار') !== -1;
+    });
+    if (newsLink && newsLink.parentElement) newsLink.parentElement.after(item);
+    else list.appendChild(item);
+  });
+})();
