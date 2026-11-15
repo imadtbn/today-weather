@@ -190,3 +190,15 @@ body.city-page {
 @media(min-width:601px) and (max-width:1050px){.city-directory .city-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px}}
 @media(max-width:600px){.city-directory .city-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}.city-directory .directory-city-image{height:clamp(68px,20vw,104px);max-height:104px}.city-directory .directory-city-body{padding:6px}.city-directory .directory-city-body strong{font-size:.78rem}.city-directory .directory-country{font-size:.66rem}}
 @media(prefers-reduced-motion:reduce){.city-directory .city-directory-grid .city-directory-item,.city-directory .city-directory-grid .city-directory-item.is-visible{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+/* Semantic image hero for each city directory. */
+.city-directory .directory-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(220px,.8fr);align-items:center;gap:clamp(18px,3vw,34px);width:100%;}
+.directory-hero-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0;}
+.directory-hero-media{position:relative;z-index:1;width:100%;max-width:440px;justify-self:end;margin:0;overflow:hidden;aspect-ratio:16/10;border:1px solid var(--city-border);border-radius:17px;background:var(--city-panel);box-shadow:0 12px 32px rgba(0,0,0,.2);}
+.directory-hero-media img{display:block;width:100%;height:100%;object-fit:cover;}
+.city-directory .directory-hero .city-directory-intro{max-width:760px;}
+@media(max-width:680px){.city-directory .directory-hero{grid-template-columns:1fr;gap:16px;padding:20px;}.directory-hero-media{width:100%;max-width:none;max-height:190px;aspect-ratio:16/7;}}
+.directory-feature-card .directory-city-image{width:100%;height:auto;max-height:none;aspect-ratio:16/9;object-fit:cover;}
+.directory-feature-card .directory-city-body{gap:5px;padding:13px 14px;}
+.directory-feature-card .directory-city-body strong{font-size:1rem;}

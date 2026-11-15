@@ -3178,3 +3178,8 @@ body {
     .main-nav .nav-list { flex-wrap: wrap; }
     .main-nav .nav-link { white-space: nowrap; }
 }
+
+
+/* Accessible image-led discovery cards. */
+.city-discovery-image img{object-position:center 45%;}
+.city-discovery-card:focus-visible{outline:3px solid var(--gold);outline-offset:3px;}
