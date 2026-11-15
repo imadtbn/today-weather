@@ -25,16 +25,28 @@
       $("cityHumidity").textContent = number(current.main.humidity) + "%";
       $("cityWind").textContent = number(Number(current.wind?.speed || 0) * 3.6) + " كم/س";
       $("cityPressure").textContent = number(current.main.pressure) + " hPa";
-      const days = new Map();
+      const dayGroups = new Map();
       for (const item of forecast.list) {
         const date = item.dt_txt?.slice(0,10);
-        if (!date || days.has(date)) continue;
-        if (item.dt_txt.includes("12:00:00") || ![...days.values()].some(v=>v.dt_txt.includes("12:00:00"))) days.set(date,item);
+        if (!date) continue;
+        if (!dayGroups.has(date)) dayGroups.set(date, []);
+        dayGroups.get(date).push(item);
       }
-      const entries = [...days.values()].slice(0,5);
-      $("cityForecast").innerHTML = entries.map(item => {
-        const day = new Date(item.dt * 1000).toLocaleDateString("ar-DZ",{weekday:"short"});
-        return `<div class="city-day"><span>${day}</span><i class="fa-solid ${icon(Number(item.weather?.[0]?.id))}" aria-hidden="true"></i><strong>${number(item.main?.temp)}°</strong><small>${item.weather?.[0]?.description || ""}</small></div>`;
+      const entries = [...dayGroups.entries()].slice(0,5).map(([date, items]) => {
+        const representative = items.reduce((best, item) => {
+          const hour = Number(item.dt_txt?.slice(11,13) || 0);
+          const bestHour = Number(best.dt_txt?.slice(11,13) || 0);
+          return Math.abs(hour - 12) < Math.abs(bestHour - 12) ? item : best;
+        }, items[0]);
+        const max = Math.max(...items.map(item => Number(item.main?.temp_max ?? item.main?.temp ?? -100)));
+        const min = Math.min(...items.map(item => Number(item.main?.temp_min ?? item.main?.temp ?? 100)));
+        const rainChance = Math.round(Math.max(...items.map(item => Number(item.pop || 0))) * 100);
+        return { date, representative, max, min, rainChance };
+      });
+      $("cityForecast").innerHTML = entries.map(day => {
+        const weekday = new Date(day.date + "T12:00:00").toLocaleDateString("ar-DZ",{weekday:"short"});
+        const description = day.representative.weather?.[0]?.description || "";
+        return `<div class="city-day"><span>${weekday}</span><i class="fa-solid ${icon(Number(day.representative.weather?.[0]?.id))}" aria-hidden="true"></i><strong>${number(day.max)}° / ${number(day.min)}°</strong><small>${description}</small><small>احتمال المطر ${day.rainChance}%</small></div>`;
       }).join("");
       const updated = new Date((current.dt || Date.now()/1000)*1000).toLocaleString("ar-DZ",{dateStyle:"medium",timeStyle:"short"});
       $("cityUpdated").textContent = "آخر تحديث للبيانات: " + updated;
