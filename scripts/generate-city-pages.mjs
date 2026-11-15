@@ -143,7 +143,7 @@ function buildDirectory(group) {
       <span lang="en" dir="ltr">${escapeHtml(englishName || '')}</span></span></span></a>`;
   }).join('\n');
   const url = `${SITE}/weather/${group.key}/`;
-  const directoryImage = group.key === 'algeria' ? 'images/algiers.jpg' : group.key === 'arab' ? 'images/amman.jpg' : 'images/world-cities.jpg';
+  const directoryImage = group.key === 'algeria' ? 'images/algiers.jpg' : group.key === 'arab' ? 'images/amman.jpg' : 'images/world-cities2.jpg?v=20261115';
   const directoryImageAlt = group.key === 'algeria' ? 'مشهد من الجزائر العاصمة يمثل دليل الولايات الجزائرية' : group.key === 'arab' ? 'مشهد من عمّان يمثل دليل العواصم العربية' : 'رسم لمدن عالمية ومعالم عمرانية يمثل دليل المدن العالمية';
   const schema = {
     '@context': 'https://schema.org', '@type': 'CollectionPage',
