@@ -2402,6 +2402,8 @@ body {
     outline-offset: -2px;
 }
 
+
+.city-suggestion-status{padding:7px 12px;color:var(--text-muted);font-size:.75rem;text-align:center;border-top:1px solid rgba(255,255,255,.06)}
 .city-suggestion-empty {
     padding: var(--space-md);
     color: var(--text-secondary);
