@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pageGraph, collectionGraph } from './seo-schema.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = 'https://imadtbn.github.io/today-weather';
@@ -183,15 +184,23 @@ function buildSitemapPage() {
       name: group.name(city), url: pageUrl(group.key, city.slug)
     };
   }));
-  const schema = {
-    '@context': 'https://schema.org', '@type': 'CollectionPage',
+  const sitemapUrl = SITE + '/sitemap.html';
+  const schema = collectionGraph({
+    url: sitemapUrl,
     name: 'خريطة الموقع | أحوال الطقس',
     description: 'دليل شامل لجميع صفحات الطقس والولايات الجزائرية والعواصم العربية والمدن العالمية.',
-    url: SITE + '/sitemap.html', inLanguage: 'ar',
-    mainEntity: { '@type': 'ItemList', numberOfItems: totalLinks,
-      itemListElement: [...pageSchemaItems, ...citySchemaItems]
-    }
-  };
+    dateModified: TODAY,
+    breadcrumbs: [
+      { name: 'الرئيسية', url: SITE + '/' },
+      { name: 'خريطة الموقع', url: sitemapUrl }
+    ],
+    items: [
+      ...pageLinks.map(item => ({ name: item.name, url: SITE + item.path })),
+      ...groups.flatMap(group => group.items.map(city => ({
+        name: group.name(city), url: pageUrl(group.key, city.slug)
+      })))
+    ]
+  });
   return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>خريطة الموقع | جميع المدن والولايات والعواصم - أحوال الطقس</title>' +
@@ -277,16 +286,21 @@ function buildDirectory(group) {
   const url = `${SITE}/weather/${group.key}/`;
   const directoryImage = group.key === 'algeria' ? 'images/algiers.jpg' : group.key === 'arab' ? 'images/amman.jpg' : 'images/world-cities2.jpg?v=20261115';
   const directoryImageAlt = group.key === 'algeria' ? 'مشهد من الجزائر العاصمة يمثل دليل الولايات الجزائرية' : group.key === 'arab' ? 'مشهد من عمّان يمثل دليل العواصم العربية' : 'رسم لمدن عالمية ومعالم عمرانية يمثل دليل المدن العالمية';
-  const schema = {
-    '@context': 'https://schema.org', '@type': 'CollectionPage',
-    name: `الطقس في ${group.title}`, description: group.description, url, inLanguage: 'ar',
-    mainEntity: { '@type': 'ItemList', numberOfItems: group.items.length,
-      itemListElement: group.items.map((city, index) => ({
-        '@type': 'ListItem', position: index + 1, name: group.name(city),
-        url: pageUrl(group.key, city.slug)
-      }))
-    }
-  };
+  const schema = collectionGraph({
+    url,
+    name: `الطقس في ${group.title}`,
+    description: group.description,
+    image: `${SITE}/${directoryImage}`,
+    dateModified: TODAY,
+    breadcrumbs: [
+      { name: 'الرئيسية', url: SITE + '/' },
+      { name: 'دليل الطقس', url: SITE + '/weather/' },
+      { name: group.title, url }
+    ],
+    items: group.items.map(city => ({
+      name: group.name(city), url: pageUrl(group.key, city.slug)
+    }))
+  });
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>الطقس في ${escapeHtml(group.title)} | أحوال الطقس</title><meta name="description" content="${escapeHtml(group.description)}"><meta name="robots" content="index,follow,max-image-preview:large">
@@ -325,18 +339,23 @@ function buildCityPage(group, index) {
     { '@type': 'ListItem', position: 3, name: group.title, item: `${SITE}/weather/${group.key}/` },
     { '@type': 'ListItem', position: 4, name, item: url }
   ];
-  const schema = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      { '@type': 'WebPage', '@id': url + '#webpage', url, name: title, description,
-        inLanguage: 'ar', dateModified: TODAY,
-        primaryImageOfPage: { '@type': 'ImageObject', url: SITE + image } },
-      { '@type': 'Place', '@id': url + '#place', name,
-        containedInPlace: { '@type': 'Country', name: country },
-        geo: { '@type': 'GeoCoordinates', latitude, longitude } },
-      { '@type': 'BreadcrumbList', itemListElement: breadcrumb }
-    ]
-  };
+  const schema = pageGraph({
+    url, name: title, description, image: SITE + image, dateModified: TODAY,
+    breadcrumbs: [
+      { name: 'الرئيسية', url: SITE + '/' },
+      { name: 'دليل الطقس', url: SITE + '/weather/' },
+      { name: group.title, url: SITE + '/weather/' + group.key + '/' },
+      { name, url }
+    ],
+    mainEntity: { '@id': url + '#place' }
+  });
+  schema['@graph'].push({
+    '@type': 'Place',
+    '@id': url + '#place',
+    name,
+    containedInPlace: { '@type': 'Country', name: country },
+    geo: { '@type': 'GeoCoordinates', latitude, longitude }
+  });
   const config = safeJson({ lat: latitude, lon: longitude, name, country, countryCode: city.countryCode || city.country_code || (group.key === 'algeria' ? 'DZ' : '') });
   const imageAlt = `صورة ${name} في ${country}`;
   const groupLabel = group.key === 'algeria' ? 'الولايات الجزائرية' : group.key === 'arab' ? 'العواصم العربية' : 'المدن العالمية';
@@ -394,7 +413,7 @@ ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script>
 const weatherRoot = join(ROOT, 'weather');
 for (const group of groups) rmSync(join(weatherRoot, group.key), { recursive: true, force: true });
 mkdirSync(weatherRoot, { recursive: true });
-writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الطقس في المدن والولايات | أحوال الطقس</title><meta name="description" content="اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام."><meta name="robots" content="index,follow"><link rel="canonical" href="${SITE}/weather/"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">${trackingTags()}</head><body class="city-page">${commonHeader()}${adBlock("top")}<main class="city-container city-directory"><nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / دليل الطقس</nav><header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل المدن والطقس</span><h1 class="city-title">الطقس في الجزائر والعالم</h1><p class="city-directory-intro">تصفح أدلة الطقس للولايات الجزائرية والعواصم العربية والمدن العالمية، وانتقل إلى صفحات مستقلة تعرض حالة الطقس والتوقعات المحلية.</p><span class="directory-count">3 أدلة رئيسية لاستكشاف المدن</span></div><figure class="directory-hero-media"><img src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم دلالي لمدن العالم ومعالمها العمرانية" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header><div class="city-directory-grid directory-feature-grid"><a class="city-directory-item directory-feature-card" href="${BASE}/weather/algeria/"><img class="directory-city-image" src="${BASE}/images/algiers.jpg" alt="منظر مدينة الجزائر العاصمة" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>ولايات الجزائر الـ69</strong><small class="directory-country">حالة الطقس في الولايات الجزائرية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/arab/"><img class="directory-city-image" src="${BASE}/images/amman.jpg" alt="مشهد عمراني من عمّان يمثل العواصم العربية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>العواصم العربية</strong><small class="directory-country">طقس العواصم والمدن العربية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/world/"><img class="directory-city-image" src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم لمدن عالمية ومعالم عمرانية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>المدن والعواصم العالمية</strong><small class="directory-country">توقعات الطقس للمدن العالمية</small></span></a></div></main>${adBlock("bottom")}${commonFooter()}</body></html>`);
+writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل الطقس في المدن والولايات | أحوال الطقس</title><meta name="description" content="اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام."><meta name="robots" content="index,follow"><link rel="canonical" href="${SITE}/weather/"><link rel="stylesheet" href="${BASE}/assets/css/style-main.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="${BASE}/assets/css/city-pages.css">${trackingTags()}<script type="application/ld+json">${safeJson(pageGraph({url: SITE + '/weather/', name: 'دليل الطقس في المدن والولايات | أحوال الطقس', description: 'اختر ولاية جزائرية أو عاصمة عربية أو مدينة عالمية للوصول إلى صفحة طقس مستقلة تشمل حالة الطقس الحالية وتوقعات خمسة أيام.', dateModified: TODAY, breadcrumbs: [{name:'الرئيسية',url:SITE+'/'},{name:'دليل الطقس',url:SITE+'/weather/'}]}))}</script></head><body class="city-page">${commonHeader()}${adBlock("top")}<main class="city-container city-directory"><nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / دليل الطقس</nav><header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل المدن والطقس</span><h1 class="city-title">الطقس في الجزائر والعالم</h1><p class="city-directory-intro">تصفح أدلة الطقس للولايات الجزائرية والعواصم العربية والمدن العالمية، وانتقل إلى صفحات مستقلة تعرض حالة الطقس والتوقعات المحلية.</p><span class="directory-count">3 أدلة رئيسية لاستكشاف المدن</span></div><figure class="directory-hero-media"><img src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم دلالي لمدن العالم ومعالمها العمرانية" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header><div class="city-directory-grid directory-feature-grid"><a class="city-directory-item directory-feature-card" href="${BASE}/weather/algeria/"><img class="directory-city-image" src="${BASE}/images/algiers.jpg" alt="منظر مدينة الجزائر العاصمة" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>ولايات الجزائر الـ69</strong><small class="directory-country">حالة الطقس في الولايات الجزائرية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/arab/"><img class="directory-city-image" src="${BASE}/images/amman.jpg" alt="مشهد عمراني من عمّان يمثل العواصم العربية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>العواصم العربية</strong><small class="directory-country">طقس العواصم والمدن العربية</small></span></a><a class="city-directory-item directory-feature-card" href="${BASE}/weather/world/"><img class="directory-city-image" src="${BASE}/images/world-cities2.jpg?v=20261115" alt="رسم لمدن عالمية ومعالم عمرانية" width="640" height="360" loading="lazy" decoding="async"><span class="directory-city-body"><strong>المدن والعواصم العالمية</strong><small class="directory-country">توقعات الطقس للمدن العالمية</small></span></a></div></main>${adBlock("bottom")}${commonFooter()}</body></html>`);
 
 writePage('data/global-search-index.json', JSON.stringify(buildGlobalSearchIndex(), null, 2) + '\n');
 writePage('sitemap.html', buildSitemapPage());
