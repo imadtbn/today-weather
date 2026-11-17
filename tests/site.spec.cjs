@@ -5,9 +5,9 @@ test('city directory renders compact responsive cards and reveals images in batc
   await page.goto('/weather/algeria/', { waitUntil: 'domcontentloaded' });
   const grid = page.locator('.city-directory-grid');
   await expect(grid.locator('.city-directory-item')).toHaveCount(69);
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(12);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(12);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(57);
+  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(4);
+  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(4);
+  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(65);
   await expect(page.locator('.directory-hero-media img')).toHaveAttribute('src', /images\/algiers\.jpg$/);
   for (const [width, expectedColumns] of [[1440, 4], [1024, 3], [390, 2]]) {
     await page.setViewportSize({ width, height: 900 });
@@ -15,9 +15,9 @@ test('city directory renders compact responsive cards and reveals images in batc
     expect(columns, 'wrong city-card column count at ' + width + 'px').toBe(expectedColumns);
   }
   await page.locator('.directory-load-sentinel').scrollIntoViewIfNeeded();
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(24);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(24);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(45);
+  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(8);
+  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(8);
+  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(61);
 });
 
 test('homepage exposes valid SEO and PWA metadata', async ({ page }) => {
