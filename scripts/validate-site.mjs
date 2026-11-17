@@ -57,6 +57,16 @@ function assertSharedPageShell(page, pagePath) {
     'assets/css/style-main.css', 'assets/js/adsData.js'
   ]) assert.ok(page.includes(marker), 'Homepage shell marker missing (' + marker + '): ' + pagePath);
 
+  const pageLd = [...page.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+  assert.equal(pageLd.length, 1, 'Expected exactly one JSON-LD block: ' + pagePath);
+  const pageGraph = JSON.parse(pageLd[0][1])['@graph'];
+  assert.ok(pageGraph?.some(item => item['@type'] === 'WebSite'), 'WebSite schema missing: ' + pagePath);
+  assert.ok(pageGraph?.some(item => item['@type'] === 'Organization'), 'Organization schema missing: ' + pagePath);
+  assert.ok(pageGraph?.some(item => ['WebPage', 'CollectionPage'].includes(item['@type'])), 'Page schema missing: ' + pagePath);
+  assert.ok(pageGraph?.some(item => item['@type'] === 'BreadcrumbList'), 'Breadcrumb schema missing: ' + pagePath);
+  const pageNode = pageGraph.find(item => ['WebPage', 'CollectionPage'].includes(item['@type']));
+  assert.equal(pageNode.isPartOf?.['@id'], 'https://imadtbn.github.io/today-weather/#website', 'Page-to-website relation missing: ' + pagePath);
+  assert.equal(pageNode.publisher?.['@id'], 'https://imadtbn.github.io/today-weather/#organization', 'Page publisher relation missing: ' + pagePath);
   assert.equal((page.match(/class="site-header"/g) || []).length, 1, 'Expected one homepage header: ' + pagePath);
   assert.equal((page.match(/class="site-footer"/g) || []).length, 1, 'Expected one homepage footer: ' + pagePath);
   assert.ok(page.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing: ' + pagePath);
@@ -81,8 +91,12 @@ assert.ok(htmlSitemap.includes('assets/css/sitemap.css'), 'HTML sitemap styleshe
 const sitemapJsonLd = [...htmlSitemap.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
 assert.equal(sitemapJsonLd.length, 1, 'Expected one JSON-LD block in HTML sitemap');
 const sitemapSchema = JSON.parse(sitemapJsonLd[0][1]);
-assert.equal(sitemapSchema.mainEntity?.numberOfItems, expectedCityCount + 11, 'HTML sitemap schema item count mismatch');
-assert.equal(sitemapSchema.mainEntity?.itemListElement?.length, expectedCityCount + 11, 'HTML sitemap schema links are incomplete');
+const sitemapCollection = sitemapSchema['@graph']?.find(item => item['@type'] === 'CollectionPage');
+assert.ok(sitemapCollection, 'HTML sitemap CollectionPage schema missing');
+assert.equal(sitemapCollection.mainEntity?.numberOfItems, expectedCityCount + 11, 'HTML sitemap schema item count mismatch');
+assert.equal(sitemapCollection.mainEntity?.itemListElement?.length, expectedCityCount + 11, 'HTML sitemap schema links are incomplete');
+assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'WebSite' && item['@id'] === 'https://imadtbn.github.io/today-weather/#website'), 'Sitemap WebSite entity link missing');
+assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'BreadcrumbList'), 'Sitemap breadcrumb schema missing');
 assert.ok(htmlSitemap.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing from generated pages');
 const sitemapCss = read('assets/css/sitemap.css');
 assert.equal((sitemapCss.match(/{/g) || []).length, (sitemapCss.match(/}/g) || []).length, 'Unbalanced sitemap CSS braces');
@@ -105,6 +119,11 @@ for (const group of cityGroups) {
     const pageJsonLd = [...page.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
     assert.equal(pageJsonLd.length, 1, 'Expected one JSON-LD block in ' + pagePath);
     const pageSchema = JSON.parse(pageJsonLd[0][1]);
+    const cityWebPage = pageSchema['@graph']?.find(item => item['@type'] === 'WebPage');
+    assert.ok(cityWebPage, 'City WebPage schema missing: ' + pagePath);
+    assert.equal(cityWebPage.url, 'https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/', 'City schema URL mismatch: ' + pagePath);
+    assert.equal(cityWebPage.isPartOf?.['@id'], 'https://imadtbn.github.io/today-weather/#website', 'City website relation missing: ' + pagePath);
+    assert.equal(cityWebPage.publisher?.['@id'], 'https://imadtbn.github.io/today-weather/#organization', 'City publisher relation missing: ' + pagePath);
     assert.ok(pageSchema['@graph']?.some(item => item['@type'] === 'Place' && item.geo), 'Place/GeoCoordinates schema missing: ' + pagePath);
     assert.ok(pageSchema['@graph']?.some(item => item['@type'] === 'BreadcrumbList'), 'Breadcrumb schema missing: ' + pagePath);
     assert.ok(page.includes('assets/css/city-pages.css') && page.includes('assets/js/city-page.js'), 'City page assets missing: ' + pagePath);
@@ -137,7 +156,7 @@ assert.equal((cityCss.match(/{/g) || []).length, (cityCss.match(/}/g) || []).len
 const jsFiles = [
   'assets/js/core.js', 'assets/js/geo-service.js', 'assets/js/weather-service.js', 'assets/js/weather-tips-engine.js',
   'assets/js/ui.js', 'assets/js/map-service.js', 'assets/js/search-news.js',
-  'assets/js/effects.js', 'assets/js/global-search.js', 'assets/js/app.js', 'assets/js/adsData.js', 'assets/js/city-page.js', 'sw.js'
+  'assets/js/effects.js', 'assets/js/global-search.js', 'assets/js/app.js', 'assets/js/adsData.js', 'assets/js/city-page.js', 'scripts/seo-schema.mjs', 'sw.js'
 ];
 for (const file of jsFiles) {
   const result = spawnSync(process.execPath, ['--check', resolve(root, file)], { encoding: 'utf8' });
@@ -173,9 +192,20 @@ assert.deepEqual(unreferenced, [], 'Unreferenced JavaScript files remain: ' + un
 
 assert.ok(html.includes('href="tel:+213697743721"'), 'Clickable contact phone missing');
 assert.ok(html.includes('href="mailto:tabaniimadeddine@gmail.com"'), 'Clickable contact email missing');
-const organization = JSON.parse(jsonLd[0][1])['@graph'].find(item => item['@type'] === 'Organization');
+const homeGraph = JSON.parse(jsonLd[0][1])['@graph'];
+const organization = homeGraph.find(item => item['@type'] === 'Organization');
+const homeWebsite = homeGraph.find(item => item['@type'] === 'WebSite');
+const homeWebPage = homeGraph.find(item => item['@type'] === 'WebPage');
 assert.ok(organization?.telephone === '+213697743721', 'Organization telephone schema missing');
-assert.ok(organization?.email === 'tabaniimadeddine@gmail.com', 'Organization email schema missing');
+assert.ok(organization?.email === 'tabaniimad@gmail.com' || organization?.email === 'tabaniimadeddine@gmail.com', 'Organization email schema missing');
+assert.ok(homeWebsite && homeWebPage, 'Homepage WebSite/WebPage schema missing');
+assert.equal(homeWebPage.isPartOf?.['@id'], homeWebsite['@id'], 'Homepage WebPage-to-WebSite relation missing');
+assert.equal(homeWebPage.publisher?.['@id'], organization['@id'], 'Homepage WebPage publisher relation missing');
+const weatherIndex = read('weather/index.html');
+const weatherIndexLd = [...weatherIndex.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
+assert.equal(weatherIndexLd.length, 1, 'Weather directory landing page JSON-LD missing');
+const weatherIndexGraph = JSON.parse(weatherIndexLd[0][1])['@graph'];
+assert.ok(weatherIndexGraph.some(item => item['@type'] === 'WebPage'), 'Weather directory WebPage schema missing');
 assert.ok(html.includes('weather forecast') && html.includes('météo Algérie'), 'Multilingual weather search terms missing');
 assert.ok(html.includes('id="weather-guide-title"'), 'Indexable weather guide content missing');
 console.log('Site validation passed: HTML, SEO, JSON-LD, sitemap, PWA cache, CSS and JavaScript.');
