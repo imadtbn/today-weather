@@ -11,6 +11,13 @@ export function siteEntities() {
       url: SITE + '/',
       email: 'tabaniimadeddine@gmail.com',
       telephone: '+213697743721',
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        telephone: '+213697743721',
+        email: 'tabaniimadeddine@gmail.com',
+        availableLanguage: ['ar']
+      },
       logo: {
         '@type': 'ImageObject',
         url: SITE + '/assets/images/icon1.webp',
