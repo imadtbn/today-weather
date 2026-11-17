@@ -197,7 +197,7 @@ const organization = homeGraph.find(item => item['@type'] === 'Organization');
 const homeWebsite = homeGraph.find(item => item['@type'] === 'WebSite');
 const homeWebPage = homeGraph.find(item => item['@type'] === 'WebPage');
 assert.ok(organization?.telephone === '+213697743721', 'Organization telephone schema missing');
-assert.ok(organization?.email === 'tabaniimad@gmail.com' || organization?.email === 'tabaniimadeddine@gmail.com', 'Organization email schema missing');
+assert.ok(organization?.email === 'tabaniimadeddine@gmail.com', 'Organization email schema missing');
 assert.ok(homeWebsite && homeWebPage, 'Homepage WebSite/WebPage schema missing');
 assert.equal(homeWebPage.isPartOf?.['@id'], homeWebsite['@id'], 'Homepage WebPage-to-WebSite relation missing');
 assert.equal(homeWebPage.publisher?.['@id'], organization['@id'], 'Homepage WebPage publisher relation missing');
