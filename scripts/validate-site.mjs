@@ -131,6 +131,20 @@ for (const group of cityGroups) {
     assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/'), 'City URL missing from sitemap: ' + city.slug);
   }
 }
+const communePilotPath = 'weather/algeria/communes/adrar/adrar/index.html';
+assert.ok(existsSync(resolve(root, communePilotPath)), 'Adrar commune pilot page is missing');
+const communePilot = read(communePilotPath);
+assert.ok(communePilot.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/algeria/communes/adrar/adrar/"'), 'Commune pilot canonical is incorrect');
+assert.ok(communePilot.includes('<h1 class="city-title">طقس أدرار اليوم</h1>'), 'Commune pilot H1 missing');
+assert.ok(communePilot.includes('data-city-weather=') && communePilot.includes('id="cityForecast"'), 'Commune pilot weather template is incomplete');
+assert.ok(communePilot.includes('name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"'), 'Commune pilot robots metadata missing');
+const communePilotLd = [...communePilot.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
+assert.equal(communePilotLd.length, 1, 'Commune pilot must contain exactly one JSON-LD block');
+const communePilotGraph = JSON.parse(communePilotLd[0][1])['@graph'];
+const communePilotPlace = communePilotGraph.find(item => item['@type'] === 'Place');
+assert.equal(communePilotPlace?.geo?.latitude, 27.9763317, 'Commune pilot latitude must use normalized source longitude');
+assert.equal(communePilotPlace?.geo?.longitude, -0.4841573, 'Commune pilot longitude must use normalized source latitude');
+assertSharedPageShell(communePilot, communePilotPath);
 assert.ok(!urls.some(url => url.includes('#')));
 assert.ok(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(sitemap));
 
@@ -180,7 +194,7 @@ function collectCityPages(directory) {
 collectCityPages(resolve(root, 'weather'));
 // Directory landing pages also contain index.html; identify actual city pages by their weather config.
 const cityPageFiles = generatedCityPages.filter(path => readFileSync(path, 'utf8').includes('data-city-weather='));
-assert.equal(cityPageFiles.length, 286, 'Expected exactly 286 generated city pages; found ' + cityPageFiles.length);
+assert.equal(cityPageFiles.length, 287, 'Expected 286 existing city pages plus one commune pilot; found ' + cityPageFiles.length);
 const cityPagesUseWeatherScript = cityPageFiles.every(path => readFileSync(path, 'utf8').includes('assets/js/city-page.js'));
 assert.ok(cityPagesUseWeatherScript, 'One or more generated city pages do not reference city-page.js');
 const unreferenced = activeJs.filter(file =>
