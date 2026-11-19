@@ -3,6 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { auditCommuneSource, buildCommuneWeatherRecord } from './communes-data.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = path => readFileSync(resolve(root, path), 'utf8');
@@ -80,8 +81,12 @@ function assertSharedPageShell(page, pagePath) {
   assert.ok(!page.includes('data-city='), 'Homepage footer city links must be normal links on static pages: ' + pagePath);
 }
 const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
-assert.equal(expectedCityCount, 286, 'Expected 286 source city records');
-assert.equal(urls.length, expectedCityCount + 6, 'Sitemap must include home, sitemap.html, directory index, three category indexes and every city page');
+const communeAudit = auditCommuneSource();
+const expectedCommuneCount = communeAudit.total;
+const expectedPageCount = expectedCityCount + expectedCommuneCount;
+assert.equal(expectedCityCount, 286, 'Expected 286 existing city records');
+assert.equal(expectedCommuneCount, 1708, 'Expected all 1,708 Algerian commune records');
+assert.equal(urls.length, expectedPageCount + 6, 'XML sitemap must include all city and commune pages plus six directory/site URLs');
 assert.ok(urls.includes('https://imadtbn.github.io/today-weather/sitemap.html'), 'HTML sitemap URL missing from XML sitemap');
 const htmlSitemap = read('sitemap.html');
 assert.ok(htmlSitemap.includes('<h1 class="city-title">خريطة الموقع</h1>'), 'HTML sitemap H1 missing');
@@ -93,8 +98,9 @@ assert.equal(sitemapJsonLd.length, 1, 'Expected one JSON-LD block in HTML sitema
 const sitemapSchema = JSON.parse(sitemapJsonLd[0][1]);
 const sitemapCollection = sitemapSchema['@graph']?.find(item => item['@type'] === 'CollectionPage');
 assert.ok(sitemapCollection, 'HTML sitemap CollectionPage schema missing');
-assert.equal(sitemapCollection.mainEntity?.numberOfItems, expectedCityCount + 11, 'HTML sitemap schema item count mismatch');
-assert.equal(sitemapCollection.mainEntity?.itemListElement?.length, expectedCityCount + 11, 'HTML sitemap schema links are incomplete');
+assert.equal(sitemapCollection.mainEntity?.numberOfItems, expectedPageCount + 11, 'HTML sitemap schema item count mismatch');
+assert.equal(sitemapCollection.mainEntity?.itemListElement?.length, expectedPageCount + 11, 'HTML sitemap schema links are incomplete');
+assert.ok(htmlSitemap.includes('البلديات الجزائرية') && htmlSitemap.includes('1708 بلدية'), 'HTML sitemap must include the full commune directory');
 assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'WebSite' && item['@id'] === 'https://imadtbn.github.io/today-weather/#website'), 'Sitemap WebSite entity link missing');
 assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'BreadcrumbList'), 'Sitemap breadcrumb schema missing');
 assert.ok(htmlSitemap.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing from generated pages');
@@ -131,20 +137,38 @@ for (const group of cityGroups) {
     assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/' + group.key + '/' + city.slug + '/'), 'City URL missing from sitemap: ' + city.slug);
   }
 }
-const communePilotPath = 'weather/algeria/communes/adrar/adrar/index.html';
-assert.ok(existsSync(resolve(root, communePilotPath)), 'Adrar commune pilot page is missing');
-const communePilot = read(communePilotPath);
-assert.ok(communePilot.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/algeria/communes/adrar/adrar/"'), 'Commune pilot canonical is incorrect');
-assert.ok(communePilot.includes('<h1 class="city-title">طقس بلدية أدرار اليوم</h1>'), 'Commune pilot H1 missing');
-assert.ok(communePilot.includes('data-city-weather=') && communePilot.includes('id="cityForecast"'), 'Commune pilot weather template is incomplete');
-assert.ok(communePilot.includes('name="robots" content="noindex,follow"'), 'Commune pilot robots metadata missing');
-const communePilotLd = [...communePilot.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
-assert.equal(communePilotLd.length, 1, 'Commune pilot must contain exactly one JSON-LD block');
-const communePilotGraph = JSON.parse(communePilotLd[0][1])['@graph'];
-const communePilotPlace = communePilotGraph.find(item => item['@type'] === 'Place');
-assert.equal(communePilotPlace?.geo?.latitude, 27.9763317, 'Commune pilot latitude must use normalized source longitude');
-assert.equal(communePilotPlace?.geo?.longitude, -0.4841573, 'Commune pilot longitude must use normalized source latitude');
-assertSharedPageShell(communePilot, communePilotPath);
+const normalizedCommunes = communeAudit.communes.map(source => {
+  const wilaya = communeAudit.wilayaById.get(String(Number(source.wilaya_id)));
+  return { ...buildCommuneWeatherRecord(source, wilaya), id: String(source.id), wilayaId: String(Number(source.wilaya_id)), wilaya };
+});
+const communeSlugCounts = new Map();
+for (const item of normalizedCommunes) { const key = item.wilayaId + '/' + item.slug; communeSlugCounts.set(key, (communeSlugCounts.get(key) || 0) + 1); }
+for (const item of normalizedCommunes) if (communeSlugCounts.get(item.wilayaId + '/' + item.slug) > 1) item.slug += '-' + item.id;
+for (const item of normalizedCommunes) {
+  const pagePath = 'weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/index.html';
+  const pageUrl = 'https://imadtbn.github.io/today-weather/weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/';
+  assert.ok(existsSync(resolve(root, pagePath)), 'Missing commune weather page: ' + pagePath);
+  const page = read(pagePath);
+  assert.ok(page.includes('rel="canonical" href="' + pageUrl + '"'), 'Commune canonical mismatch: ' + pagePath);
+  assert.ok(page.includes('<h1 class="city-title">طقس بلدية ' + item.name + ' اليوم</h1>'), 'Commune H1 missing: ' + pagePath);
+  assert.ok(page.includes('name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"'), 'Commune page must be indexable: ' + pagePath);
+  assert.ok(page.includes('data-city-weather=') && page.includes('id="cityForecast"'), 'Commune weather template is incomplete: ' + pagePath);
+  const pageLd = [...page.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
+  assert.equal(pageLd.length, 1, 'Commune must contain one JSON-LD block: ' + pagePath);
+  const graph = JSON.parse(pageLd[0][1])['@graph'];
+  const place = graph.find(node => node['@type'] === 'Place');
+  assert.equal(place?.geo?.latitude, item.latitude, 'Commune latitude mismatch: ' + pagePath);
+  assert.equal(place?.geo?.longitude, item.longitude, 'Commune longitude mismatch: ' + pagePath);
+  assert.ok(graph.some(node => node['@type'] === 'BreadcrumbList'), 'Commune breadcrumb schema missing: ' + pagePath);
+  assertSharedPageShell(page, pagePath);
+  assert.ok(urls.includes(pageUrl), 'Commune URL missing from XML sitemap: ' + pageUrl);
+}
+for (const wilaya of JSON.parse(read('data/cities.json'))) {
+  const statePage = read('weather/algeria/' + wilaya.slug + '/index.html');
+  const items = normalizedCommunes.filter(item => item.wilayaId === String(Number(wilaya.code)));
+  assert.ok(statePage.includes('بلديات ولاية ' + wilaya.name), 'Wilaya page commune section missing: ' + wilaya.slug);
+  assert.ok(items.every(item => statePage.includes('href="/today-weather/weather/algeria/communes/' + wilaya.slug + '/' + item.slug + '/"')), 'Wilaya commune links incomplete: ' + wilaya.slug);
+}
 assert.ok(!urls.some(url => url.includes('#')));
 assert.ok(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(sitemap));
 
@@ -194,7 +218,7 @@ function collectCityPages(directory) {
 collectCityPages(resolve(root, 'weather'));
 // Directory landing pages also contain index.html; identify actual city pages by their weather config.
 const cityPageFiles = generatedCityPages.filter(path => readFileSync(path, 'utf8').includes('data-city-weather='));
-assert.equal(cityPageFiles.length, 287, 'Expected 286 existing city pages plus one commune pilot; found ' + cityPageFiles.length);
+assert.equal(cityPageFiles.length, expectedPageCount, 'Expected all 286 city pages and 1,708 commune pages; found ' + cityPageFiles.length);
 const cityPagesUseWeatherScript = cityPageFiles.every(path => readFileSync(path, 'utf8').includes('assets/js/city-page.js'));
 assert.ok(cityPagesUseWeatherScript, 'One or more generated city pages do not reference city-page.js');
 const unreferenced = activeJs.filter(file =>
