@@ -189,7 +189,12 @@ function buildSitemapPage() {
       escapeHtml(group.title) + '</span><span class="sitemap-group-count">' + group.items.length +
       ' رابطاً</span></summary><div class="sitemap-group-grid">' + entries + '</div></details>';
   }).join('');
-  const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const communeEntries = communeRecords.map(item => {
+    const terms = [item.name, item.name_en, item.name_fr, item.slug, item.post_code, item.wilaya.name, item.wilaya.name_en].filter(Boolean).join(' ').toLowerCase();
+    return '<a class="sitemap-entry sitemap-city-entry" href="' + communePath(item) + '" data-search="' + escapeHtml(terms) + '"><span class="sitemap-entry-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span><span class="sitemap-entry-copy"><strong>' + escapeHtml(item.name) + '</strong><small>' + escapeHtml('ولاية ' + item.wilaya.name + ' · ' + item.name_en + ' · ' + item.post_code) + '</small></span><i class="fas fa-arrow-left sitemap-entry-arrow" aria-hidden="true"></i></a>';
+  }).join('');
+  const communeSection = '<details class="sitemap-group"><summary><span class="sitemap-group-title">البلديات الجزائرية</span><span class="sitemap-group-count">' + communeRecords.length + ' بلدية</span></summary><div class="sitemap-group-grid">' + communeEntries + '</div></details>';
+  const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0) + communeRecords.length;
   const totalLinks = totalCities + pageLinks.length;
   const pageSchemaItems = pageLinks.map((item, index) => ({
     '@type': 'ListItem', position: index + 1, name: item.name, url: SITE + item.path
@@ -216,7 +221,8 @@ function buildSitemapPage() {
       ...pageLinks.map(item => ({ name: item.name, url: SITE + item.path })),
       ...groups.flatMap(group => group.items.map(city => ({
         name: group.name(city), url: pageUrl(group.key, city.slug)
-      })))
+      }))),
+      ...communeRecords.map(item => ({ name: item.name, url: communeUrl(item) }))
     ]
   });
   return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
@@ -253,7 +259,7 @@ function buildSitemapPage() {
     '<div id="sitemapContent"><section class="sitemap-section"><h2><i class="fas fa-compass" aria-hidden="true"></i> الصفحات والأقسام</h2>' +
     '<div class="sitemap-page-grid">' + pageItems + '</div></section>' +
     '<section class="sitemap-section"><h2><i class="fas fa-earth-africa" aria-hidden="true"></i> المدن والوجهات</h2>' +
-    '<div class="sitemap-groups">' + groupSections + '</div></section></div>' +
+    '<div class="sitemap-groups">' + groupSections + communeSection + '</div></section></div>' +
     '<p class="sitemap-no-results" id="sitemapNoResults" hidden>لا توجد نتائج مطابقة. جرّب اسماً آخر بالعربية أو الإنجليزية.</p>' +
     '</main>' + adBlock("bottom") + commonFooter() +
     '<script>(function(){var input=document.getElementById("sitemapSearch"),clear=document.getElementById("sitemapClear"),' +
