@@ -132,7 +132,7 @@ test('global search returns Algerian commune suggestions with wilaya context', a
   const option = page.getByRole('option', { name: 'تالمين بلدية · ولاية تيميمون' });
   await expect(option).toBeVisible();
   await option.click();
-  await expect(page).toHaveURL(new RegExp('weather/algeria/communes/timimoun/talmine/'));
+  await expect(page).toHaveURL(new RegExp('weather/algeria/communes/timimoun/talmine-24/'));
 });
 
 test('layout has no horizontal page overflow on common screen widths', async ({ page }) => {
