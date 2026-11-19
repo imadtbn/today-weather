@@ -129,10 +129,10 @@ test('global search returns Algerian commune suggestions with wilaya context', a
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const input = page.locator('#searchInput');
   await input.fill('تالمين');
-  const option = page.getByRole('option', { name: 'تالمين بلدية · ولاية أدرار' });
+  const option = page.getByRole('option', { name: 'تالمين بلدية · ولاية تيميمون' });
   await expect(option).toBeVisible();
   await option.click();
-  await expect(page).toHaveURL(new RegExp('weather/algeria/communes/adrar/talmine/'));
+  await expect(page).toHaveURL(new RegExp('weather/algeria/communes/timimoun/talmine/'));
 });
 
 test('layout has no horizontal page overflow on common screen widths', async ({ page }) => {
