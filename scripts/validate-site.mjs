@@ -163,9 +163,11 @@ for (const item of normalizedCommunes) {
   assert.ok(page.includes('<h1 class="city-title">طقس بلدية ' + item.name + ' اليوم</h1>'), 'Commune H1 missing: ' + pagePath);
   assert.ok(page.includes('name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"'), 'Commune page must be indexable: ' + pagePath);
   assert.ok(page.includes('data-city-weather=') && page.includes('id="cityForecast"'), 'Commune weather template is incomplete: ' + pagePath);
-  const pageLd = [...page.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
-  assert.equal(pageLd.length, 1, 'Commune must contain one JSON-LD block: ' + pagePath);
-  const graph = JSON.parse(pageLd[0][1])['@graph'];
+  const ldMarker = '<script type="application/ld+json">';
+  const ldStart = page.indexOf(ldMarker);
+  const ldEnd = page.indexOf('</script>', ldStart);
+  assert.ok(ldStart >= 0 && ldEnd > ldStart && page.indexOf(ldMarker, ldStart + ldMarker.length) < 0, 'Commune must contain one JSON-LD block: ' + pagePath);
+  const graph = JSON.parse(page.slice(ldStart + ldMarker.length, ldEnd))['@graph'];
   const place = graph.find(node => node['@type'] === 'Place');
   assert.equal(place?.geo?.latitude, item.latitude, 'Commune latitude mismatch: ' + pagePath);
   assert.equal(place?.geo?.longitude, item.longitude, 'Commune longitude mismatch: ' + pagePath);
