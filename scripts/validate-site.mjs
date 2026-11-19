@@ -144,6 +144,16 @@ const normalizedCommunes = communeAudit.communes.map(source => {
 const communeSlugCounts = new Map();
 for (const item of normalizedCommunes) { const key = item.wilayaId + '/' + item.slug; communeSlugCounts.set(key, (communeSlugCounts.get(key) || 0) + 1); }
 for (const item of normalizedCommunes) if (communeSlugCounts.get(item.wilayaId + '/' + item.slug) > 1) item.slug += '-' + item.id;
+const globalSearchIndex = JSON.parse(read('data/global-search-index.json'));
+const communeSearchEntries = globalSearchIndex.filter(item => item.type === 'commune');
+assert.equal(communeSearchEntries.length, expectedCommuneCount, 'Global search index must include every commune');
+for (const item of normalizedCommunes) {
+  const expectedSearchPath = '/weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/';
+  const searchEntry = communeSearchEntries.find(entry => entry.path === expectedSearchPath);
+  assert.ok(searchEntry, 'Commune missing from global search index: ' + expectedSearchPath);
+  assert.ok(searchEntry.terms.includes(item.name) && searchEntry.terms.includes(item.name_en), 'Commune search must include Arabic and Latin names: ' + expectedSearchPath);
+  assert.ok(htmlSitemap.includes('href="/today-weather' + expectedSearchPath + '"'), 'Commune missing from HTML sitemap: ' + expectedSearchPath);
+}
 for (const item of normalizedCommunes) {
   const pagePath = 'weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/index.html';
   const pageUrl = 'https://imadtbn.github.io/today-weather/weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/';
