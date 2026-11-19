@@ -119,7 +119,7 @@ function buildGlobalSearchIndex() {
     path: '/weather/' + group.key + '/' + encodeURIComponent(city.slug) + '/'
   })));
   const communes = communeRecords.map(item => ({
-    type: 'commune', name: item.name, detail: 'بلدية ' + item.wilaya.name, latin: item.name_en,
+    type: 'commune', name: item.name, detail: 'ولاية ' + item.wilaya.name, latin: item.name_en,
     terms: [item.name, item.name_en, item.name_fr, item.slug, item.post_code, item.wilaya.name, item.wilaya.name_en, item.wilaya.slug, 'الجزائر'].filter(Boolean).join(' '),
     path: '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/'
   }));

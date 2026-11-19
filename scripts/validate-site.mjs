@@ -146,6 +146,8 @@ for (const item of normalizedCommunes) { const key = item.wilayaId + '/' + item.
 for (const item of normalizedCommunes) if (communeSlugCounts.get(item.wilayaId + '/' + item.slug) > 1) item.slug += '-' + item.id;
 const globalSearchIndex = JSON.parse(read('data/global-search-index.json'));
 const communeSearchEntries = globalSearchIndex.filter(item => item.type === 'commune');
+const globalSearchScript = read('assets/js/global-search.js');
+assert.ok(globalSearchScript.includes("item.type === 'commune'") && globalSearchScript.includes('بلدية · '), 'Global search must label commune results as municipalities');
 assert.equal(communeSearchEntries.length, expectedCommuneCount, 'Global search index must include every commune');
 for (const item of normalizedCommunes) {
   const expectedSearchPath = '/weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/';

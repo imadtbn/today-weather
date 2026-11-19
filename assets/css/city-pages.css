@@ -214,11 +214,11 @@ body.city-page {
 .directory-feature-card .directory-city-body strong{font-size:1rem;}
 
 
-/* Phone directory: one full-width city card per row. */
+/* Keep the city directory compact on phones while preserving readable cards. */
 @media (max-width: 600px) {
   .city-directory .city-directory-grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 9px;
   }
   .city-directory .directory-city-image {
     height: auto;

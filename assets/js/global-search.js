@@ -22,7 +22,7 @@
     if (!host) return;
     var wrapper = document.createElement('div');
     wrapper.className = 'search-wrapper global-search-wrapper';
-    wrapper.innerHTML = '<input type="search" class="search-input" id="searchInput" placeholder="ابحث عن أي مدينة في العالم..." aria-label="ابحث عن أي مدينة في العالم" role="combobox" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="citySuggestions" aria-expanded="false"><i class="fas fa-search search-icon" aria-hidden="true"></i><div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="أربعة اقتراحات للمدن والصفحات" aria-live="polite"></div>';
+    wrapper.innerHTML = '<input type="search" class="search-input" id="searchInput" placeholder="ابحث عن أي مدينة في العالم..." aria-label="ابحث عن أي مدينة في العالم" role="combobox" autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="citySuggestions" aria-expanded="false"><i class="fas fa-search search-icon" aria-hidden="true"></i><div class="city-suggestions" id="citySuggestions" role="listbox" aria-label="أربعة اقتراحات للمدن والبلديات والصفحات" aria-live="polite"></div>';
     host.appendChild(wrapper);
     input = wrapper.querySelector('#searchInput');
     panel = wrapper.querySelector('#citySuggestions');
@@ -42,7 +42,7 @@
         if (tokens.length > 1 && tokens.every(function (token) { return field.indexOf(token) >= 0; })) best = Math.max(best, 35);
       }
     });
-    if (item.type === 'city' && best) best += 4;
+    if ((item.type === 'city' || item.type === 'commune') && best) best += 4;
     return best;
   }
 
@@ -101,7 +101,7 @@
         if (item.type === 'global-city') {
           detail.textContent = [item.admin1, item.country].filter(Boolean).join(' · ') + ' · مدينة عالمية';
         } else {
-          detail.textContent = (item.type === 'city' ? 'مدينة · ' : item.type === 'section' ? 'قسم · ' : 'صفحة · ') + (item.detail || '');
+          detail.textContent = (item.type === 'city' ? 'مدينة · ' : item.type === 'commune' ? 'بلدية · ' : item.type === 'section' ? 'قسم · ' : 'صفحة · ') + (item.detail || '');
         }
         button.appendChild(name);
         button.appendChild(detail);
@@ -226,8 +226,8 @@
     ensureSearch();
     if (!input || !panel) return;
     window.__todayWeatherGlobalSearchInitialized = true;
-    input.placeholder = 'ابحث عن أي مدينة في العالم…';
-    input.setAttribute('aria-label', 'ابحث عن أي مدينة في العالم');
+    input.placeholder = 'ابحث عن مدينة أو بلدية في العالم…';
+    input.setAttribute('aria-label', 'ابحث عن مدينة أو بلدية في العالم');
     input.addEventListener('input', function () {
       clearTimeout(timer);
       timer = setTimeout(function () { searchGlobal(input.value); }, 220);

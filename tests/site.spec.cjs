@@ -111,7 +111,7 @@ test('city search supports accessible keyboard navigation', async ({ page }) => 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const input = page.locator('#searchInput');
   await input.fill('وهران');
-  const option = page.getByRole('option', { name: /وهران/ });
+  const option = page.getByRole('option', { name: 'وهران مدينة · الجزائر' });
   await expect(option).toBeVisible();
   await expect(input).toHaveAttribute('aria-expanded', 'true');
   await input.press('ArrowDown');
@@ -119,6 +119,20 @@ test('city search supports accessible keyboard navigation', async ({ page }) => 
   await expect(input).toHaveAttribute('aria-activedescendant', await option.getAttribute('id'));
   await input.press('Escape');
   await expect(input).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('global search returns Algerian commune suggestions with wilaya context', async ({ page }) => {
+  await page.route('https://geocoding-api.open-meteo.com/**', route =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify({ results: [] }) })
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const input = page.locator('#searchInput');
+  await input.fill('تالمين');
+  const option = page.getByRole('option', { name: 'تالمين بلدية · ولاية تيميمون' });
+  await expect(option).toBeVisible();
+  await option.click();
+  await expect(page).toHaveURL(new RegExp('weather/algeria/communes/timimoun/talmine-24/'));
 });
 
 test('layout has no horizontal page overflow on common screen widths', async ({ page }) => {
