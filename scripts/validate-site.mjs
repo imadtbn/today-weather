@@ -135,7 +135,7 @@ const communePilotPath = 'weather/algeria/communes/adrar/adrar/index.html';
 assert.ok(existsSync(resolve(root, communePilotPath)), 'Adrar commune pilot page is missing');
 const communePilot = read(communePilotPath);
 assert.ok(communePilot.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/algeria/communes/adrar/adrar/"'), 'Commune pilot canonical is incorrect');
-assert.ok(communePilot.includes('<h1 class="city-title">طقس أدرار اليوم</h1>'), 'Commune pilot H1 missing');
+assert.ok(communePilot.includes('<h1 class="city-title">طقس بلدية أدرار اليوم</h1>'), 'Commune pilot H1 missing');
 assert.ok(communePilot.includes('data-city-weather=') && communePilot.includes('id="cityForecast"'), 'Commune pilot weather template is incomplete');
 assert.ok(communePilot.includes('name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"'), 'Commune pilot robots metadata missing');
 const communePilotLd = [...communePilot.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
