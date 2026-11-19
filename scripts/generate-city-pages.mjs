@@ -38,6 +38,20 @@ const groups = [
     region: city => city.continentName || 'مدينة عالمية', lat: city => city.latitude, lon: city => city.longitude
   }
 ];
+// Normalize and prepare every commune before page generation.
+const communeAudit = auditCommuneSource();
+const communeRecords = communeAudit.communes.map(source => {
+  const wilaya = communeAudit.wilayaById.get(String(Number(source.wilaya_id)));
+  if (!wilaya) throw new Error('Unknown wilaya for commune ' + source.id);
+  return { ...buildCommuneWeatherRecord(source, wilaya), id: String(source.id), wilayaId: String(Number(source.wilaya_id)), wilaya };
+});
+const communeSlugCounts = new Map();
+for (const item of communeRecords) { const key = item.wilayaId + '/' + item.slug; communeSlugCounts.set(key, (communeSlugCounts.get(key) || 0) + 1); }
+for (const item of communeRecords) if (communeSlugCounts.get(item.wilayaId + '/' + item.slug) > 1) item.slug += '-' + item.id;
+const communeGroups = new Map();
+for (const item of communeRecords) { if (!communeGroups.has(item.wilayaId)) communeGroups.set(item.wilayaId, []); communeGroups.get(item.wilayaId).push(item); }
+const communeUrl = item => SITE + '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/';
+const communePath = item => BASE + '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/';
 
 function imagePath(city) {
   const raw = String(city.countryImages || '').replace(/^\/+/, '');
@@ -99,14 +113,17 @@ const SITE_SEARCH_PAGES = [
 
 function buildGlobalSearchIndex() {
   const cities = groups.flatMap(group => group.items.map(city => ({
-    type: 'city',
-    name: group.name(city),
-    detail: group.country(city),
+    type: 'city', name: group.name(city), detail: group.country(city),
     latin: city.name_en || city.name_fr || city.englishName || '',
     terms: [city.name_en, city.name_fr, city.englishName, city.slug, city.countryCode, group.title].filter(Boolean).join(' '),
-    path: `/weather/${group.key}/${encodeURIComponent(city.slug)}/`
+    path: '/weather/' + group.key + '/' + encodeURIComponent(city.slug) + '/'
   })));
-  return [...SITE_SEARCH_PAGES, ...cities];
+  const communes = communeRecords.map(item => ({
+    type: 'commune', name: item.name, detail: 'بلدية ' + item.wilaya.name, latin: item.name_en,
+    terms: [item.name, item.name_en, item.name_fr, item.slug, item.post_code, item.wilaya.name, item.wilaya.name_en, item.wilaya.slug, 'الجزائر'].filter(Boolean).join(' '),
+    path: '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/'
+  }));
+  return [...SITE_SEARCH_PAGES, ...cities, ...communes];
 }
 
 function commonFooter() {
