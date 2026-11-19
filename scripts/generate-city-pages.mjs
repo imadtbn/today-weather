@@ -38,6 +38,20 @@ const groups = [
     region: city => city.continentName || 'مدينة عالمية', lat: city => city.latitude, lon: city => city.longitude
   }
 ];
+// Normalize and prepare every commune before page generation.
+const communeAudit = auditCommuneSource();
+const communeRecords = communeAudit.communes.map(source => {
+  const wilaya = communeAudit.wilayaById.get(String(Number(source.wilaya_id)));
+  if (!wilaya) throw new Error('Unknown wilaya for commune ' + source.id);
+  return { ...buildCommuneWeatherRecord(source, wilaya), id: String(source.id), wilayaId: String(Number(source.wilaya_id)), wilaya };
+});
+const communeSlugCounts = new Map();
+for (const item of communeRecords) { const key = item.wilayaId + '/' + item.slug; communeSlugCounts.set(key, (communeSlugCounts.get(key) || 0) + 1); }
+for (const item of communeRecords) if (communeSlugCounts.get(item.wilayaId + '/' + item.slug) > 1) item.slug += '-' + item.id;
+const communeGroups = new Map();
+for (const item of communeRecords) { if (!communeGroups.has(item.wilayaId)) communeGroups.set(item.wilayaId, []); communeGroups.get(item.wilayaId).push(item); }
+const communeUrl = item => SITE + '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/';
+const communePath = item => BASE + '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/';
 
 function imagePath(city) {
   const raw = String(city.countryImages || '').replace(/^\/+/, '');
@@ -81,7 +95,7 @@ function commonHeader() {
 const SITE_SEARCH_PAGES = [
   { type: 'page', name: 'الصفحة الرئيسية', detail: 'الطقس اليوم وحالة الطقس الحالية', path: '/', terms: 'الرئيسية الطقس اليوم أحوال الطقس حالة الطقس' },
   { type: 'page', name: 'دليل الطقس', detail: 'جميع المدن والولايات والعواصم', path: '/weather/', terms: 'دليل المدن بحث عالمي مدن عواصم' },
-  { type: 'page', name: 'الولايات الجزائرية', detail: 'الطقس في 69 ولاية ومدينة جزائرية', path: '/weather/algeria/', terms: 'الجزائر ولايات مدن الجزائر' },
+  { type: 'page', name: 'الولايات الجزائرية', detail: 'الطقس في 69 ولاية و1,708 بلدية جزائرية', path: '/weather/algeria/', terms: 'الجزائر ولايات بلديات مدن الجزائر' },
   { type: 'page', name: 'العواصم العربية', detail: 'الطقس في العواصم والمدن العربية', path: '/weather/arab/', terms: 'العالم العربي عواصم عربية' },
   { type: 'page', name: 'المدن والعواصم العالمية', detail: 'الطقس حول العالم', path: '/weather/world/', terms: 'العالم مدن دول عواصم عالمية' },
   { type: 'section', name: 'توقعات الطقس', detail: 'توقعات الأيام الخمسة القادمة', path: '/#forecast', terms: 'توقعات خمسة أيام أسبوع forecast' },
@@ -99,14 +113,17 @@ const SITE_SEARCH_PAGES = [
 
 function buildGlobalSearchIndex() {
   const cities = groups.flatMap(group => group.items.map(city => ({
-    type: 'city',
-    name: group.name(city),
-    detail: group.country(city),
+    type: 'city', name: group.name(city), detail: group.country(city),
     latin: city.name_en || city.name_fr || city.englishName || '',
     terms: [city.name_en, city.name_fr, city.englishName, city.slug, city.countryCode, group.title].filter(Boolean).join(' '),
-    path: `/weather/${group.key}/${encodeURIComponent(city.slug)}/`
+    path: '/weather/' + group.key + '/' + encodeURIComponent(city.slug) + '/'
   })));
-  return [...SITE_SEARCH_PAGES, ...cities];
+  const communes = communeRecords.map(item => ({
+    type: 'commune', name: item.name, detail: 'بلدية ' + item.wilaya.name, latin: item.name_en,
+    terms: [item.name, item.name_en, item.name_fr, item.slug, item.post_code, item.wilaya.name, item.wilaya.name_en, item.wilaya.slug, 'الجزائر'].filter(Boolean).join(' '),
+    path: '/weather/algeria/communes/' + item.wilaya.slug + '/' + encodeURIComponent(item.slug) + '/'
+  }));
+  return [...SITE_SEARCH_PAGES, ...cities, ...communes];
 }
 
 function commonFooter() {
@@ -172,7 +189,12 @@ function buildSitemapPage() {
       escapeHtml(group.title) + '</span><span class="sitemap-group-count">' + group.items.length +
       ' رابطاً</span></summary><div class="sitemap-group-grid">' + entries + '</div></details>';
   }).join('');
-  const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const communeEntries = communeRecords.map(item => {
+    const terms = [item.name, item.name_en, item.name_fr, item.slug, item.post_code, item.wilaya.name, item.wilaya.name_en].filter(Boolean).join(' ').toLowerCase();
+    return '<a class="sitemap-entry sitemap-city-entry" href="' + communePath(item) + '" data-search="' + escapeHtml(terms) + '"><span class="sitemap-entry-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span><span class="sitemap-entry-copy"><strong>' + escapeHtml(item.name) + '</strong><small>' + escapeHtml('ولاية ' + item.wilaya.name + ' · ' + item.name_en + ' · ' + item.post_code) + '</small></span><i class="fas fa-arrow-left sitemap-entry-arrow" aria-hidden="true"></i></a>';
+  }).join('');
+  const communeSection = '<details class="sitemap-group"><summary><span class="sitemap-group-title">البلديات الجزائرية</span><span class="sitemap-group-count">' + communeRecords.length + ' بلدية</span></summary><div class="sitemap-group-grid">' + communeEntries + '</div></details>';
+  const totalCities = groups.reduce((sum, group) => sum + group.items.length, 0) + communeRecords.length;
   const totalLinks = totalCities + pageLinks.length;
   const pageSchemaItems = pageLinks.map((item, index) => ({
     '@type': 'ListItem', position: index + 1, name: item.name, url: SITE + item.path
@@ -199,7 +221,8 @@ function buildSitemapPage() {
       ...pageLinks.map(item => ({ name: item.name, url: SITE + item.path })),
       ...groups.flatMap(group => group.items.map(city => ({
         name: group.name(city), url: pageUrl(group.key, city.slug)
-      })))
+      }))),
+      ...communeRecords.map(item => ({ name: item.name, url: communeUrl(item) }))
     ]
   });
   return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
@@ -236,7 +259,7 @@ function buildSitemapPage() {
     '<div id="sitemapContent"><section class="sitemap-section"><h2><i class="fas fa-compass" aria-hidden="true"></i> الصفحات والأقسام</h2>' +
     '<div class="sitemap-page-grid">' + pageItems + '</div></section>' +
     '<section class="sitemap-section"><h2><i class="fas fa-earth-africa" aria-hidden="true"></i> المدن والوجهات</h2>' +
-    '<div class="sitemap-groups">' + groupSections + '</div></section></div>' +
+    '<div class="sitemap-groups">' + groupSections + communeSection + '</div></section></div>' +
     '<p class="sitemap-no-results" id="sitemapNoResults" hidden>لا توجد نتائج مطابقة. جرّب اسماً آخر بالعربية أو الإنجليزية.</p>' +
     '</main>' + adBlock("bottom") + commonFooter() +
     '<script>(function(){var input=document.getElementById("sitemapSearch"),clear=document.getElementById("sitemapClear"),' +
@@ -336,6 +359,9 @@ function buildCityPage(group, index) {
   const relatedLinks = related.map(item =>
     `<a href="${group.pagePath ? group.pagePath(item) : `${BASE}/weather/${group.key}/${encodeURIComponent(item.slug)}/`}">${escapeHtml(group.name(item))}</a>`
   ).join('');
+  const localCommunes = group.key === 'algeria' ? (communeGroups.get(String(Number(city.code))) || []) : [];
+  const communeCards = localCommunes.map(item => '<a class="city-directory-item" href="' + communePath(item) + '"><span class="directory-city-body"><strong>' + escapeHtml(item.name) + '</strong><small class="directory-country">بلدية · ' + escapeHtml(item.name_en) + '</small><span class="directory-city-meta"><span>الرمز البريدي: <bdi>' + escapeHtml(item.post_code || '—') + '</bdi></span></span></span></a>').join('');
+  const communeSection = localCommunes.length ? '<section class="city-related commune-directory-section"><h2 class="city-section-title">بلديات ولاية ' + escapeHtml(city.name) + '</h2><p class="city-status">اختر البلدية لعرض الطقس المحلي والتوقعات الجوية.</p><div class="city-directory-grid">' + communeCards + '</div></section>' : '';
   const breadcrumb = [
     { '@type': 'ListItem', position: 1, name: 'الرئيسية', item: `${SITE}/` },
     { '@type': 'ListItem', position: 2, name: 'دليل الطقس', item: `${SITE}/weather/` },
@@ -356,7 +382,9 @@ function buildCityPage(group, index) {
     '@type': 'Place',
     '@id': url + '#place',
     name,
-    containedInPlace: { '@type': 'Country', name: country },
+    containedInPlace: group.parentName
+      ? { '@type': 'AdministrativeArea', name: group.parentName, containedInPlace: { '@type': 'Country', name: country } }
+      : { '@type': 'Country', name: country },
     geo: { '@type': 'GeoCoordinates', latitude, longitude }
   });
   const config = safeJson({ lat: latitude, lon: longitude, name, country, countryCode: city.countryCode || city.country_code || (group.key === 'algeria' ? 'DZ' : '') });
@@ -408,7 +436,7 @@ ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script>
 <section class="tips-section city-extra-section"><div class="city-section-heading"><div><h2 class="city-section-title">نصائح الطقس الذكية</h2><p id="weatherTipsContext">نصائح تتغير وفق الطقس الحالي والتوقعات.</p></div><span id="weatherTipsStatus">جارٍ التحليل</span></div><div class="tips-grid" id="weatherTips" aria-live="polite"><p class="city-status">جارٍ إعداد النصائح...</p></div></section>
 <section class="city-content"><article class="city-info-card"><h2 class="city-section-title">حالة الطقس والمناخ في ${escapeHtml(name)}</h2><p>تقع ${escapeHtml(name)} ضمن ${escapeHtml(group.region(city))} في ${escapeHtml(country)}. تساعدك هذه الصفحة على متابعة الطقس اليومي في المنطقة من خلال عرض درجة الحرارة، والحرارة المحسوسة، والرطوبة، وسرعة الرياح، والضغط الجوي، إضافة إلى توقعات الأيام المقبلة.</p><p>تتغير الظروف الجوية من يوم إلى آخر؛ لذلك يُنصح بمراجعة التحديثات قبل التنقل أو التخطيط للأنشطة الخارجية. تُعرض القيم الجوية عند توفرها من مزود البيانات، وقد تختلف دقة التوقعات بحسب الموقع والفترة الزمنية.</p></article>
 <aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p>${group.parentName ? `<p><strong>الولاية:</strong> ${escapeHtml(group.parentName)}</p>` : ""}<p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
-<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">${escapeHtml(group.directoryLinkLabel || "جميع " + group.title)}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
+${communeSection}<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">${escapeHtml(group.directoryLinkLabel || "جميع " + group.title)}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
 </main>${adBlock("bottom")}${commonFooter()}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script><script src="${BASE}/assets/js/specialized-weather.js" defer></script><script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
 }
@@ -432,44 +460,29 @@ for (const group of groups) {
     sitemapUrls.push(pageUrl(group.key, city.slug));
   }
 }
-// Generate one representative commune page only during the pilot phase.
-const communeAudit = auditCommuneSource();
-const pilotSource = communeAudit.communes.find(commune => String(commune.id) === '1');
-if (!pilotSource) throw new Error('Pilot commune id=1 (Adrar) is missing from data/communes.json');
-const pilotWilaya = communeAudit.wilayaById.get(String(Number(pilotSource.wilaya_id)));
-const pilotCommune = buildCommuneWeatherRecord(pilotSource, pilotWilaya);
-const pilotGroup = {
-  key: 'algeria',
-  title: 'ولاية ' + pilotWilaya.name,
-  kind: 'بلدية جزائرية',
-  pageKindLabel: 'بلدية',
-  parentName: pilotWilaya.name,
-  robotsDirective: 'noindex,follow',
-  directoryLinkLabel: 'صفحة ولاية ' + pilotWilaya.name,
-  items: [pilotCommune],
-  name: commune => commune.name,
-  country: () => 'الجزائر',
-  region: commune => commune.region,
-  lat: commune => commune.latitude,
-  lon: commune => commune.longitude,
-  directoryUrl: SITE + '/weather/algeria/' + pilotWilaya.slug + '/',
-  directoryPath: BASE + '/weather/algeria/' + pilotWilaya.slug + '/',
-  pageUrl: commune => SITE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/',
-  pagePath: commune => BASE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/'
-};
-writePage('weather/algeria/communes/' + pilotWilaya.slug + '/' + pilotCommune.slug + '/index.html', buildCityPage(pilotGroup, 0));
+// Generate every commune with the shared weather-page template and include it in XML sitemap.
+for (const item of communeRecords) {
+  const group = {
+    key: 'algeria', title: 'ولاية ' + item.wilaya.name, kind: 'بلدية جزائرية',
+    pageKindLabel: 'بلدية', parentName: item.wilaya.name, directoryLinkLabel: 'صفحة ولاية ' + item.wilaya.name,
+    items: [item], name: value => value.name, country: () => 'الجزائر',
+    region: value => value.region, lat: value => value.latitude, lon: value => value.longitude,
+    directoryUrl: SITE + '/weather/algeria/' + item.wilaya.slug + '/',
+    directoryPath: BASE + '/weather/algeria/' + item.wilaya.slug + '/',
+    pageUrl: value => communeUrl(value), pagePath: value => communePath(value)
+  };
+  writePage('weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/index.html', buildCityPage(group, 0));
+  sitemapUrls.push(communeUrl(item));
+}
 console.log('Commune source audit:', JSON.stringify({
-  total: communeAudit.total,
-  wilayas: communeAudit.wilayas,
-  uniqueIds: communeAudit.uniqueIds,
-  standardCoordinates: communeAudit.standardCoordinates,
-  swappedCoordinates: communeAudit.swappedCoordinates,
-  blankArabicNames: communeAudit.blankArabicNames,
-  duplicateSlugGroups: communeAudit.duplicateSlugGroups,
-  duplicateCoordinateGroups: communeAudit.duplicateCoordinateGroups
+  total: communeAudit.total, wilayas: communeAudit.wilayas, uniqueIds: communeAudit.uniqueIds,
+  standardCoordinates: communeAudit.standardCoordinates, swappedCoordinates: communeAudit.swappedCoordinates,
+  blankArabicNames: communeAudit.blankArabicNames, duplicateSlugGroups: communeAudit.duplicateSlugGroups,
+  duplicateCoordinateGroups: communeAudit.duplicateCoordinateGroups, generatedCommunePages: communeRecords.length,
+  disambiguatedSlugRecords: [...communeSlugCounts.values()].filter(count => count > 1).reduce((sum, count) => sum + count, 0)
 }));
 const uniqueUrls = [...new Set(sitemapUrls)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.map(url => `  <url><loc>${url}</loc><lastmod>${TODAY}</lastmod></url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(ROOT, 'sitemap.xml'), sitemap, 'utf8');
-console.log(`Generated ${groups.reduce((sum, group) => sum + group.items.length, 0)} city pages, ${groups.length} directories and sitemap (${uniqueUrls.length} URLs).`);
+console.log(`Generated ${groups.reduce((sum, group) => sum + group.items.length, 0)} city pages, ${communeRecords.length} commune pages, ${groups.length} directories and sitemap (${uniqueUrls.length} URLs).`);
 if (missingImages.length) console.warn(`Image fallback used for ${missingImages.length} cities: ${missingImages.slice(0, 20).map(item => item.slug + ' (' + item.expected + ')').join(', ')}`);
