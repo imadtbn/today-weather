@@ -95,7 +95,7 @@ function commonHeader() {
 const SITE_SEARCH_PAGES = [
   { type: 'page', name: 'الصفحة الرئيسية', detail: 'الطقس اليوم وحالة الطقس الحالية', path: '/', terms: 'الرئيسية الطقس اليوم أحوال الطقس حالة الطقس' },
   { type: 'page', name: 'دليل الطقس', detail: 'جميع المدن والولايات والعواصم', path: '/weather/', terms: 'دليل المدن بحث عالمي مدن عواصم' },
-  { type: 'page', name: 'الولايات الجزائرية', detail: 'الطقس في 69 ولاية ومدينة جزائرية', path: '/weather/algeria/', terms: 'الجزائر ولايات مدن الجزائر' },
+  { type: 'page', name: 'الولايات الجزائرية', detail: 'الطقس في 69 ولاية و1,708 بلدية جزائرية', path: '/weather/algeria/', terms: 'الجزائر ولايات بلديات مدن الجزائر' },
   { type: 'page', name: 'العواصم العربية', detail: 'الطقس في العواصم والمدن العربية', path: '/weather/arab/', terms: 'العالم العربي عواصم عربية' },
   { type: 'page', name: 'المدن والعواصم العالمية', detail: 'الطقس حول العالم', path: '/weather/world/', terms: 'العالم مدن دول عواصم عالمية' },
   { type: 'section', name: 'توقعات الطقس', detail: 'توقعات الأيام الخمسة القادمة', path: '/#forecast', terms: 'توقعات خمسة أيام أسبوع forecast' },
@@ -382,7 +382,9 @@ function buildCityPage(group, index) {
     '@type': 'Place',
     '@id': url + '#place',
     name,
-    containedInPlace: { '@type': 'Country', name: country },
+    containedInPlace: group.parentName
+      ? { '@type': 'AdministrativeArea', name: group.parentName, containedInPlace: { '@type': 'Country', name: country } }
+      : { '@type': 'Country', name: country },
     geo: { '@type': 'GeoCoordinates', latitude, longitude }
   });
   const config = safeJson({ lat: latitude, lon: longitude, name, country, countryCode: city.countryCode || city.country_code || (group.key === 'algeria' ? 'DZ' : '') });
