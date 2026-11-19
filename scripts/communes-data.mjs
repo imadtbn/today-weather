@@ -3,10 +3,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const readJson = path => JSON.parse(readFileSync(join(ROOT, path), 'utf8').replace(/^\\uFEFF/, ''));
+const readJson = path => JSON.parse(readFileSync(join(ROOT, path), 'utf8').replace(/^\uFEFF/, ''));
 
 export function slugifyCommune(value) {
-  return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[’'\u0060]/g, '').replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
