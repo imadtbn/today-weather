@@ -458,44 +458,29 @@ for (const group of groups) {
     sitemapUrls.push(pageUrl(group.key, city.slug));
   }
 }
-// Generate one representative commune page only during the pilot phase.
-const communeAudit = auditCommuneSource();
-const pilotSource = communeAudit.communes.find(commune => String(commune.id) === '1');
-if (!pilotSource) throw new Error('Pilot commune id=1 (Adrar) is missing from data/communes.json');
-const pilotWilaya = communeAudit.wilayaById.get(String(Number(pilotSource.wilaya_id)));
-const pilotCommune = buildCommuneWeatherRecord(pilotSource, pilotWilaya);
-const pilotGroup = {
-  key: 'algeria',
-  title: 'ولاية ' + pilotWilaya.name,
-  kind: 'بلدية جزائرية',
-  pageKindLabel: 'بلدية',
-  parentName: pilotWilaya.name,
-  robotsDirective: 'noindex,follow',
-  directoryLinkLabel: 'صفحة ولاية ' + pilotWilaya.name,
-  items: [pilotCommune],
-  name: commune => commune.name,
-  country: () => 'الجزائر',
-  region: commune => commune.region,
-  lat: commune => commune.latitude,
-  lon: commune => commune.longitude,
-  directoryUrl: SITE + '/weather/algeria/' + pilotWilaya.slug + '/',
-  directoryPath: BASE + '/weather/algeria/' + pilotWilaya.slug + '/',
-  pageUrl: commune => SITE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/',
-  pagePath: commune => BASE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/'
-};
-writePage('weather/algeria/communes/' + pilotWilaya.slug + '/' + pilotCommune.slug + '/index.html', buildCityPage(pilotGroup, 0));
+// Generate every commune with the shared weather-page template and include it in XML sitemap.
+for (const item of communeRecords) {
+  const group = {
+    key: 'algeria', title: 'ولاية ' + item.wilaya.name, kind: 'بلدية جزائرية',
+    pageKindLabel: 'بلدية', parentName: item.wilaya.name, directoryLinkLabel: 'صفحة ولاية ' + item.wilaya.name,
+    items: [item], name: value => value.name, country: () => 'الجزائر',
+    region: value => value.region, lat: value => value.latitude, lon: value => value.longitude,
+    directoryUrl: SITE + '/weather/algeria/' + item.wilaya.slug + '/',
+    directoryPath: BASE + '/weather/algeria/' + item.wilaya.slug + '/',
+    pageUrl: value => communeUrl(value), pagePath: value => communePath(value)
+  };
+  writePage('weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/index.html', buildCityPage(group, 0));
+  sitemapUrls.push(communeUrl(item));
+}
 console.log('Commune source audit:', JSON.stringify({
-  total: communeAudit.total,
-  wilayas: communeAudit.wilayas,
-  uniqueIds: communeAudit.uniqueIds,
-  standardCoordinates: communeAudit.standardCoordinates,
-  swappedCoordinates: communeAudit.swappedCoordinates,
-  blankArabicNames: communeAudit.blankArabicNames,
-  duplicateSlugGroups: communeAudit.duplicateSlugGroups,
-  duplicateCoordinateGroups: communeAudit.duplicateCoordinateGroups
+  total: communeAudit.total, wilayas: communeAudit.wilayas, uniqueIds: communeAudit.uniqueIds,
+  standardCoordinates: communeAudit.standardCoordinates, swappedCoordinates: communeAudit.swappedCoordinates,
+  blankArabicNames: communeAudit.blankArabicNames, duplicateSlugGroups: communeAudit.duplicateSlugGroups,
+  duplicateCoordinateGroups: communeAudit.duplicateCoordinateGroups, generatedCommunePages: communeRecords.length,
+  disambiguatedSlugRecords: [...communeSlugCounts.values()].filter(count => count > 1).reduce((sum, count) => sum + count, 0)
 }));
 const uniqueUrls = [...new Set(sitemapUrls)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.map(url => `  <url><loc>${url}</loc><lastmod>${TODAY}</lastmod></url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(ROOT, 'sitemap.xml'), sitemap, 'utf8');
-console.log(`Generated ${groups.reduce((sum, group) => sum + group.items.length, 0)} city pages, ${groups.length} directories and sitemap (${uniqueUrls.length} URLs).`);
+console.log(`Generated ${groups.reduce((sum, group) => sum + group.items.length, 0)} city pages, ${communeRecords.length} commune pages, ${groups.length} directories and sitemap (${uniqueUrls.length} URLs).`);
 if (missingImages.length) console.warn(`Image fallback used for ${missingImages.length} cities: ${missingImages.slice(0, 20).map(item => item.slug + ' (' + item.expected + ')').join(', ')}`);
