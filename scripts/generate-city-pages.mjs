@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pageGraph, collectionGraph } from './seo-schema.mjs';
+import { auditCommuneSource, buildCommuneWeatherRecord } from './communes-data.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = 'https://imadtbn.github.io/today-weather';
@@ -323,20 +324,22 @@ function buildCityPage(group, index) {
       Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
     throw new Error(`Invalid city data in ${group.key} at index ${index}`);
   }
-  const url = pageUrl(group.key, city.slug);
+  const url = group.pageUrl ? group.pageUrl(city) : pageUrl(group.key, city.slug);
   const image = imagePath(city);
-  const title = `طقس ${name} اليوم | حالة الطقس وتوقعات 5 أيام`;
-  const description = `تعرف على طقس ${name} في ${country}: درجات الحرارة الحالية، الحالة الجوية، الرطوبة والرياح، وتوقعات الطقس لمدة خمسة أيام حسب الإحداثيات المحلية.`;
+  const title = `طقس ${group.pageKindLabel ? group.pageKindLabel + ' ' : ''}${name} اليوم | حالة الطقس وتوقعات 5 أيام`;
+  const description = group.pageKindLabel
+    ? `تعرف على طقس ${name}، ${group.pageKindLabel} في ${group.parentName || group.title}، ${country}: درجات الحرارة الحالية، الحالة الجوية، الرطوبة والرياح، وتوقعات الطقس لمدة خمسة أيام حسب الإحداثيات المحلية.`
+    : `تعرف على طقس ${name} في ${country}: درجات الحرارة الحالية، الحالة الجوية، الرطوبة والرياح، وتوقعات الطقس لمدة خمسة أيام حسب الإحداثيات المحلية.`;
   const related = Array.from({ length: Math.min(8, group.items.length - 1) }, (_, offset) =>
     group.items[(index + offset + 1) % group.items.length]
   ).filter(item => item.slug !== city.slug);
   const relatedLinks = related.map(item =>
-    `<a href="${BASE}/weather/${group.key}/${encodeURIComponent(item.slug)}/">${escapeHtml(group.name(item))}</a>`
+    `<a href="${group.pagePath ? group.pagePath(item) : `${BASE}/weather/${group.key}/${encodeURIComponent(item.slug)}/`}">${escapeHtml(group.name(item))}</a>`
   ).join('');
   const breadcrumb = [
     { '@type': 'ListItem', position: 1, name: 'الرئيسية', item: `${SITE}/` },
     { '@type': 'ListItem', position: 2, name: 'دليل الطقس', item: `${SITE}/weather/` },
-    { '@type': 'ListItem', position: 3, name: group.title, item: `${SITE}/weather/${group.key}/` },
+    { '@type': 'ListItem', position: 3, name: group.title, item: group.directoryUrl || `${SITE}/weather/${group.key}/` },
     { '@type': 'ListItem', position: 4, name, item: url }
   ];
   const schema = pageGraph({
@@ -344,7 +347,7 @@ function buildCityPage(group, index) {
     breadcrumbs: [
       { name: 'الرئيسية', url: SITE + '/' },
       { name: 'دليل الطقس', url: SITE + '/weather/' },
-      { name: group.title, url: SITE + '/weather/' + group.key + '/' },
+      { name: group.title, url: group.directoryUrl || SITE + '/weather/' + group.key + '/' },
       { name, url }
     ],
     mainEntity: { '@id': url + '#place' }
@@ -361,7 +364,7 @@ function buildCityPage(group, index) {
   const groupLabel = group.key === 'algeria' ? 'الولايات الجزائرية' : group.key === 'arab' ? 'العواصم العربية' : 'المدن العالمية';
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="${escapeHtml(group.robotsDirective || "index,follow,max-image-preview:large,max-snippet:-1")}">
 <link rel="canonical" href="${url}"><meta name="theme-color" content="#0a0e1a">
 <meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ"><meta property="og:site_name" content="أحوال الطقس"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${SITE + image}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${SITE + image}">
@@ -369,8 +372,8 @@ function buildCityPage(group, index) {
 ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script></head>
 <body class="city-page">${commonHeader()}${adBlock("top")}
 <main class="city-container" data-city-weather='${escapeHtml(config)}'>
-<nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / <a href="${BASE}/weather/${group.key}/">${groupLabel}</a> / ${escapeHtml(name)}</nav>
-<section class="city-hero"><div class="city-hero-grid"><div><span class="city-kicker">${escapeHtml(group.kind)} · ${escapeHtml(country)}</span><h1 class="city-title">طقس ${escapeHtml(name)} اليوم</h1><p class="city-subtitle">تابع حالة الطقس في ${escapeHtml(name)}، ${escapeHtml(country)}، واطلع على درجات الحرارة الحالية وتوقعات الأيام الخمسة القادمة. تعتمد بيانات هذه الصفحة على الإحداثيات الجغرافية للمدينة (${latitude.toFixed(4)}، ${longitude.toFixed(4)}) لعرض معلومات جوية مرتبطة بموقعها.</p></div>
+<nav class="city-breadcrumb" aria-label="مسار التنقل"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / <a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">${escapeHtml(group.title)}</a> / ${escapeHtml(name)}</nav>
+<section class="city-hero"><div class="city-hero-grid"><div><span class="city-kicker">${escapeHtml(group.kind)} · ${escapeHtml(country)}</span><h1 class="city-title">طقس ${escapeHtml(group.pageKindLabel ? group.pageKindLabel + " " : "")}${escapeHtml(name)} اليوم</h1><p class="city-subtitle">تابع حالة الطقس في ${escapeHtml(name)}، ${escapeHtml(country)}، واطلع على درجات الحرارة الحالية وتوقعات الأيام الخمسة القادمة. تعتمد بيانات هذه الصفحة على الإحداثيات الجغرافية للمدينة (${latitude.toFixed(4)}، ${longitude.toFixed(4)}) لعرض معلومات جوية مرتبطة بموقعها.</p></div>
 <figure class="city-image-wrap"><img src="${image}" alt="${escapeHtml(imageAlt)}" width="960" height="600" fetchpriority="high" decoding="async"></figure></div></section>
 <section class="city-weather" aria-labelledby="cityWeatherTitle"><div class="city-weather-card"><div class="city-weather-head"><h2 id="cityWeatherTitle">حالة الطقس الحالية في ${escapeHtml(name)}</h2><span class="city-live-label"><i class="fa-solid fa-circle" aria-hidden="true"></i> بيانات مباشرة</span></div>
 <div class="city-current"><div><div class="city-temp" id="cityTemp" aria-live="polite">--°</div><p class="city-condition" id="cityCondition">جارٍ تحميل حالة الطقس...</p></div><i id="cityWeatherIcon" class="fa-solid fa-cloud city-weather-icon" aria-hidden="true"></i></div>
@@ -404,8 +407,8 @@ ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script>
 </div></section>
 <section class="tips-section city-extra-section"><div class="city-section-heading"><div><h2 class="city-section-title">نصائح الطقس الذكية</h2><p id="weatherTipsContext">نصائح تتغير وفق الطقس الحالي والتوقعات.</p></div><span id="weatherTipsStatus">جارٍ التحليل</span></div><div class="tips-grid" id="weatherTips" aria-live="polite"><p class="city-status">جارٍ إعداد النصائح...</p></div></section>
 <section class="city-content"><article class="city-info-card"><h2 class="city-section-title">حالة الطقس والمناخ في ${escapeHtml(name)}</h2><p>تقع ${escapeHtml(name)} ضمن ${escapeHtml(group.region(city))} في ${escapeHtml(country)}. تساعدك هذه الصفحة على متابعة الطقس اليومي في المنطقة من خلال عرض درجة الحرارة، والحرارة المحسوسة، والرطوبة، وسرعة الرياح، والضغط الجوي، إضافة إلى توقعات الأيام المقبلة.</p><p>تتغير الظروف الجوية من يوم إلى آخر؛ لذلك يُنصح بمراجعة التحديثات قبل التنقل أو التخطيط للأنشطة الخارجية. تُعرض القيم الجوية عند توفرها من مزود البيانات، وقد تختلف دقة التوقعات بحسب الموقع والفترة الزمنية.</p></article>
-<aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p><p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
-<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${BASE}/weather/${group.key}/">جميع ${groupLabel}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
+<aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p>${group.parentName ? `<p><strong>الولاية:</strong> ${escapeHtml(group.parentName)}</p>` : ""}<p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
+<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">${escapeHtml(group.directoryLinkLabel || "جميع " + group.title)}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
 </main>${adBlock("bottom")}${commonFooter()}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script><script src="${BASE}/assets/js/specialized-weather.js" defer></script><script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
 }
@@ -429,6 +432,42 @@ for (const group of groups) {
     sitemapUrls.push(pageUrl(group.key, city.slug));
   }
 }
+// Generate one representative commune page only during the pilot phase.
+const communeAudit = auditCommuneSource();
+const pilotSource = communeAudit.communes.find(commune => String(commune.id) === '1');
+if (!pilotSource) throw new Error('Pilot commune id=1 (Adrar) is missing from data/communes.json');
+const pilotWilaya = communeAudit.wilayaById.get(String(Number(pilotSource.wilaya_id)));
+const pilotCommune = buildCommuneWeatherRecord(pilotSource, pilotWilaya);
+const pilotGroup = {
+  key: 'algeria',
+  title: 'ولاية ' + pilotWilaya.name,
+  kind: 'بلدية جزائرية',
+  pageKindLabel: 'بلدية',
+  parentName: pilotWilaya.name,
+  robotsDirective: 'noindex,follow',
+  directoryLinkLabel: 'صفحة ولاية ' + pilotWilaya.name,
+  items: [pilotCommune],
+  name: commune => commune.name,
+  country: () => 'الجزائر',
+  region: commune => commune.region,
+  lat: commune => commune.latitude,
+  lon: commune => commune.longitude,
+  directoryUrl: SITE + '/weather/algeria/' + pilotWilaya.slug + '/',
+  directoryPath: BASE + '/weather/algeria/' + pilotWilaya.slug + '/',
+  pageUrl: commune => SITE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/',
+  pagePath: commune => BASE + '/weather/algeria/communes/' + pilotWilaya.slug + '/' + commune.slug + '/'
+};
+writePage('weather/algeria/communes/' + pilotWilaya.slug + '/' + pilotCommune.slug + '/index.html', buildCityPage(pilotGroup, 0));
+console.log('Commune source audit:', JSON.stringify({
+  total: communeAudit.total,
+  wilayas: communeAudit.wilayas,
+  uniqueIds: communeAudit.uniqueIds,
+  standardCoordinates: communeAudit.standardCoordinates,
+  swappedCoordinates: communeAudit.swappedCoordinates,
+  blankArabicNames: communeAudit.blankArabicNames,
+  duplicateSlugGroups: communeAudit.duplicateSlugGroups,
+  duplicateCoordinateGroups: communeAudit.duplicateCoordinateGroups
+}));
 const uniqueUrls = [...new Set(sitemapUrls)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.map(url => `  <url><loc>${url}</loc><lastmod>${TODAY}</lastmod></url>`).join('\n')}\n</urlset>\n`;
 writeFileSync(join(ROOT, 'sitemap.xml'), sitemap, 'utf8');
