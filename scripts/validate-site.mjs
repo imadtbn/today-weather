@@ -138,7 +138,7 @@ assert.ok(communePilot.includes('rel="canonical" href="https://imadtbn.github.io
 assert.ok(communePilot.includes('<h1 class="city-title">طقس أدرار اليوم</h1>'), 'Commune pilot H1 missing');
 assert.ok(communePilot.includes('data-city-weather=') && communePilot.includes('id="cityForecast"'), 'Commune pilot weather template is incomplete');
 assert.ok(communePilot.includes('name="robots" content="index,follow,max-image-preview:large,max-snippet:-1"'), 'Commune pilot robots metadata missing');
-const communePilotLd = [...communePilot.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
+const communePilotLd = [...communePilot.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
 assert.equal(communePilotLd.length, 1, 'Commune pilot must contain exactly one JSON-LD block');
 const communePilotGraph = JSON.parse(communePilotLd[0][1])['@graph'];
 const communePilotPlace = communePilotGraph.find(item => item['@type'] === 'Place');
