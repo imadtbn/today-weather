@@ -73,12 +73,15 @@ export function auditCommuneSource() {
   };
 }
 
+const ARABIC_COMMUNE_NAME_OVERRIDES = new Map([['Talmine', 'تالمين']]);
+
 export function buildCommuneWeatherRecord(commune, wilaya) {
   const point = resolveCommuneCoordinates(commune);
+  const arabicName = String(commune.ar_name || '').trim() || ARABIC_COMMUNE_NAME_OVERRIDES.get(commune.name) || commune.name;
   return {
     ...commune,
     slug: slugifyCommune(commune.name),
-    name: String(commune.ar_name || '').trim() || commune.name,
+    name: arabicName,
     name_en: commune.name,
     name_fr: commune.name,
     latitude: point.latitude,
