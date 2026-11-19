@@ -364,7 +364,7 @@ function buildCityPage(group, index) {
   const groupLabel = group.key === 'algeria' ? 'الولايات الجزائرية' : group.key === 'arab' ? 'العواصم العربية' : 'المدن العالمية';
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
+<title>${escapeHtml(title)}</title><meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="${escapeHtml(group.robotsDirective || "index,follow,max-image-preview:large,max-snippet:-1")}">
 <link rel="canonical" href="${url}"><meta name="theme-color" content="#0a0e1a">
 <meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ"><meta property="og:site_name" content="أحوال الطقس"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:url" content="${url}"><meta property="og:image" content="${SITE + image}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}"><meta name="twitter:image" content="${SITE + image}">
@@ -408,7 +408,7 @@ ${trackingTags()}<script type="application/ld+json">${safeJson(schema)}</script>
 <section class="tips-section city-extra-section"><div class="city-section-heading"><div><h2 class="city-section-title">نصائح الطقس الذكية</h2><p id="weatherTipsContext">نصائح تتغير وفق الطقس الحالي والتوقعات.</p></div><span id="weatherTipsStatus">جارٍ التحليل</span></div><div class="tips-grid" id="weatherTips" aria-live="polite"><p class="city-status">جارٍ إعداد النصائح...</p></div></section>
 <section class="city-content"><article class="city-info-card"><h2 class="city-section-title">حالة الطقس والمناخ في ${escapeHtml(name)}</h2><p>تقع ${escapeHtml(name)} ضمن ${escapeHtml(group.region(city))} في ${escapeHtml(country)}. تساعدك هذه الصفحة على متابعة الطقس اليومي في المنطقة من خلال عرض درجة الحرارة، والحرارة المحسوسة، والرطوبة، وسرعة الرياح، والضغط الجوي، إضافة إلى توقعات الأيام المقبلة.</p><p>تتغير الظروف الجوية من يوم إلى آخر؛ لذلك يُنصح بمراجعة التحديثات قبل التنقل أو التخطيط للأنشطة الخارجية. تُعرض القيم الجوية عند توفرها من مزود البيانات، وقد تختلف دقة التوقعات بحسب الموقع والفترة الزمنية.</p></article>
 <aside class="city-info-card"><h2 class="city-section-title">معلومات الموقع</h2><p><strong>المدينة:</strong> ${escapeHtml(name)}</p><p><strong>الدولة:</strong> ${escapeHtml(country)}</p><p><strong>المنطقة:</strong> ${escapeHtml(group.region(city))}</p>${group.parentName ? `<p><strong>الولاية:</strong> ${escapeHtml(group.parentName)}</p>` : ""}<p><strong>خط العرض:</strong> ${latitude.toFixed(4)}</p><p><strong>خط الطول:</strong> ${longitude.toFixed(4)}</p></aside></section>
-<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">جميع ${escapeHtml(group.title)}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
+<section class="city-related"><h2 class="city-section-title">مدن وولايات ذات صلة</h2><p class="city-status">انتقل مباشرة إلى صفحات الطقس الأخرى ضمن الدليل.</p><div class="city-related-links">${relatedLinks}</div><div class="city-related-links"><a href="${group.directoryPath || `${BASE}/weather/${group.key}/`}">${escapeHtml(group.directoryLinkLabel || "جميع " + group.title)}</a><a href="${BASE}/weather/">دليل الطقس الكامل</a><a href="${BASE}/">الصفحة الرئيسية</a></div></section>
 </main>${adBlock("bottom")}${commonFooter()}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script><script src="${BASE}/assets/js/specialized-weather.js" defer></script><script src="${BASE}/assets/js/city-page.js" defer></script></body></html>`;
 }
@@ -444,6 +444,8 @@ const pilotGroup = {
   kind: 'بلدية جزائرية',
   pageKindLabel: 'بلدية',
   parentName: pilotWilaya.name,
+  robotsDirective: 'noindex,follow',
+  directoryLinkLabel: 'صفحة ولاية ' + pilotWilaya.name,
   items: [pilotCommune],
   name: commune => commune.name,
   country: () => 'الجزائر',
