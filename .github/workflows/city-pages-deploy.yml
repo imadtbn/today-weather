@@ -21,7 +21,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up Node.js
-        uses:
+        uses: actions/setup-node@v4
+        with:
           node-version: 22
       - name: Generate all static city pages and sitemap
         run: node scripts/generate-city-pages.mjs
@@ -30,7 +31,7 @@ jobs:
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           const xml = readFileSync('sitemap.xml', 'utf8');
-          const urls = [...xml.matchAll(/<loc>([^<]+)<\\/loc>/g)].map((match) => match[1]);
+          const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
           const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
           if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Generated sitemap is not a sitemap XML document');
           if (communes.length !== 1708) throw new Error(`Expected 1,708 commune URLs in generated sitemap; found ${communes.length}`);
@@ -60,7 +61,7 @@ jobs:
           PAGES_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           node --input-type=module <<'NODE'
-          const base = process.env.PAGES_URL.replace(/\\/$/, '');
+          const base = process.env.PAGES_URL.replace(/\/$/, '');
           const sitemapUrl = base + '/sitemap.xml';
           const robotsUrl = base + '/robots.txt';
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,13 +76,13 @@ jobs:
               if (!sitemapResponse.ok) throw new Error(`Published sitemap HTTP ${sitemapResponse.status}`);
               if (!robotsResponse.ok) throw new Error(`Published robots.txt HTTP ${robotsResponse.status}`);
               const [xml, robots] = await Promise.all([sitemapResponse.text(), robotsResponse.text()]);
-              const urls = [...xml.matchAll(/<loc>([^<]+)<\\/loc>/g)].map((match) => match[1]);
+              const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
               const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
               if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Published sitemap XML is missing or malformed');
               if (communes.length !== 1708) throw new Error(`Published sitemap has ${communes.length} commune URLs; expected 1,708`);
               if (new Set(urls).size !== urls.length) throw new Error('Published sitemap contains duplicate URLs');
               if (urls.length !== 2000) throw new Error(`Published sitemap has ${urls.length} total URLs; expected 2,000`);
-              const robotLines = robots.split(/\\r?\\n/).map((line) => line.trim());
+              const robotLines = robots.split(/\r?\n/).map((line) => line.trim());
               if (!robotLines.includes('User-agent: *')) throw new Error('Published robots.txt is missing User-agent: *');
               if (!robotLines.includes('Allow: /')) throw new Error('Published robots.txt is missing Allow: /');
               if (!robotLines.includes('Sitemap: ' + sitemapUrl)) throw new Error('Published robots.txt sitemap directive is incorrect');
