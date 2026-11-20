@@ -398,3 +398,71 @@ test('weather tips are generated from current conditions and the next 24-hour fo
   await expect(page.locator('#weatherTipsToggle')).toHaveAttribute('aria-expanded', 'true');
   await expect(page.locator('#weatherTips [data-tip-extra]').first()).toBeVisible();
 });
+
+
+test('five-day weather statistics use only future forecast data and fit small screens', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
+      data: { lat: 36.752887, lon: 3.042048, name: 'الجزائر العاصمة', state: 'الجزائر العاصمة', country: 'الجزائر', displayName: 'الجزائر العاصمة / الجزائر' },
+      timestamp: Date.now()
+    }));
+  });
+  await page.route('https://api.openweathermap.org/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/forecast')) {
+      const now = Math.floor(Date.now() / 1000);
+      const row = (offset, temp, low, high, rain, wind) => ({
+        dt: now + offset,
+        main: { temp, temp_min: low, temp_max: high, feels_like: temp, humidity: 55, pressure: 1012 },
+        weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+        wind: { speed: wind, deg: 90 }, clouds: { all: 0 }, rain: { '3h': rain }
+      });
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        city: { timezone: 3600 },
+        list: [
+          row(-10800, 70, 65, 75, 50, 20),
+          row(10800, 20, 18, 21, 1, 3),
+          row(21600, 30, 8, 33, 2, 5),
+          row(5 * 24 * 60 * 60 + 3600, 90, 80, 95, 100, 30)
+        ]
+      }) });
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      main: { temp: 24, feels_like: 24, humidity: 55, pressure: 1012 },
+      weather: [{ id: 800, description: 'سماء صافية', icon: '01d' }],
+      wind: { speed: 2, deg: 90 }, visibility: 10000, clouds: { all: 0 }, name: 'Algeria', timezone: 3600
+    }) });
+  });
+  await page.route('https://tile.openweathermap.org/**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#statMaxTemp')).toHaveText('33°');
+  await expect(page.locator('#statMinTemp')).toHaveText('8°');
+  await expect(page.locator('#statRain')).toHaveText('3.0 مم');
+  await expect(page.locator('#statWind')).toHaveText('14 كم/س');
+  await expect(page.locator('#statsPeriodNote')).toContainText('الأيام الخمسة القادمة');
+  await expect(page.locator('#statsGrid')).toHaveAttribute('data-forecast-periods', '2');
+
+  for (const [width, expectedColumns] of [[320, 2], [360, 2], [390, 2], [430, 2], [768, 2], [1024, 2], [1280, 4]]) {
+    await page.setViewportSize({ width, height: 850 });
+    const layout = await page.locator('#statsGrid').evaluate(grid => {
+      const cards = [...grid.querySelectorAll('.stat-card')];
+      const rects = cards.map(card => {
+        const rect = card.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width };
+      });
+      return {
+        columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+        viewport: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        rects
+      };
+    });
+    expect(layout.columns, 'statistics grid columns at ' + width + 'px').toBe(expectedColumns);
+    expect(layout.scrollWidth, 'horizontal overflow at ' + width + 'px').toBeLessThanOrEqual(layout.viewport + 1);
+    for (const rect of layout.rects) {
+      expect(rect.width, 'card width at ' + width + 'px').toBeGreaterThan(110);
+      expect(rect.left).toBeGreaterThanOrEqual(-1);
+      expect(rect.right).toBeLessThanOrEqual(layout.viewport + 1);
+    }
+  }
+});
