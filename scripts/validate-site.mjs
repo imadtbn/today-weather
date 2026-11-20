@@ -76,8 +76,14 @@ function assertSharedPageShell(page, pagePath) {
   assert.equal((page.match(/data-ad-slot="3143411927"/g) || []).length, 1, 'Footer ad slot must appear exactly once: ' + pagePath);
   assert.equal((page.match(/adsbygoogle.js\?client=ca-pub-5656416032906373/g) || []).length, 1, 'AdSense loader must appear once: ' + pagePath);
   assert.equal((page.match(/assets\/js\/adsData.js/g) || []).length, 1, 'Ad placement guard must appear once: ' + pagePath);
-  assert.ok(page.indexOf('data-ad-slot="7867079394"') < page.indexOf('<main'), 'Top ad must be below header and above main content: ' + pagePath);
-  assert.ok(page.indexOf('data-ad-slot="3143411927"') > page.indexOf('</main>') && page.indexOf('data-ad-slot="3143411927"') < page.indexOf('<footer'), 'Bottom ad must be after main content and before footer: ' + pagePath);
+  const heroStart = Math.max(page.indexOf('class="directory-hero"'), page.indexOf('class="city-hero"'), page.indexOf('class="sitemap-hero"'));
+  assert.ok(heroStart >= 0, 'Page hero missing: ' + pagePath);
+  const heroEndTag = page.indexOf('class="city-hero"') >= 0 ? '</section>' : '</header>';
+  const heroEnd = page.indexOf(heroEndTag, heroStart);
+  const topAd = page.indexOf('data-ad-slot="7867079394"');
+  const footerAd = page.indexOf('data-ad-slot="3143411927"');
+  assert.ok(heroEnd > heroStart && topAd > heroEnd && topAd < page.indexOf('</main>'), 'Hero ad must immediately follow the hero inside main content: ' + pagePath);
+  assert.ok(footerAd > page.indexOf('</main>') && footerAd < page.indexOf('<footer'), 'Footer ad must be after main content and before footer: ' + pagePath);
   assert.ok(!page.includes('data-city='), 'Homepage footer city links must be normal links on static pages: ' + pagePath);
 }
 const expectedCityCount = cityGroups.reduce((sum, group) => sum + JSON.parse(read(group.file)).length, 0);
@@ -93,6 +99,7 @@ assert.ok(htmlSitemap.includes('<h1 class="city-title">خريطة الموقع</
 assert.ok(htmlSitemap.includes('id="sitemapSearch"') && htmlSitemap.includes('sitemap-group-grid'), 'HTML sitemap search or city groups missing');
 assert.ok(htmlSitemap.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/sitemap.html"'), 'HTML sitemap canonical missing');
 assert.ok(htmlSitemap.includes('assets/css/sitemap.css'), 'HTML sitemap stylesheet missing');
+assertSharedPageShell(htmlSitemap, 'sitemap.html');
 const sitemapJsonLd = [...htmlSitemap.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
 assert.equal(sitemapJsonLd.length, 1, 'Expected one JSON-LD block in HTML sitemap');
 const sitemapSchema = JSON.parse(sitemapJsonLd[0][1]);
@@ -260,4 +267,12 @@ const weatherIndexGraph = JSON.parse(weatherIndexLd[0][1])['@graph'];
 assert.ok(weatherIndexGraph.some(item => item['@type'] === 'WebPage'), 'Weather directory WebPage schema missing');
 assert.ok(html.includes('weather forecast') && html.includes('météo Algérie'), 'Multilingual weather search terms missing');
 assert.ok(html.includes('id="weather-guide-title"'), 'Indexable weather guide content missing');
+const homeHeroStart = html.indexOf('class="hero-section"');
+const homeHeroEnd = html.indexOf('</section>', homeHeroStart);
+const homeHeroAd = html.indexOf('data-ad-slot="7867079394"');
+const homeFooterAd = html.indexOf('data-ad-slot="6528123169"');
+const homeFooter = html.indexOf('<footer class="site-footer"');
+assert.ok(homeHeroStart >= 0 && homeHeroEnd > homeHeroStart && homeHeroAd > homeHeroEnd && homeHeroAd < html.indexOf('id="currentWeather"'), 'Homepage hero ad must appear immediately after the hero');
+assert.ok(homeFooterAd > html.indexOf('</main>') && homeFooterAd < homeFooter, 'Homepage footer ad must appear between main and footer');
+assert.ok(html.slice(html.lastIndexOf('<div class="ad-container"', homeFooterAd), homeFooterAd).includes('data-ad-placement="footer"'), 'Homepage footer ad must use the approved footer placement container');
 console.log('Site validation passed: HTML, SEO, JSON-LD, sitemap, PWA cache, CSS and JavaScript.');
