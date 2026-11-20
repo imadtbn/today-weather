@@ -155,16 +155,43 @@ const UI = {
     },
 
     updateStats(current, forecast) {
-        const temps = forecast.list.map(i => i.main.temp);
-        const max = Math.max(...temps);
-        const min = Math.min(...temps);
-        const rain = forecast.list.reduce((total, item) => total + Number(item.rain?.['3h'] || 0), 0);
-        const avgWind = forecast.list.reduce((s, i) => s + i.wind.speed, 0) / forecast.list.length;
+        const now = Math.floor(Date.now() / 1000);
+        const fiveDays = now + (5 * 24 * 60 * 60);
+        const upcoming = (forecast?.list || []).filter(item => {
+            const timestamp = Number(item?.dt);
+            return Number.isFinite(timestamp) && timestamp >= now && timestamp <= fiveDays;
+        });
+        const temperatures = upcoming.flatMap(item => {
+            const high = Number(item?.main?.temp_max ?? item?.main?.temp);
+            const low = Number(item?.main?.temp_min ?? item?.main?.temp);
+            return [high, low].filter(Number.isFinite);
+        });
+        const rainfall = upcoming.reduce((total, item) => {
+            const amount = Number(item?.rain?.['3h'] ?? 0);
+            return total + (Number.isFinite(amount) && amount > 0 ? amount : 0);
+        }, 0);
+        const windSamples = upcoming
+            .map(item => Number(item?.wind?.speed))
+            .filter(speed => Number.isFinite(speed) && speed >= 0);
+        const max = temperatures.length ? Math.max(...temperatures) : null;
+        const min = temperatures.length ? Math.min(...temperatures) : null;
+        const avgWind = windSamples.length
+            ? windSamples.reduce((sum, speed) => sum + speed, 0) / windSamples.length
+            : null;
 
-        if (this.els.statMaxTemp) this.els.statMaxTemp.textContent = `${Math.round(max)}°`;
-        if (this.els.statMinTemp) this.els.statMinTemp.textContent = `${Math.round(min)}°`;
-        if (this.els.statRain) this.els.statRain.textContent = `${rain.toFixed(1)}mm`;
-        if (this.els.statWind) this.els.statWind.textContent = `${Math.round(avgWind * 3.6)}km/h`;
+        if (this.els.statMaxTemp) this.els.statMaxTemp.textContent = max === null ? '--°' : `${Math.round(max)}°`;
+        if (this.els.statMinTemp) this.els.statMinTemp.textContent = min === null ? '--°' : `${Math.round(min)}°`;
+        if (this.els.statRain) this.els.statRain.textContent = `${rainfall.toFixed(1)} مم`;
+        if (this.els.statWind) this.els.statWind.textContent = avgWind === null ? '-- كم/س' : `${Math.round(avgWind * 3.6)} كم/س`;
+
+        const periodNote = document.getElementById('statsPeriodNote');
+        if (periodNote) {
+            periodNote.textContent = upcoming.length
+                ? `ملخص ${upcoming.length} فترة توقع متاحة خلال الأيام الخمسة القادمة · من الآن وحتى 5 أيام`
+                : 'لا تتوفر حالياً فترات توقع مستقبلية كافية لاحتساب الإحصائيات.';
+        }
+        const grid = this.els.statsGrid;
+        if (grid) grid.dataset.forecastPeriods = String(upcoming.length);
     },
 
     updateWarnings(alerts, location) {
