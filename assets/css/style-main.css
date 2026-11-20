@@ -3249,3 +3249,103 @@ body {
         right: 10px;
     }
 }
+
+
+/* Five-day weather statistics: compact, readable cards on tablets and phones. */
+.stats-section .stats-period-note {
+    margin: -8px 0 18px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+.stats-section .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(10px, 1.5vw, 18px);
+    align-items: stretch;
+}
+.stats-section .stat-card {
+    display: flex;
+    min-width: 0;
+    min-height: 164px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: clamp(14px, 2vw, 22px) 12px;
+    border-color: rgba(212, 168, 83, 0.2);
+    border-radius: 18px;
+    background: linear-gradient(155deg, rgba(30, 58, 95, 0.34), rgba(255, 255, 255, 0.025));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.stats-section .stat-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    place-items: center;
+    margin: 0;
+    border: 1px solid rgba(212, 168, 83, 0.2);
+    border-radius: 14px;
+    background: rgba(212, 168, 83, 0.09);
+    font-size: 1.25rem;
+}
+.stats-section .stat-value {
+    max-width: 100%;
+    color: var(--parchment);
+    font-size: clamp(1.45rem, 2.4vw, 2rem);
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.stats-section .stat-label {
+    max-width: 100%;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: clamp(0.76rem, 1vw, 0.9rem);
+    line-height: 1.5;
+    text-wrap: balance;
+}
+@media (max-width: 1024px) {
+    .stats-section .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .stats-section .stat-card { min-height: 150px; }
+}
+@media (max-width: 600px) {
+    .stats-section { padding-block: 24px; }
+    .stats-section .stats-period-note {
+        margin: -4px 0 14px;
+        font-size: 0.78rem;
+    }
+    .stats-section .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+        margin-bottom: 18px;
+    }
+    .stats-section .stat-card {
+        min-height: 132px;
+        gap: 6px;
+        padding: 12px 7px;
+        border-radius: 14px;
+    }
+    .stats-section .stat-icon {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+        border-radius: 11px;
+        font-size: 1.05rem;
+    }
+    .stats-section .stat-value { font-size: clamp(1.25rem, 6vw, 1.65rem); }
+    .stats-section .stat-label { font-size: 0.74rem; }
+}
+@media (max-width: 360px) {
+    .stats-section .stats-grid { gap: 7px; }
+    .stats-section .stat-card { min-height: 124px; padding-inline: 5px; }
+    .stats-section .stat-value { font-size: 1.18rem; }
+    .stats-section .stat-label { font-size: 0.69rem; }
+}
+@media (hover: none) {
+    .stats-section .stat-card:hover { transform: none; box-shadow: none; }
+}
