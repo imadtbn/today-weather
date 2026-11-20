@@ -21,8 +21,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
+        uses:
           node-version: 22
       - name: Generate all static city pages and sitemap
         run: node scripts/generate-city-pages.mjs
@@ -33,7 +32,7 @@ jobs:
           const xml = readFileSync('sitemap.xml', 'utf8');
           const urls = [...xml.matchAll(/<loc>([^<]+)<\\/loc>/g)].map((match) => match[1]);
           const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
-          if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Generated sitemap is not a valid sitemap document');
+          if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Generated sitemap is not a sitemap XML document');
           if (communes.length !== 1708) throw new Error(`Expected 1,708 commune URLs in generated sitemap; found ${communes.length}`);
           if (new Set(urls).size !== urls.length) throw new Error('Generated sitemap contains duplicate URLs');
           if (urls.length !== 2000) throw new Error(`Expected 2,000 total sitemap URLs; found ${urls.length}`);
@@ -82,11 +81,10 @@ jobs:
               if (communes.length !== 1708) throw new Error(`Published sitemap has ${communes.length} commune URLs; expected 1,708`);
               if (new Set(urls).size !== urls.length) throw new Error('Published sitemap contains duplicate URLs');
               if (urls.length !== 2000) throw new Error(`Published sitemap has ${urls.length} total URLs; expected 2,000`);
-              if (!/^User-agent:\\s*\\*\\s*$/mi.test(robots)) throw new Error('Published robots.txt is missing User-agent: *');
-              if (!/^Allow:\\s*\\/\\s*$/mi.test(robots)) throw new Error('Published robots.txt is missing Allow: /');
-              if (!new RegExp('^Sitemap:\\\\s*' + sitemapUrl.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\\\s*$', 'mi').test(robots)) {
-                throw new Error('Published robots.txt does not point to the published sitemap URL');
-              }
+              const robotLines = robots.split(/\\r?\\n/).map((line) => line.trim());
+              if (!robotLines.includes('User-agent: *')) throw new Error('Published robots.txt is missing User-agent: *');
+              if (!robotLines.includes('Allow: /')) throw new Error('Published robots.txt is missing Allow: /');
+              if (!robotLines.includes('Sitemap: ' + sitemapUrl)) throw new Error('Published robots.txt sitemap directive is incorrect');
               console.log(`Published sitemap verified: HTTP 200, ${communes.length} commune URLs, ${urls.length} total URLs`);
               console.log('Published robots.txt verified: HTTP 200, crawl access allowed, sitemap directive correct');
               process.exit(0);
