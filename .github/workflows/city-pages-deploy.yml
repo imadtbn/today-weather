@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -41,6 +41,20 @@ jobs:
           NODE
       - name: Validate generated SEO pages
         run: node scripts/validate-site.mjs
+      - name: Sync generated sitemap to the main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sitemap.xml
+          if git diff --cached --quiet; then
+            echo "Source sitemap is already up to date."
+          else
+            git commit -m "chore: sync generated sitemap"
+            git push origin HEAD:main
+            echo "Generated sitemap committed to main."
+          fi
+          git diff --exit-code -- sitemap.xml
       - name: Upload generated GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
