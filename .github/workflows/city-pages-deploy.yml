@@ -142,16 +142,18 @@ jobs:
               if (!robotsResponse.ok) throw new Error(`Published robots.txt HTTP ${robotsResponse.status}`);
               const [xml, robots] = await Promise.all([sitemapResponse.text(), robotsResponse.text()]);
               const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-              const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
+              const communeDirectoryUrl = base + '/weather/algeria/communes/';
+              const communes = urls.filter((url) => url.includes('/weather/algeria/communes/') && url !== communeDirectoryUrl);
               if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Published sitemap XML is missing or malformed');
+              if (!urls.includes(communeDirectoryUrl)) throw new Error('Published sitemap is missing the communes directory URL');
               if (communes.length !== 1708) throw new Error(`Published sitemap has ${communes.length} commune URLs; expected 1,708`);
               if (new Set(urls).size !== urls.length) throw new Error('Published sitemap contains duplicate URLs');
-              if (urls.length !== 2000) throw new Error(`Published sitemap has ${urls.length} total URLs; expected 2,000`);
+              if (urls.length !== 2001) throw new Error(`Published sitemap has ${urls.length} total URLs; expected 2,001`);
               const robotLines = robots.split(/\r?\n/).map((line) => line.trim());
               if (!robotLines.includes('User-agent: *')) throw new Error('Published robots.txt is missing User-agent: *');
               if (!robotLines.includes('Allow: /')) throw new Error('Published robots.txt is missing Allow: /');
               if (!robotLines.includes('Sitemap: ' + sitemapUrl)) throw new Error('Published robots.txt sitemap directive is incorrect');
-              console.log(`Published sitemap verified: HTTP 200, ${communes.length} commune URLs, ${urls.length} total URLs`);
+              console.log(`Published sitemap verified: HTTP 200, ${communes.length} commune URLs + directory, ${urls.length} total URLs`);
               console.log('Published robots.txt verified: HTTP 200, crawl access allowed, sitemap directive correct');
               process.exit(0);
             } catch (error) {
