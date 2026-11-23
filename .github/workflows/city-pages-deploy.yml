@@ -3,10 +3,13 @@ name: Build and deploy SEO city pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
   pages: write
   id-token: write
 
@@ -39,26 +42,69 @@ jobs:
           if (urls.length !== 2000) throw new Error(`Expected 2,000 total sitemap URLs; found ${urls.length}`);
           console.log(`Generated sitemap verified: ${communes.length} commune URLs / ${urls.length} total URLs`);
           NODE
-      - name: Sync generated sitemap to the main branch
-        if: github.ref == 'refs/heads/main'
+      - name: Verify complete generated HTML output
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sitemap.xml
-          if git diff --cached --quiet; then
-            echo "Source sitemap is already up to date."
-          else
-            git commit -m "chore: sync generated sitemap"
-            git push origin HEAD:main
-            echo "Generated sitemap committed to main."
-          fi
-          git diff --exit-code -- sitemap.xml
+          node --input-type=module <<'NODE'
+          import { existsSync, readdirSync } from 'node:fs';
+          import { join } from 'node:path';
+          const countIndexPages = (directory) => readdirSync(directory, { withFileTypes: true }).reduce((total, entry) => {
+            const path = join(directory, entry.name);
+            return total + (entry.isDirectory() ? countIndexPages(path) : entry.isFile() && entry.name === 'index.html' ? 1 : 0);
+          }, 0);
+          const expected = { algeria: 69, arab: 22, world: 195, communes: 1708, directories: 4 };
+          const actual = {
+            algeria: countIndexPages('weather/algeria') - countIndexPages('weather/algeria/communes') - 1,
+            arab: countIndexPages('weather/arab') - 1,
+            world: countIndexPages('weather/world') - 1,
+            communes: countIndexPages('weather/algeria/communes'),
+            directories: ['weather/index.html', 'weather/algeria/index.html', 'weather/arab/index.html', 'weather/world/index.html'].filter(existsSync).length
+          };
+          for (const [key, count] of Object.entries(expected)) {
+            if (actual[key] !== count) throw new Error(`${key}: expected ${count} generated pages, found ${actual[key]}`);
+          }
+          const weatherPages = countIndexPages('weather');
+          if (weatherPages !== 1998) throw new Error(`Expected 1,998 weather index.html files, found ${weatherPages}`);
+          if (!existsSync('sitemap.html') || !existsSync('data/global-search-index.json')) throw new Error('Generated sitemap/search index output is missing');
+          console.log('Generated output verified:', JSON.stringify({ ...actual, weatherPages, totalHtmlPages: weatherPages + 2 }));
+          NODE
+      - name: Create pull request for generated pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          branch: automation/generated-city-pages
+          delete-branch: false
+          commit-message: 'chore: commit generated city and commune pages'
+          title: 'chore: commit all generated weather HTML pages'
+          body: |
+            ## Generated weather pages
+
+            This PR stores the complete output of `scripts/generate-city-pages.mjs` in the repository so generated HTML files are visible in the `main` tree as well as deployed through GitHub Pages.
+
+            Included output:
+            - 69 Algerian wilaya pages
+            - 22 Arab capital pages
+            - 195 world city/capital pages
+            - 1,708 Algerian commune pages
+            - 4 weather directory pages
+            - `sitemap.html`, `sitemap.xml`, and `data/global-search-index.json`
+
+            Generated output is staged only after `npm run validate` and the exact page-count checks pass. No generated files are pushed directly to `main`.
+          add-paths: |
+            weather/
+            sitemap.html
+            sitemap.xml
+            data/global-search-index.json
+      - name: Confirm generated output has no unstaged changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: git status --short
       - name: Upload generated GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
