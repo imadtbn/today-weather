@@ -45,7 +45,7 @@ jobs:
       - name: Verify complete generated HTML output
         run: |
           node --input-type=module <<'NODE'
-          import { existsSync, readdirSync, statSync } from 'node:fs';
+          import { existsSync, readdirSync } from 'node:fs';
           import { join } from 'node:path';
           const countIndexPages = (directory) => readdirSync(directory, { withFileTypes: true }).reduce((total, entry) => {
             const path = join(directory, entry.name);
@@ -71,7 +71,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           branch: automation/generated-city-pages
           delete-branch: false
           commit-message: 'chore: commit generated city and commune pages'
