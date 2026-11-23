@@ -53,7 +53,7 @@ jobs:
           }, 0);
           const expected = { algeria: 69, arab: 22, world: 195, communes: 1708, directories: 4 };
           const actual = {
-            algeria: countIndexPages('weather/algeria') - countIndexPages('weather/algeria/communes'),
+            algeria: countIndexPages('weather/algeria') - countIndexPages('weather/algeria/communes') - 1,
             arab: countIndexPages('weather/arab') - 1,
             world: countIndexPages('weather/world') - 1,
             communes: countIndexPages('weather/algeria/communes'),
