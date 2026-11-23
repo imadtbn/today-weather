@@ -24,8 +24,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Generate all static city pages and sitemap
-        run: node scripts/generate-city-pages.mjs
+      - name: Generate and validate all static city and commune pages
+        run: npm run validate
       - name: Verify generated sitemap includes every commune
         run: |
           node --input-type=module <<'NODE'
@@ -39,8 +39,6 @@ jobs:
           if (urls.length !== 2000) throw new Error(`Expected 2,000 total sitemap URLs; found ${urls.length}`);
           console.log(`Generated sitemap verified: ${communes.length} commune URLs / ${urls.length} total URLs`);
           NODE
-      - name: Validate generated SEO pages
-        run: node scripts/validate-site.mjs
       - name: Sync generated sitemap to the main branch
         if: github.ref == 'refs/heads/main'
         run: |
@@ -111,3 +109,8 @@ jobs:
           }
           throw new Error(`Published sitemap/robots verification failed after 12 attempts: ${lastError?.message}`);
           NODE
+      - name: Verify all 1,708 published commune pages
+        env:
+          PAGES_URL: ${{ steps.deployment.outputs.page_url }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: npm run verify:published-communes
