@@ -71,6 +71,7 @@ function assertSharedPageShell(page, pagePath) {
   assert.equal((page.match(/class="site-header"/g) || []).length, 1, 'Expected one homepage header: ' + pagePath);
   assert.equal((page.match(/class="site-footer"/g) || []).length, 1, 'Expected one homepage footer: ' + pagePath);
   assert.ok(page.includes('href="/today-weather/sitemap.html"'), 'Footer sitemap link missing: ' + pagePath);
+  assert.ok(page.includes('href="/today-weather/weather/algeria/communes/"'), 'Footer commune directory link missing: ' + pagePath);
   assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two ad containers: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="7867079394"/g) || []).length, 1, 'Top ad slot must appear exactly once: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="3143411927"/g) || []).length, 1, 'Footer ad slot must appear exactly once: ' + pagePath);
@@ -278,6 +279,7 @@ const unreferenced = activeJs.filter(file =>
 assert.deepEqual(unreferenced, [], 'Unreferenced JavaScript files remain: ' + unreferenced.join(', '));
 
 
+assert.ok(html.includes('href="/today-weather/weather/algeria/communes/"'), 'Homepage footer commune directory link missing');
 assert.ok(html.includes('href="tel:+213697743721"'), 'Clickable contact phone missing');
 assert.ok(html.includes('href="mailto:tabaniimadeddine@gmail.com"'), 'Clickable contact email missing');
 const homeGraph = JSON.parse(jsonLd[0][1])['@graph'];
