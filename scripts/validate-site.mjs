@@ -167,8 +167,8 @@ for (const url of sitemapCommuneUrls) {
   const parsed = new URL(url);
   assert.equal(parsed.origin, 'https://imadtbn.github.io', 'Unexpected commune sitemap host: ' + url);
   const relativePagePath = parsed.pathname
-    .replace(/^\\/today-weather\\//, '')
-    .replace(/\\/+$/, '') + '/index.html';
+    .replace(/^\/today-weather\//, '')
+    .replace(/\/+$/, '') + '/index.html';
   assert.ok(relativePagePath.startsWith('weather/algeria/communes/'),
     'Invalid commune sitemap path: ' + url);
   assert.ok(existsSync(resolve(root, relativePagePath)),
