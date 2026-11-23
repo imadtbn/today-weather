@@ -156,6 +156,27 @@ const communeSearchEntries = globalSearchIndex.filter(item => item.type === 'com
 const globalSearchScript = read('assets/js/global-search.js');
 assert.ok(globalSearchScript.includes("item.type === 'commune'") && globalSearchScript.includes('بلدية · '), 'Global search must label commune results as municipalities');
 assert.equal(communeSearchEntries.length, expectedCommuneCount, 'Global search index must include every commune');
+// Every municipality URL advertised by sitemap.xml must resolve to a generated HTML file.
+const sitemapCommuneUrls = urls.filter(url => {
+  try { return new URL(url).pathname.includes('/weather/algeria/communes/'); }
+  catch { return false; }
+});
+assert.equal(sitemapCommuneUrls.length, expectedCommuneCount,
+  'XML sitemap must contain exactly one URL for every commune');
+for (const url of sitemapCommuneUrls) {
+  const parsed = new URL(url);
+  assert.equal(parsed.origin, 'https://imadtbn.github.io', 'Unexpected commune sitemap host: ' + url);
+  const relativePagePath = parsed.pathname
+    .replace(/^\\/today-weather\\//, '')
+    .replace(/\\/+$/, '') + '/index.html';
+  assert.ok(relativePagePath.startsWith('weather/algeria/communes/'),
+    'Invalid commune sitemap path: ' + url);
+  assert.ok(existsSync(resolve(root, relativePagePath)),
+    'Sitemap commune URL has no matching generated HTML file: ' + relativePagePath);
+}
+assert.ok(sitemapCommuneUrls.some(url => url.endsWith('/annaba/ain-berda/')),
+  'Ain Berda commune URL is missing from XML sitemap');
+
 for (const item of normalizedCommunes) {
   const expectedSearchPath = '/weather/algeria/communes/' + item.wilaya.slug + '/' + item.slug + '/';
   const searchEntry = communeSearchEntries.find(entry => entry.path === expectedSearchPath);
