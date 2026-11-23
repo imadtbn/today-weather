@@ -35,12 +35,12 @@ jobs:
           import { readFileSync } from 'node:fs';
           const xml = readFileSync('sitemap.xml', 'utf8');
           const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-          const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
+          const communes = urls.filter((url) => url.includes('/weather/algeria/communes/') && !url.endsWith('/weather/algeria/communes/'));
           if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Generated sitemap is not a sitemap XML document');
           if (communes.length !== 1708) throw new Error(`Expected 1,708 commune URLs in generated sitemap; found ${communes.length}`);
           if (new Set(urls).size !== urls.length) throw new Error('Generated sitemap contains duplicate URLs');
-          if (urls.length !== 2000) throw new Error(`Expected 2,000 total sitemap URLs; found ${urls.length}`);
-          console.log(`Generated sitemap verified: ${communes.length} commune URLs / ${urls.length} total URLs`);
+          if (urls.length !== 2001) throw new Error(`Expected 2,001 total sitemap URLs including the communes directory; found ${urls.length}`);
+          console.log(`Generated sitemap verified: ${communes.length} commune URLs plus directory / ${urls.length} total URLs`);
           NODE
       - name: Verify complete generated HTML output
         run: |
