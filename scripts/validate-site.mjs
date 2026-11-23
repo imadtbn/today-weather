@@ -19,7 +19,7 @@ assert.ok(weatherTips.rules.every(rule => rule.id && rule.category && rule.condi
 const adsTxt = read('ads.txt').trim();
 assert.equal(adsTxt, 'google.com, pub-5656416032906373, DIRECT, f08c47fec0942fa0', 'ads.txt publisher declaration is missing or malformed');
 const adsScript = read('assets/js/adsData.js');
-for (const marker of ['adsense:status', 'adsense:loader', 'filled', 'unfilled', 'requested', 'init-error', 'MutationObserver', 'attributeFilter']) {
+for (const marker of ['adsense:status', 'adsense:loader', 'filled', 'unfilled', 'requested', 'init-error', 'MutationObserver', 'attributeFilter', 'getEntriesByName', 'resource-observed', 'reportPreviouslyLoadedResource']) {
   assert.ok(adsScript.includes(marker), 'AdSense diagnostics marker missing: ' + marker);
 }
 assert.ok(adsScript.includes("has('ads-debug')"), 'AdSense debug query switch missing');
