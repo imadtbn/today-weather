@@ -1,8 +1,8 @@
 import { auditCommuneSource, buildCommuneWeatherRecord } from './communes-data.mjs';
 
-const base = String(process.env.PAGES_URL || '').replace(/\\/$/, '');
+const base = String(process.env.PAGES_URL || '').replace(/\/$/, '');
 const buildSha = process.env.GITHUB_SHA || 'local-check';
-if (!/^https?:\\/\\//.test(base)) {
+if (!/^https?:\/\//.test(base)) {
   throw new Error('PAGES_URL must contain the published GitHub Pages base URL');
 }
 
