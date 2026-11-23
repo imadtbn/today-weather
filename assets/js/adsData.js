@@ -107,8 +107,8 @@
         });
 
         candidates.forEach(function (ad) {
-            if (!isApproved(ad) || initializedAds.has(ad) ||
-                ad.dataset.adsInit === 'pending' ||
+            if (!isApproved(ad)) return;
+            if (initializedAds.has(ad) || ad.dataset.adsInit === 'pending' ||
                 ad.hasAttribute('data-adsbygoogle-status')) {
                 reportAdStatus(ad);
                 return;
