@@ -24,7 +24,7 @@ for (const marker of ['adsense:status', 'adsense:loader', 'filled', 'unfilled', 
 }
 assert.ok(adsScript.includes("has('ads-debug')"), 'AdSense debug query switch missing');
 assert.ok(html.includes('data-ad-client="ca-pub-5656416032906373"'), 'Homepage AdSense publisher ID missing');
-const homepageAdSlots = [...html.matchAll(/data-ad-slot="(\\d+)"/g)].map(match => match[1]);
+const homepageAdSlots = [...html.matchAll(/data-ad-slot="(\d+)"/g)].map(match => match[1]);
 assert.equal(new Set(homepageAdSlots).size, 6, 'Expected six distinct homepage AdSense ad slots');
 assert.equal(homepageAdSlots.length, 6, 'Expected each homepage ad slot exactly once');
 
