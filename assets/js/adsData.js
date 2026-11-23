@@ -49,24 +49,64 @@
         });
     }
 
-    function watchLoader() {
-        const loader = document.querySelector('script[src*="adsbygoogle.js"]');
-        if (loader) {
-            loader.addEventListener('load', function () {
-                reportLoaderStatus('loaded');
-            }, { once: true });
-            loader.addEventListener('error', function () {
-                reportLoaderStatus('error', 'AdSense script load event failed');
-            }, { once: true });
+    function getLoaderResourceEntry(loader) {
+        if (!loader || !window.performance || typeof window.performance.getEntriesByName !== 'function') {
+            return null;
         }
 
+        try {
+            const entries = window.performance.getEntriesByName(loader.src, 'resource');
+            return entries.length ? entries[entries.length - 1] : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function reportPreviouslyLoadedResource(loader) {
+        const entry = getLoaderResourceEntry(loader);
+        if (!entry || !(entry.responseEnd > entry.startTime)) return false;
+
+        // Resource Timing may hide cross-origin status/size fields without Timing-Allow-Origin.
+        // Distinguish a confirmed HTTP 200 from a completed-but-unverifiable transfer.
+        if (entry.responseStatus === 200) {
+            reportLoaderStatus('loaded', 'AdSense resource completed before diagnostics attached');
+        } else if ((entry.encodedBodySize || 0) > 0 || (entry.decodedBodySize || 0) > 0) {
+            reportLoaderStatus('loaded', 'AdSense resource body was received before diagnostics attached');
+        } else {
+            reportLoaderStatus('resource-observed', 'A completed AdSense resource timing entry exists; HTTP success is not exposed');
+        }
+        return true;
+    }
+
+    function watchLoader() {
+        const loader = document.querySelector('script[src*="adsbygoogle.js"]');
+        if (!loader) {
+            reportLoaderStatus('missing', 'AdSense script element was not found');
+            return;
+        }
+
+        // Attach both element and capture-phase listeners before checking buffered timing.
+        // This handles normal loads, resource errors, and loads that finished before this file ran.
+        loader.addEventListener('load', function () {
+            reportLoaderStatus('loaded');
+        }, { once: true });
+        loader.addEventListener('error', function () {
+            reportLoaderStatus('error', 'AdSense script load event failed');
+        }, { once: true });
+        document.addEventListener('load', function (event) {
+            if (event.target === loader) reportLoaderStatus('loaded');
+        }, true);
         document.addEventListener('error', function (event) {
             const target = event.target;
-            if (target && target.tagName === 'SCRIPT' &&
-                target.src && target.src.indexOf('adsbygoogle.js') !== -1) {
+            if (target === loader || (target && target.tagName === 'SCRIPT' &&
+                target.src && target.src.indexOf('adsbygoogle.js') !== -1)) {
                 reportLoaderStatus('error', 'AdSense script resource error');
             }
         }, true);
+
+        if (!reportPreviouslyLoadedResource(loader)) {
+            reportLoaderStatus('pending', 'Waiting for AdSense script load or error');
+        }
     }
 
     function removeUnapprovedPlacements(root) {
