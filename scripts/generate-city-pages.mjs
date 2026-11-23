@@ -156,6 +156,7 @@ function buildSitemapPage() {
     { name: 'الصفحة الرئيسية', detail: 'حالة الطقس اليوم والتحديثات الجوية', path: '/', terms: 'الرئيسية الطقس اليوم' },
     { name: 'دليل الطقس', detail: 'جميع أدلة المدن والولايات والعواصم', path: '/weather/', terms: 'دليل الطقس المدن' },
     { name: 'الولايات الجزائرية', detail: 'دليل الطقس في الولايات الجزائرية', path: '/weather/algeria/', terms: 'الجزائر الولايات' },
+    { name: 'البلديات الجزائرية', detail: 'دليل الطقس في جميع البلديات مرتبة حسب الولايات', path: '/weather/algeria/communes/', terms: 'الجزائر البلديات communes municipalities' },
     { name: 'العواصم العربية', detail: 'توقعات الطقس في العواصم العربية', path: '/weather/arab/', terms: 'العواصم العربية' },
     { name: 'المدن والعواصم العالمية', detail: 'توقعات الطقس حول العالم', path: '/weather/world/', terms: 'مدن العالم عواصم' },
     { name: 'توقعات الطقس', detail: 'التوقعات الجوية للأيام القادمة', path: '/#forecast', terms: 'توقعات forecast' },
@@ -333,10 +334,68 @@ function buildDirectory(group) {
 <body class="city-page">${commonHeader()}
 <main class="city-container city-directory"><nav class="city-breadcrumb"><a href="${BASE}/">الرئيسية</a> / <a href="${BASE}/weather/">دليل الطقس</a> / ${escapeHtml(group.title)}</nav>
 <header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل الطقس · ${escapeHtml(group.kind)}</span><h1 class="city-title">${escapeHtml(group.title)}</h1><p class="city-directory-intro">${escapeHtml(group.description)}</p><span class="directory-count">استكشف ${group.items.length} مدينة</span></div><figure class="directory-hero-media"><img src="${BASE}/${directoryImage}" alt="${escapeHtml(directoryImageAlt)}" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header>${adBlock("top")}
-<div class="city-directory-grid">${links}</div></main>
+<div class="city-directory-grid">${links}</div>
+${group.key === 'algeria' ? '<section class="city-related commune-directory-promo"><h2 class="city-section-title">دليل البلديات الجزائرية</h2><p class="city-status">تصفح جميع البلديات الـ' + communeRecords.length + ' مرتبة حسب الولايات.</p><div class="city-related-links"><a href="' + BASE + '/weather/algeria/communes/">جميع البلديات الجزائرية</a></div></section>' : ''}</main>
 ${adBlock("bottom")}${commonFooter()}
 <script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=window.matchMedia('(max-width: 600px)').matches?4:12;var shown=0;var observer=null;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';function revealCard(card){card.hidden=false;var img=card.querySelector('img[data-src]');if(img){img.setAttribute('src',img.dataset.src);img.removeAttribute('data-src');}card.classList.add('is-visible');}function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++)revealCard(cards[i]);shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}grid.classList.add('directory-progressive');grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(revealCard);sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
 </body></html>`;
+}
+
+
+function buildCommunesDirectory() {
+  const url = SITE + '/weather/algeria/communes/';
+  const wilayaSections = groups[0].items.map(wilaya => {
+    const items = communeGroups.get(String(Number(wilaya.code))) || [];
+    const entries = items.map(item => {
+      const terms = [item.name, item.name_en, item.name_fr, item.slug, item.post_code, wilaya.name, wilaya.name_en].filter(Boolean).join(' ').toLowerCase();
+      return '<a class="sitemap-entry sitemap-city-entry" href="' + communePath(item) + '" data-search="' + escapeHtml(terms) + '">' +
+        '<span class="sitemap-entry-icon"><i class="fas fa-location-dot" aria-hidden="true"></i></span>' +
+        '<span class="sitemap-entry-copy"><strong>' + escapeHtml(item.name) + '</strong><small>' +
+        escapeHtml([item.name_en, item.post_code ? 'الرمز البريدي ' + item.post_code : ''].filter(Boolean).join(' · ')) +
+        '</small></span><i class="fas fa-arrow-left sitemap-entry-arrow" aria-hidden="true"></i></a>';
+    }).join('');
+    return '<details class="sitemap-group"><summary><span class="sitemap-group-title">ولاية ' +
+      escapeHtml(wilaya.name) + '</span><span class="sitemap-group-count">' + items.length +
+      ' بلدية</span></summary><div class="sitemap-group-grid">' + entries + '</div></details>';
+  }).join('');
+  const schema = collectionGraph({
+    url, name: 'دليل البلديات الجزائرية | أحوال الطقس',
+    description: 'دليل شامل لصفحات الطقس في جميع البلديات الجزائرية البالغ عددها ' + communeRecords.length + ' بلدية، مرتبة حسب الولايات.',
+    dateModified: TODAY,
+    breadcrumbs: [
+      { name: 'الرئيسية', url: SITE + '/' },
+      { name: 'دليل الطقس', url: SITE + '/weather/' },
+      { name: 'الولايات الجزائرية', url: SITE + '/weather/algeria/' },
+      { name: 'البلديات الجزائرية', url }
+    ],
+    items: communeRecords.map(item => ({ name: item.name + ' - ' + item.wilaya.name, url: communeUrl(item) }))
+  });
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>دليل البلديات الجزائرية | طقس 1,708 بلدية - أحوال الطقس</title>' +
+    '<meta name="description" content="تصفح دليل الطقس في جميع البلديات الجزائرية الـ' + communeRecords.length + '، مرتبة حسب الولايات، مع روابط مباشرة لصفحات الطقس والتوقعات المحلية لكل بلدية.">' +
+    '<meta name="robots" content="index,follow,max-image-preview:large">' +
+    '<link rel="canonical" href="' + url + '">' +
+    '<meta property="og:type" content="website"><meta property="og:locale" content="ar_DZ">' +
+    '<meta property="og:title" content="دليل البلديات الجزائرية | أحوال الطقس">' +
+    '<meta property="og:description" content="دليل جميع البلديات الجزائرية وصفحات الطقس المحلية.">' +
+    '<meta property="og:url" content="' + url + '">' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/style-main.css">' +
+    '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/city-pages.css">' +
+    '<link rel="stylesheet" href="' + BASE + '/assets/css/sitemap.css">' +
+    trackingTags() + '<script type="application/ld+json">' + safeJson(schema) + '</script></head>' +
+    '<body class="city-page">' + commonHeader() +
+    '<main class="city-container city-directory"><nav class="city-breadcrumb" aria-label="مسار التنقل">' +
+    '<a href="' + BASE + '/">الرئيسية</a> / <a href="' + BASE + '/weather/">دليل الطقس</a> / ' +
+    '<a href="' + BASE + '/weather/algeria/">الولايات الجزائرية</a> / البلديات الجزائرية</nav>' +
+    '<header class="directory-hero"><div class="directory-hero-content"><span class="city-kicker">دليل الطقس · الجزائر</span>' +
+    '<h1 class="city-title">دليل البلديات الجزائرية</h1><p class="city-directory-intro">تصفح صفحات الطقس في جميع البلديات الجزائرية، واختر الولاية لعرض بلدياتها وروابط توقعات الطقس المحلية.</p>' +
+    '<span class="directory-count">' + communeRecords.length + ' بلدية موزعة على ' + groups[0].items.length + ' ولاية</span></div>' +
+    '<figure class="directory-hero-media"><img src="' + BASE + '/images/algiers.jpg" alt="منظر من الجزائر العاصمة يمثل دليل البلديات الجزائرية" width="960" height="620" loading="eager" fetchpriority="high" decoding="async"></figure></header>' +
+    adBlock("top") + '<section class="communes-directory-list" aria-label="قائمة البلديات حسب الولايات">' +
+    wilayaSections + '</section></main>' + adBlock("bottom") + commonFooter() + '</body></html>';
 }
 
 function buildCityPage(group, index) {
@@ -450,7 +509,7 @@ writePage('weather/index.html', `<!doctype html><html lang="ar" dir="rtl"><head>
 writePage('data/global-search-index.json', JSON.stringify(buildGlobalSearchIndex(), null, 2) + '\n');
 writePage('sitemap.html', buildSitemapPage());
 
-const sitemapUrls = [`${SITE}/`, `${SITE}/weather/`, `${SITE}/sitemap.html`];
+const sitemapUrls = [`${SITE}/`, `${SITE}/weather/`, `${SITE}/sitemap.html`, `${SITE}/weather/algeria/communes/`];
 for (const group of groups) {
   writePage(`weather/${group.key}/index.html`, buildDirectory(group));
   sitemapUrls.push(`${SITE}/weather/${group.key}/`);
@@ -461,6 +520,8 @@ for (const group of groups) {
     sitemapUrls.push(pageUrl(group.key, city.slug));
   }
 }
+writePage('weather/algeria/communes/index.html', buildCommunesDirectory());
+
 // Generate every commune with the shared weather-page template and include it in XML sitemap.
 for (const item of communeRecords) {
   const group = {

@@ -35,12 +35,12 @@ jobs:
           import { readFileSync } from 'node:fs';
           const xml = readFileSync('sitemap.xml', 'utf8');
           const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-          const communes = urls.filter((url) => url.includes('/weather/algeria/communes/'));
+          const communes = urls.filter((url) => url.includes('/weather/algeria/communes/') && !url.endsWith('/weather/algeria/communes/'));
           if (!xml.startsWith('<?xml') || !xml.includes('<urlset')) throw new Error('Generated sitemap is not a sitemap XML document');
           if (communes.length !== 1708) throw new Error(`Expected 1,708 commune URLs in generated sitemap; found ${communes.length}`);
           if (new Set(urls).size !== urls.length) throw new Error('Generated sitemap contains duplicate URLs');
-          if (urls.length !== 2000) throw new Error(`Expected 2,000 total sitemap URLs; found ${urls.length}`);
-          console.log(`Generated sitemap verified: ${communes.length} commune URLs / ${urls.length} total URLs`);
+          if (urls.length !== 2001) throw new Error(`Expected 2,001 total sitemap URLs including the communes directory; found ${urls.length}`);
+          console.log(`Generated sitemap verified: ${communes.length} commune URLs plus directory / ${urls.length} total URLs`);
           NODE
       - name: Verify complete generated HTML output
         run: |
@@ -51,19 +51,19 @@ jobs:
             const path = join(directory, entry.name);
             return total + (entry.isDirectory() ? countIndexPages(path) : entry.isFile() && entry.name === 'index.html' ? 1 : 0);
           }, 0);
-          const expected = { algeria: 69, arab: 22, world: 195, communes: 1708, directories: 4 };
+          const expected = { algeria: 69, arab: 22, world: 195, communes: 1708, directories: 5 };
           const actual = {
             algeria: countIndexPages('weather/algeria') - countIndexPages('weather/algeria/communes') - 1,
             arab: countIndexPages('weather/arab') - 1,
             world: countIndexPages('weather/world') - 1,
-            communes: countIndexPages('weather/algeria/communes'),
-            directories: ['weather/index.html', 'weather/algeria/index.html', 'weather/arab/index.html', 'weather/world/index.html'].filter(existsSync).length
+            communes: countIndexPages('weather/algeria/communes') - 1,
+            directories: ['weather/index.html', 'weather/algeria/index.html', 'weather/algeria/communes/index.html', 'weather/arab/index.html', 'weather/world/index.html'].filter(existsSync).length
           };
           for (const [key, count] of Object.entries(expected)) {
             if (actual[key] !== count) throw new Error(`${key}: expected ${count} generated pages, found ${actual[key]}`);
           }
           const weatherPages = countIndexPages('weather');
-          if (weatherPages !== 1998) throw new Error(`Expected 1,998 weather index.html files, found ${weatherPages}`);
+          if (weatherPages !== 1999) throw new Error(`Expected 1,999 weather index.html files including the communes directory, found ${weatherPages}`);
           if (!existsSync('sitemap.html') || !existsSync('data/global-search-index.json')) throw new Error('Generated sitemap/search index output is missing');
           console.log('Generated output verified:', JSON.stringify({ ...actual, weatherPages, totalHtmlPages: weatherPages + 2 }));
           NODE

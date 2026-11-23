@@ -92,7 +92,7 @@ const expectedCommuneCount = communeAudit.total;
 const expectedPageCount = expectedCityCount + expectedCommuneCount;
 assert.equal(expectedCityCount, 286, 'Expected 286 existing city records');
 assert.equal(expectedCommuneCount, 1708, 'Expected all 1,708 Algerian commune records');
-assert.equal(urls.length, expectedPageCount + 6, 'XML sitemap must include all city and commune pages plus six directory/site URLs');
+assert.equal(urls.length, expectedPageCount + 7, 'XML sitemap must include all city and commune pages plus seven directory/site URLs');
 assert.ok(urls.includes('https://imadtbn.github.io/today-weather/sitemap.html'), 'HTML sitemap URL missing from XML sitemap');
 const htmlSitemap = read('sitemap.html');
 assert.ok(htmlSitemap.includes('<h1 class="city-title">خريطة الموقع</h1>'), 'HTML sitemap H1 missing');
@@ -105,8 +105,8 @@ assert.equal(sitemapJsonLd.length, 1, 'Expected one JSON-LD block in HTML sitema
 const sitemapSchema = JSON.parse(sitemapJsonLd[0][1]);
 const sitemapCollection = sitemapSchema['@graph']?.find(item => item['@type'] === 'CollectionPage');
 assert.ok(sitemapCollection, 'HTML sitemap CollectionPage schema missing');
-assert.equal(sitemapCollection.mainEntity?.numberOfItems, expectedPageCount + 11, 'HTML sitemap schema item count mismatch');
-assert.equal(sitemapCollection.mainEntity?.itemListElement?.length, expectedPageCount + 11, 'HTML sitemap schema links are incomplete');
+assert.equal(sitemapCollection.mainEntity?.numberOfItems, expectedPageCount + 12, 'HTML sitemap schema item count mismatch');
+assert.equal(sitemapCollection.mainEntity?.itemListElement?.length, expectedPageCount + 12, 'HTML sitemap schema links are incomplete');
 assert.ok(htmlSitemap.includes('البلديات الجزائرية') && htmlSitemap.includes('1708 بلدية'), 'HTML sitemap must include the full commune directory');
 assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'WebSite' && item['@id'] === 'https://imadtbn.github.io/today-weather/#website'), 'Sitemap WebSite entity link missing');
 assert.ok(sitemapSchema['@graph']?.some(item => item['@type'] === 'BreadcrumbList'), 'Sitemap breadcrumb schema missing');
@@ -117,6 +117,14 @@ assert.equal(new Set(urls).size, urls.length, 'Sitemap contains duplicate URLs')
 assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/'));
 assertSharedPageShell(read('weather/index.html'), 'weather/index.html');
 for (const group of cityGroups) assertSharedPageShell(read('weather/' + group.key + '/index.html'), 'weather/' + group.key + '/index.html');
+assertSharedPageShell(read('weather/algeria/communes/index.html'), 'weather/algeria/communes/index.html');
+const communesDirectory = read('weather/algeria/communes/index.html');
+assert.ok(communesDirectory.includes('rel="canonical" href="https://imadtbn.github.io/today-weather/weather/algeria/communes/"'), 'Communes directory canonical missing');
+assert.ok(communesDirectory.includes('<h1 class="city-title">دليل البلديات الجزائرية</h1>'), 'Communes directory H1 missing');
+assert.equal((communesDirectory.match(/class="sitemap-group"/g) || []).length, 69, 'Communes directory must group entries by all 69 wilayas');
+assert.equal((communesDirectory.match(/class="sitemap-entry sitemap-city-entry"/g) || []).length, expectedCommuneCount, 'Communes directory must link all municipalities');
+assert.ok(urls.includes('https://imadtbn.github.io/today-weather/weather/algeria/communes/'), 'Communes directory URL missing from XML sitemap');
+assert.ok(htmlSitemap.includes('href="/today-weather/weather/algeria/communes/"'), 'Communes directory link missing from HTML sitemap');
 
 for (const group of cityGroups) {
   const cities = JSON.parse(read(group.file));
@@ -158,7 +166,7 @@ assert.ok(globalSearchScript.includes("item.type === 'commune'") && globalSearch
 assert.equal(communeSearchEntries.length, expectedCommuneCount, 'Global search index must include every commune');
 // Every municipality URL advertised by sitemap.xml must resolve to a generated HTML file.
 const sitemapCommuneUrls = urls.filter(url => {
-  try { return new URL(url).pathname.includes('/weather/algeria/communes/'); }
+  try { const path = new URL(url).pathname; return path.includes('/weather/algeria/communes/') && !path.endsWith('/weather/algeria/communes/'); }
   catch { return false; }
 });
 assert.equal(sitemapCommuneUrls.length, expectedCommuneCount,
