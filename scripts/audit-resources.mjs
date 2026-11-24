@@ -31,7 +31,7 @@ for (const file of scriptFiles) {
   assert.equal(result.status, 0, 'JavaScript syntax error in ' + relative(ROOT, file) + ': ' + (result.stderr || result.stdout));
 }
 for (const file of jsonFiles) {
-  try { JSON.parse(readFileSync(file, 'utf8').replace(/^\\uFEFF/, '')); }
+  try { JSON.parse(readFileSync(file, 'utf8').replace(/^\uFEFF/, '')); }
   catch (error) { throw new Error('Invalid JSON in ' + relative(ROOT, file) + ': ' + error.message); }
 }
 
