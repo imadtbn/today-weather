@@ -20,6 +20,9 @@ const App = {
         // أولاً: تحميل الخريطة
         MapService.init();
 
+        // تشغيل الزخارف بعد خمول المتصفح حتى لا تنافس عرض بيانات الطقس.
+        this._scheduleVisualEnhancements();
+
         // ثانياً: تحديد الموقع ثم تحميل البيانات
         await this._checkLocation();
         await this.loadWeather();
@@ -27,15 +30,6 @@ const App = {
 
         // التحديث التلقائي بعد اكتمال التهيئة الأولية
         this._setupAutoRefresh();
-        initStarField();
-
-        // GSAP animations
-        if (window.gsap && window.ScrollTrigger) {
-            gsap.registerPlugin(ScrollTrigger);
-            gsap.utils.toArray('.weather-card, .forecast-card, .stat-card, .tip-card').forEach(el => {
-                gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.6, ease: 'power2.out' });
-            });
-        }
     },
 
 
@@ -44,6 +38,53 @@ const App = {
         if (!('serviceWorker' in navigator) || (!window.isSecureContext && !localSecureHost)) return;
         navigator.serviceWorker.register('./sw.js', { scope: './' })
             .catch(error => console.warn('[PWA] Service worker registration failed:', error));
+    },
+
+    _scheduleVisualEnhancements() {
+        const run = () => {
+            if (typeof initStarField === 'function') initStarField();
+            this._initScrollAnimations();
+        };
+
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(run, { timeout: 2500 });
+        } else {
+            window.setTimeout(run, 1600);
+        }
+    },
+
+    _initScrollAnimations() {
+        if (!window.gsap) return;
+
+        const elements = document.querySelectorAll(
+            '.weather-card, .forecast-card, .stat-card, .tip-card'
+        );
+        if (!elements.length) return;
+
+        const animate = element => {
+            gsap.from(element, {
+                y: 22,
+                opacity: 0,
+                duration: 0.45,
+                ease: 'power2.out',
+                clearProps: 'transform,opacity'
+            });
+        };
+
+        if (!('IntersectionObserver' in window)) {
+            elements.forEach(animate);
+            return;
+        }
+
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                animate(entry.target);
+                observer.unobserve(entry.target);
+            });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+
+        elements.forEach(element => observer.observe(element));
     },
 
     _getCachedLocation() {
