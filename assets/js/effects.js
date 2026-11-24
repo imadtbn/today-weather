@@ -4,6 +4,8 @@ function initStarField() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    if (canvas.dataset.effectsInitialized === 'true') return;
+    canvas.dataset.effectsInitialized = 'true';
 
     const mobile = window.matchMedia('(max-width: 767px)').matches;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
