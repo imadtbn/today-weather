@@ -84,7 +84,7 @@ function trackingTags() {
     '<meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
     '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"></script>' +
     '<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date());</script>' +
-    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous" onload="this.dataset.adsenseLoaded=\'true\"></script>';
+    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous" onload="this.dataset.adsenseLoaded=\'true\'"></script>';
 }
 function commonHeader() {
   let header = homeSection('header')
