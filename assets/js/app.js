@@ -30,6 +30,7 @@ const App = {
 
         // التحديث التلقائي بعد اكتمال التهيئة الأولية
         this._setupAutoRefresh();
+        this._scheduleScrollAnimations();
     },
 
 
@@ -43,13 +44,21 @@ const App = {
     _scheduleVisualEnhancements() {
         const run = () => {
             if (typeof initStarField === 'function') initStarField();
-            this._initScrollAnimations();
         };
 
         if ('requestIdleCallback' in window) {
             window.requestIdleCallback(run, { timeout: 2500 });
         } else {
             window.setTimeout(run, 1600);
+        }
+    },
+
+    _scheduleScrollAnimations() {
+        const run = () => this._initScrollAnimations();
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(run, { timeout: 1800 });
+        } else {
+            window.setTimeout(run, 1200);
         }
     },
 
