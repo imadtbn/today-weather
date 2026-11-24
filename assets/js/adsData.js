@@ -309,6 +309,7 @@
             const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2 &&
                 measurements.slotClientWidth >= 2 && measurements.parentContentWidth >= 2 &&
                 measurements.containerContentWidth >= 2);
+            if (!hasWidth) stableMeasurements.delete(ad);
             const stable = hasWidth && isStableWidth(ad, measurements);
             const diagnostic = Object.assign({
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
