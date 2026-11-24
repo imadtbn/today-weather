@@ -54,6 +54,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     window.addEventListener('adsense:status', event => window.__adsAuditEvents.push({ kind: 'slot', ...event.detail }));
     window.addEventListener('adsense:pre-push', event => window.__adsAuditEvents.push({ kind: 'pre-push', ...event.detail }));
     window.addEventListener('adsense:placement-warning', event => window.__adsAuditEvents.push({ kind: 'placement-warning', ...event.detail }));
+    window.addEventListener('adsense:auto-placement', event => window.__adsAuditEvents.push({ kind: 'auto-placement', ...event.detail }));
   });
 
   const cases = [
@@ -135,4 +136,28 @@ test('Google-managed Auto ads in the header remain hidden and are diagnosed', as
   const warning = await page.evaluate(() => window.__headerAdWarnings[0]);
   expect(warning.placement).toBe('site-header');
   expect(warning.reason).toContain('exclude header placements');
+});
+
+
+test('Zero-width Google-managed Auto ads placements are surfaced in diagnostics', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__autoPlacementDiagnostics = [];
+    window.addEventListener('adsense:auto-placement', event => window.__autoPlacementDiagnostics.push(event.detail));
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.style.width = '0px';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-adsbygoogle-status="done"></ins>';
+    document.body.appendChild(wrapper);
+  });
+
+  await expect.poll(() => page.evaluate(() => window.__autoPlacementDiagnostics.length)).toBe(1);
+  const diagnostic = await page.evaluate(() => window.__autoPlacementDiagnostics[0]);
+  expect(diagnostic.placement).toBe('google-auto-placement');
+  expect(diagnostic.zeroWidth).toBe(true);
+  expect(diagnostic.measurements.containerWidth).toBe(0);
 });
