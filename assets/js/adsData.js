@@ -412,37 +412,41 @@
         schedulePendingAds();
     }
 
+    function getGoogleManagedSlots() {
+        return Array.from(document.querySelectorAll(AD_SELECTOR)).filter(function (ad) {
+            return Boolean(ad.closest('.google-auto-placed')) ||
+                (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
+        }).map(function (ad) {
+            return {
+                slot: ad.getAttribute('data-ad-slot') || 'google-auto',
+                measurements: getSlotMeasurements(ad)
+            };
+        });
+    }
+
+    function reportAdSenseProviderError(source, message) {
+        const googleManagedSlots = getGoogleManagedSlots();
+        const isAutoPlacementError = googleManagedSlots.length > 0;
+        emitDiagnostic(isAutoPlacementError ? 'adsense:auto-placement-error' : 'adsense:tag-error', {
+            source: source,
+            message: message,
+            googleManagedSlots: googleManagedSlots,
+            likelyAutoPlacement: isAutoPlacementError
+        });
+    }
+
     function watchAdSenseErrors() {
         window.addEventListener('error', function (event) {
             const message = String(event && (event.message || (event.error && event.error.message)) || '');
             if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
-
-            const googleManagedSlots = Array.from(document.querySelectorAll(AD_SELECTOR)).filter(function (ad) {
-                return Boolean(ad.closest('.google-auto-placed')) ||
-                    (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
-            }).map(function (ad) {
-                return {
-                    slot: ad.getAttribute('data-ad-slot') || 'google-auto',
-                    measurements: getSlotMeasurements(ad)
-                };
-            });
-            emitDiagnostic('adsense:auto-placement-error', {
-                source: 'window.error',
-                message: message,
-                googleManagedSlots: googleManagedSlots,
-                likelyAutoPlacement: googleManagedSlots.length > 0
-            });
+            reportAdSenseProviderError('window.error', message);
         });
 
         window.addEventListener('unhandledrejection', function (event) {
             const reason = event && event.reason;
             const message = String(reason && reason.message || reason || '');
             if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
-            emitDiagnostic('adsense:auto-placement-error', {
-                source: 'unhandledrejection',
-                message: message,
-                likelyAutoPlacement: true
-            });
+            reportAdSenseProviderError('unhandledrejection', message);
         });
     }
 
