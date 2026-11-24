@@ -246,17 +246,17 @@ test('manual GPS selection refreshes weather for the newly selected location', a
   await expect(page.locator('#currentCity')).toContainText('تيزي وزو', { timeout: 10000 });
 });
 
-test('performance safeguards defer third-party scripts and omit unused heavy libraries', async ({ page }) => {
+test('performance safeguards defer page scripts and omit unused heavy libraries', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   const checks = await page.evaluate(() => ({
-    blockingHeadScripts: [...document.head.querySelectorAll('script[src]')]
+    blockingScripts: [...document.querySelectorAll('script[src]')]
       .filter(script => !script.async && !script.defer)
       .map(script => script.src),
     unusedLibraries: [...performance.getEntriesByType('resource')]
       .map(entry => entry.name)
-      .filter(url => /three\\.min\\.js|chartjs-plugin-datalabels/i.test(url))
+      .filter(url => /three\\.min\\.js|chartjs-plugin-datalabels|ScrollTrigger/i.test(url))
   }));
-  expect(checks.blockingHeadScripts).toEqual([]);
+  expect(checks.blockingScripts).toEqual([]);
   expect(checks.unusedLibraries).toEqual([]);
 });
 
