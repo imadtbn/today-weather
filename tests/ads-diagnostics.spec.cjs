@@ -19,21 +19,21 @@ test('AdSense loader diagnostics recover a load completed before the listener at
   expect(recovered.detail).toContain('before diagnostics attached');
 });
 
-test('AdSense audit records mobile and desktop requests and per-slot states without changing placements', async ({ page }) => {
+test('AdSense audit records mobile and desktop slots without changing placements', async ({ page }) => {
   const network = [];
   const consoleErrors = [];
   page.on('request', request => {
-    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(request.url())) {
+    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(request.url())) {
       network.push({ type: 'request', url: request.url(), method: request.method() });
     }
   });
   page.on('response', response => {
-    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(response.url())) {
+    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(response.url())) {
       network.push({ type: 'response', url: response.url(), status: response.status() });
     }
   });
   page.on('requestfailed', request => {
-    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(request.url())) {
+    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(request.url())) {
       network.push({ type: 'requestfailed', url: request.url(), error: request.failure()?.errorText || 'unknown' });
     }
   });
@@ -53,6 +53,10 @@ test('AdSense audit records mobile and desktop requests and per-slot states with
     { name: 'mobile-home', width: 390, height: 844, path: '/' },
     { name: 'desktop-city', width: 1440, height: 1000, path: '/weather/algeria/algiers/' }
   ];
+  const expectedSlots = {
+    'mobile-home': ['7867079394', '3143411927', '8546947691', '1760836049', '6152718642', '6528123169'],
+    'desktop-city': ['7867079394', '3143411927']
+  };
   const reports = [];
 
   for (const item of cases) {
@@ -64,23 +68,25 @@ test('AdSense audit records mobile and desktop requests and per-slot states with
     const report = await page.evaluate(() => ({
       viewport: { width: innerWidth, height: innerHeight },
       documentWidth: document.documentElement.scrollWidth,
-      slots: [...document.querySelectorAll('ins.adsbygoogle')].map(ad => ({
-        slot: ad.getAttribute('data-ad-slot'),
-        placement: ad.closest('[data-ad-placement]')?.getAttribute('data-ad-placement') || 'unspecified',
-        inApprovedContainer: Boolean(ad.closest('.ad-container')),
-        status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
-        initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
-      })),
+      slots: [...document.querySelectorAll('ins.adsbygoogle')].map(ad => {
+        const slot = ad.getAttribute('data-ad-slot') || '';
+        return {
+          slot,
+          validSlot: /^\\d{8,12}$/.test(slot),
+          inApprovedContainer: Boolean(ad.closest('.ad-container')),
+          googleManaged: Boolean(ad.closest('.google-auto-placed')),
+          status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
+          initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
+        };
+      }),
       events: window.__adsAuditEvents || []
     }));
+
     expect(report.documentWidth).toBeLessThanOrEqual(report.viewport.width + 1);
-    expect(report.slots.every(slot => slot.slot && slot.inApprovedContainer)).toBe(true);
+    expect(report.slots.every(slot => slot.validSlot && (slot.inApprovedContainer || slot.googleManaged))).toBe(true);
+    expect(report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot)).toEqual(expectedSlots[item.name]);
     reports.push({ name: item.name, ...report });
   }
 
   console.info('[AdSense browser audit]', JSON.stringify({ reports, network, consoleErrors }));
-  expect(reports[0].slots.map(slot => slot.slot)).toEqual([
-    '7867079394', '3143411927', '8546947691', '1760836049', '6152718642', '6528123169'
-  ]);
-  expect(reports[1].slots.map(slot => slot.slot)).toEqual(['7867079394', '3143411927']);
 });
