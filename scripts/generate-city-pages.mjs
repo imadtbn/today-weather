@@ -84,7 +84,7 @@ function trackingTags() {
     '<meta name="msvalidate.01" content="9BCA38377A234DCCEB9991EAD1A2F6C2">' +
     '<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PTCXG7CG"></script>' +
     '<script>window.dataLayer = window.dataLayer || []; function gtag() { dataLayer.push(arguments); } gtag("js", new Date());</script>' +
-    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous"></script>';
+    '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5656416032906373" crossorigin="anonymous" onload="this.dataset.adsenseLoaded=\'true\"></script>';
 }
 function commonHeader() {
   let header = homeSection('header')
@@ -142,7 +142,7 @@ function commonFooter() {
     .replace(/href="#([^"]+)"([^>]*>)/g, 'href="' + BASE + '/#$1"$2');
   return footer +
     '<script defer src="' + BASE + '/assets/js/image-loader.js?v=20261124-phase2-light"></script>' +
-    '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261124-loader-ready"></script>' +
+    '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261124-slot-diagnostics"></script>' +
     '<script defer src="' + BASE + '/assets/js/global-search.js?v=20261115-sitemap-footer-1"></script>' +
     '<script>(function(){' +
     'var menu=document.getElementById("mobileMenuBtn"),nav=document.getElementById("mainNav");' +
