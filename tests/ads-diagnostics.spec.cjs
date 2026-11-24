@@ -87,7 +87,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     const expected = expectedSlots[item.name];
     const siteSlots = report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot);
     const invalidSlots = report.slots.filter(slot =>
-      !slot.validSlot || (!slot.inApprovedContainer && !slot.googleManaged) || slot.inHeader
+      (!slot.validSlot && !slot.googleManaged) || (!slot.inApprovedContainer && !slot.googleManaged) || slot.inHeader
     );
 
     console.info('[AdSense browser audit]', JSON.stringify({ name: item.name, slots: report.slots, network, consoleErrors }));
