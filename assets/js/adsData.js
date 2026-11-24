@@ -6,6 +6,7 @@
     const AD_CONTAINER_SELECTOR = '.ad-container';
     const initializedAds = new WeakSet();
     const observedAds = new WeakSet();
+    const reportedHeaderAds = new WeakSet();
     const pendingAds = new Set();
     let resizeObserver = null;
     let flushScheduled = false;
@@ -68,22 +69,11 @@
     }
 
     function reportPreviouslyLoadedResource(loader) {
-        const entry = getLoaderResourceEntry(loader);
-        if (!entry || !(entry.responseEnd > entry.startTime)) return false;
-
-        // Do not queue push() before the provider is ready: a queued request may
-        // execute later, after responsive layout changes have collapsed the slot.
+        // Cross-origin Resource Timing can include failed requests; only an explicit
+        // script onload marker proves that the provider loaded successfully.
+        if (!loader || loader.dataset.adsenseLoaded !== 'true') return false;
         adsenseReady = true;
-
-        // Resource Timing may hide cross-origin status/size fields without Timing-Allow-Origin.
-        // Distinguish a confirmed HTTP 200 from a completed-but-unverifiable transfer.
-        if (entry.responseStatus === 200) {
-            reportLoaderStatus('loaded', 'AdSense resource completed before diagnostics attached');
-        } else if ((entry.encodedBodySize || 0) > 0 || (entry.decodedBodySize || 0) > 0) {
-            reportLoaderStatus('loaded', 'AdSense resource body was received before diagnostics attached');
-        } else {
-            reportLoaderStatus('resource-observed', 'A completed AdSense resource timing entry exists; HTTP success is not exposed');
-        }
+        reportLoaderStatus('loaded', 'Explicit AdSense script onload marker was present before diagnostics attached');
         return true;
     }
 
@@ -97,16 +87,19 @@
         // Attach both element and capture-phase listeners before checking buffered timing.
         // This handles normal loads, resource errors, and loads that finished before this file ran.
         loader.addEventListener('load', function () {
+            loader.dataset.adsenseLoaded = 'true';
             adsenseReady = true;
             reportLoaderStatus('loaded');
             schedulePendingAds();
         }, { once: true });
         loader.addEventListener('error', function () {
+            loader.dataset.adsenseLoaded = 'false';
             adsenseReady = false;
             reportLoaderStatus('error', 'AdSense script load event failed');
         }, { once: true });
         document.addEventListener('load', function (event) {
             if (event.target === loader) {
+                loader.dataset.adsenseLoaded = 'true';
                 adsenseReady = true;
                 reportLoaderStatus('loaded');
                 schedulePendingAds();
@@ -116,6 +109,7 @@
             const target = event.target;
             if (target === loader || (target && target.tagName === 'SCRIPT' &&
                 target.src && target.src.indexOf('adsbygoogle.js') !== -1)) {
+                if (target) target.dataset.adsenseLoaded = 'false';
                 adsenseReady = false;
                 reportLoaderStatus('error', 'AdSense script resource error');
             }
@@ -159,24 +153,41 @@
             Boolean(ad.getAttribute('data-ad-slot'));
     }
 
-    function getAvailableWidth(ad) {
+    function getSlotMeasurements(ad) {
         const container = ad.closest(AD_CONTAINER_SELECTOR);
-        if (!container || !ad.isConnected || !container.isConnected) return 0;
-
-        // AdSense measures the <ins> element itself, not the width of its wrapper.
-        // A wide parent must never make a zero-width slot look ready.
+        const parent = ad.parentElement;
         const rect = ad.getBoundingClientRect();
-        const parentRect = ad.parentElement ? ad.parentElement.getBoundingClientRect() : null;
-        const containerRect = container.getBoundingClientRect();
+        const parentRect = parent ? parent.getBoundingClientRect() : null;
+        const containerRect = container ? container.getBoundingClientRect() : null;
         const style = window.getComputedStyle(ad);
-
-        if (!ad.getClientRects().length || style.display === 'none' ||
-            style.visibility === 'hidden' || !parentRect ||
-            parentRect.width < 2 || containerRect.width < 2) {
-            return 0;
+        let hiddenAncestor = null;
+        for (let node = ad; node && node.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
+            const computed = window.getComputedStyle(node);
+            if (computed.display === 'none' || computed.visibility === 'hidden' || computed.visibility === 'collapse' || computed.contentVisibility === 'hidden') {
+                hiddenAncestor = node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') + (node.classList && node.classList.length ? '.' + Array.from(node.classList).join('.') : '');
+                break;
+            }
         }
+        return {
+            slotWidth: Math.round(rect.width * 100) / 100,
+            slotHeight: Math.round(rect.height * 100) / 100,
+            parentWidth: parentRect ? Math.round(parentRect.width * 100) / 100 : 0,
+            parentHeight: parentRect ? Math.round(parentRect.height * 100) / 100 : 0,
+            containerWidth: containerRect ? Math.round(containerRect.width * 100) / 100 : 0,
+            containerHeight: containerRect ? Math.round(containerRect.height * 100) / 100 : 0,
+            display: style.display,
+            visibility: style.visibility,
+            hasClientRects: Boolean(ad.getClientRects().length),
+            isConnected: ad.isConnected,
+            hiddenAncestor: hiddenAncestor,
+            visible: Boolean(ad.isConnected && ad.getClientRects().length && style.display !== 'none' && style.visibility !== 'hidden' && !hiddenAncestor)
+        };
+    }
 
-        return rect.width >= 2 ? rect.width : 0;
+    function getAvailableWidth(ad) {
+        const m = getSlotMeasurements(ad);
+        if (!ad.closest(AD_CONTAINER_SELECTOR) || !m.visible || m.parentWidth < 2 || m.containerWidth < 2) return 0;
+        return m.slotWidth >= 2 ? m.slotWidth : 0;
     }
 
     function getNextUninitializedAd() {
@@ -227,13 +238,20 @@
                 break;
             }
 
-            // Recheck immediately before the synchronous provider call. This is
-            // intentionally after DOM-order validation to minimize layout races.
-            if (getAvailableWidth(ad) < 2) {
+            // Record exact slot and ancestor geometry immediately before push().
+            const measurements = getSlotMeasurements(ad);
+            const diagnostic = Object.assign({
+                slot: ad.getAttribute('data-ad-slot') || 'unknown',
+                placement: getPlacement(ad),
+                stage: 'before-push',
+                available: getAvailableWidth(ad) >= 2
+            }, measurements);
+            emitDiagnostic('adsense:pre-push', diagnostic);
+            if (!diagnostic.available) {
+                emitDiagnostic('adsense:blocked', Object.assign({}, diagnostic, { reason: 'slot-width-not-measurable' }));
                 reportAdStatus(ad);
                 break;
             }
-
             pendingAds.delete(ad);
             initializedAds.add(ad);
             ad.dataset.adsInit = 'pending';
@@ -267,6 +285,15 @@
         });
 
         candidates.forEach(function (ad) {
+            if (ad.closest('.site-header') && (ad.closest('.google-auto-placed') || ad.hasAttribute('data-adsbygoogle-status')) && !reportedHeaderAds.has(ad)) {
+                reportedHeaderAds.add(ad);
+                emitDiagnostic('adsense:placement-warning', {
+                    slot: ad.getAttribute('data-ad-slot') || 'google-auto',
+                    placement: 'site-header',
+                    reason: 'Google-managed Auto ads element detected in protected header; exclude header placements in AdSense Auto ads settings',
+                    measurements: getSlotMeasurements(ad)
+                });
+            }
             if (!observedAds.has(ad)) {
                 const statusObserver = new MutationObserver(function () {
                     reportAdStatus(ad);
