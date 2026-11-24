@@ -23,6 +23,7 @@ let cursor = 0;
 let converted = 0;
 let originalBytes = 0;
 let optimizedBytes = 0;
+const unsupportedImages = [];
 
 async function worker() {
   while (cursor < sources.length) {
@@ -35,11 +36,19 @@ async function worker() {
       continue;
     }
     mkdirSync(dirname(output), { recursive: true });
-    await sharp(source)
-      .rotate()
-      .resize({ width: MAX_WIDTH, height: MAX_HEIGHT, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: QUALITY, effort: 5, smartSubsample: true })
-      .toFile(output);
+    try {
+      await sharp(source)
+        .rotate()
+        .resize({ width: MAX_WIDTH, height: MAX_HEIGHT, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: QUALITY, effort: 5, smartSubsample: true })
+        .toFile(output);
+    } catch (error) {
+      if (existsSync(output)) unlinkSync(output);
+      originalBytes += sourceStat.size;
+      optimizedBytes += sourceStat.size;
+      unsupportedImages.push({ path: source.replace(ROOT + '/', ''), reason: error.message });
+      continue;
+    }
     const outputBytes = statSync(output).size;
     originalBytes += sourceStat.size;
     if (outputBytes >= sourceStat.size) {
@@ -83,5 +92,6 @@ console.log(JSON.stringify({
   savedBytes,
   savedPercent: savedPercent + '%',
   format: 'WebP',
-  quality: QUALITY
+  quality: QUALITY,
+  unsupportedImages
 }, null, 2));
