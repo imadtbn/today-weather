@@ -5,6 +5,9 @@
     const AD_SELECTOR = 'ins.adsbygoogle';
     const AD_CONTAINER_SELECTOR = '.ad-container';
     const initializedAds = new WeakSet();
+    const pendingAds = new Set();
+    let resizeObserver = null;
+    let flushScheduled = false;
     const debugEnabled = new URLSearchParams(window.location.search).has('ads-debug');
 
     function emitDiagnostic(name, detail) {
@@ -137,23 +140,49 @@
             Boolean(ad.getAttribute('data-ad-slot'));
     }
 
-    function initializeAds(root) {
-        const scope = root && root.querySelectorAll ? root : document;
-        removeUnapprovedPlacements(scope);
-        const candidates = [];
-        if (scope.matches && scope.matches(AD_SELECTOR)) candidates.push(scope);
-        scope.querySelectorAll(AD_SELECTOR).forEach(function (ad) {
-            candidates.push(ad);
+    function getAvailableWidth(ad) {
+        const container = ad.closest(AD_CONTAINER_SELECTOR);
+        if (!container || !ad.isConnected) return 0;
+        const adWidth = ad.getBoundingClientRect().width;
+        const parentWidth = ad.parentElement ? ad.parentElement.getBoundingClientRect().width : 0;
+        const containerWidth = container.getBoundingClientRect().width;
+        return Math.max(adWidth, parentWidth, containerWidth);
+    }
+
+    function schedulePendingAds() {
+        if (flushScheduled) return;
+        flushScheduled = true;
+        requestAnimationFrame(function () {
+            flushScheduled = false;
+            flushPendingAds();
+        });
+    }
+
+    function flushPendingAds() {
+        const ordered = Array.from(pendingAds).sort(function (a, b) {
+            if (a === b) return 0;
+            return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
         });
 
-        candidates.forEach(function (ad) {
-            if (!isApproved(ad)) return;
-            if (initializedAds.has(ad) || ad.dataset.adsInit === 'pending' ||
-                ad.hasAttribute('data-adsbygoogle-status')) {
+        for (const ad of ordered) {
+            if (!ad.isConnected || !isApproved(ad)) {
+                pendingAds.delete(ad);
+                continue;
+            }
+            if (initializedAds.has(ad) || ad.hasAttribute('data-adsbygoogle-status')) {
+                pendingAds.delete(ad);
                 reportAdStatus(ad);
-                return;
+                continue;
             }
 
+            // AdSense throws TagError when its next slot has no measurable width.
+            // Preserve DOM order and wait for the first pending slot to become visible.
+            if (getAvailableWidth(ad) < 2) {
+                reportAdStatus(ad);
+                break;
+            }
+
+            pendingAds.delete(ad);
             initializedAds.add(ad);
             ad.dataset.adsInit = 'pending';
             try {
@@ -171,12 +200,43 @@
                     message: error && error.message ? error.message : 'Unknown initialization error'
                 });
                 console.warn('[AdSense] تعذرت تهيئة الوحدة الإعلانية:', error);
+                break;
             }
+        }
+    }
+
+    function initializeAds(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        removeUnapprovedPlacements(scope);
+        const candidates = [];
+        if (scope.matches && scope.matches(AD_SELECTOR)) candidates.push(scope);
+        scope.querySelectorAll(AD_SELECTOR).forEach(function (ad) {
+            candidates.push(ad);
         });
+
+        candidates.forEach(function (ad) {
+            if (!isApproved(ad) || initializedAds.has(ad) ||
+                ad.dataset.adsInit === 'pending' || ad.hasAttribute('data-adsbygoogle-status')) {
+                reportAdStatus(ad);
+                return;
+            }
+            pendingAds.add(ad);
+            const container = ad.closest(AD_CONTAINER_SELECTOR);
+            if (resizeObserver && container) resizeObserver.observe(container);
+        });
+        schedulePendingAds();
     }
 
     function start() {
         watchLoader();
+
+        if ('ResizeObserver' in window) {
+            resizeObserver = new ResizeObserver(schedulePendingAds);
+            document.querySelectorAll(AD_CONTAINER_SELECTOR).forEach(function (container) {
+                resizeObserver.observe(container);
+            });
+        }
+        window.addEventListener('resize', schedulePendingAds, { passive: true });
         initializeAds();
 
         const observer = new MutationObserver(function (records) {
