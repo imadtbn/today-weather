@@ -91,3 +91,31 @@ test('AdSense never queues a push before the async provider script has loaded', 
   await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
 });
+
+
+test('AdSense waits for an approved container to recover from zero width', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__adsPushCount = 0;
+    window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const container = page.locator('.ad-container').first();
+  const ad = container.locator('ins.adsbygoogle');
+  await expect(ad).toBeVisible();
+
+  await container.evaluate(node => {
+    node.style.setProperty('width', '0px', 'important');
+    node.style.setProperty('max-width', '0px', 'important');
+  });
+  await page.locator('script[src*="adsbygoogle.js"]')
+    .evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBe(0);
+
+  await container.evaluate(node => {
+    node.style.removeProperty('width');
+    node.style.removeProperty('max-width');
+  });
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+});
