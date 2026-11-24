@@ -9,6 +9,7 @@
     const pendingAds = new Set();
     let resizeObserver = null;
     let flushScheduled = false;
+    let adsenseReady = false;
     const debugEnabled = new URLSearchParams(window.location.search).has('ads-debug');
 
     function emitDiagnostic(name, detail) {
@@ -70,6 +71,10 @@
         const entry = getLoaderResourceEntry(loader);
         if (!entry || !(entry.responseEnd > entry.startTime)) return false;
 
+        // Do not queue push() before the provider is ready: a queued request may
+        // execute later, after responsive layout changes have collapsed the slot.
+        adsenseReady = true;
+
         // Resource Timing may hide cross-origin status/size fields without Timing-Allow-Origin.
         // Distinguish a confirmed HTTP 200 from a completed-but-unverifiable transfer.
         if (entry.responseStatus === 200) {
@@ -92,24 +97,35 @@
         // Attach both element and capture-phase listeners before checking buffered timing.
         // This handles normal loads, resource errors, and loads that finished before this file ran.
         loader.addEventListener('load', function () {
+            adsenseReady = true;
             reportLoaderStatus('loaded');
+            schedulePendingAds();
         }, { once: true });
         loader.addEventListener('error', function () {
+            adsenseReady = false;
             reportLoaderStatus('error', 'AdSense script load event failed');
         }, { once: true });
         document.addEventListener('load', function (event) {
-            if (event.target === loader) reportLoaderStatus('loaded');
+            if (event.target === loader) {
+                adsenseReady = true;
+                reportLoaderStatus('loaded');
+                schedulePendingAds();
+            }
         }, true);
         document.addEventListener('error', function (event) {
             const target = event.target;
             if (target === loader || (target && target.tagName === 'SCRIPT' &&
                 target.src && target.src.indexOf('adsbygoogle.js') !== -1)) {
+                adsenseReady = false;
                 reportLoaderStatus('error', 'AdSense script resource error');
             }
         }, true);
 
         if (!reportPreviouslyLoadedResource(loader)) {
+            adsenseReady = false;
             reportLoaderStatus('pending', 'Waiting for AdSense script load or error');
+        } else {
+            schedulePendingAds();
         }
     }
 
@@ -184,6 +200,10 @@
     }
 
     function flushPendingAds() {
+        // The async AdSense loader may not have executed yet. Pushing into its
+        // pre-load queue creates a time gap between width validation and sizing.
+        if (!adsenseReady) return;
+
         const ordered = Array.from(pendingAds).sort(function (a, b) {
             if (a === b) return 0;
             return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
@@ -207,7 +227,8 @@
                 break;
             }
 
-            // Wait until the actual <ins> element (not merely its wrapper) has width.
+            // Recheck immediately before the synchronous provider call. This is
+            // intentionally after DOM-order validation to minimize layout races.
             if (getAvailableWidth(ad) < 2) {
                 reportAdStatus(ad);
                 break;
