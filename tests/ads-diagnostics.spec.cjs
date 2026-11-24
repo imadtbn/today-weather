@@ -23,17 +23,17 @@ test('AdSense audit records mobile and desktop slots without changing placements
   const network = [];
   const consoleErrors = [];
   page.on('request', request => {
-    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(request.url())) {
+    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(request.url())) {
       network.push({ type: 'request', url: request.url(), method: request.method() });
     }
   });
   page.on('response', response => {
-    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(response.url())) {
+    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(response.url())) {
       network.push({ type: 'response', url: response.url(), status: response.status() });
     }
   });
   page.on('requestfailed', request => {
-    if (/adsbygoogle\\.js|googleads\\.g\\.doubleclick\\.net|pagead2\\.googlesyndication\\.com/i.test(request.url())) {
+    if (/adsbygoogle\.js|googleads\.g\.doubleclick\.net|pagead2\.googlesyndication\.com/i.test(request.url())) {
       network.push({ type: 'requestfailed', url: request.url(), error: request.failure()?.errorText || 'unknown' });
     }
   });
@@ -72,7 +72,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
         const slot = ad.getAttribute('data-ad-slot') || '';
         return {
           slot,
-          validSlot: /^\\d{8,12}$/.test(slot),
+          validSlot: /^\d{8,12}$/.test(slot),
           inApprovedContainer: Boolean(ad.closest('.ad-container')),
           googleManaged: Boolean(ad.closest('.google-auto-placed')),
           status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
