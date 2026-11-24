@@ -90,6 +90,10 @@ test('AdSense audit records mobile and desktop slots without changing placements
       (!slot.validSlot && !slot.googleManaged) || (!slot.inApprovedContainer && !slot.googleManaged) || slot.inHeader
     );
 
+    expect(
+      consoleErrors.filter(message => /No slot size for availableWidth=0/i.test(message)),
+      'AdSense must not initialize a slot before its width is measurable'
+    ).toEqual([]);
     console.info('[AdSense browser audit]', JSON.stringify({ name: item.name, slots: report.slots, network, consoleErrors }));
     expect(report.documentWidth).toBeLessThanOrEqual(report.viewport.width + 1);
     expect(invalidSlots, 'Every AdSense unit must have a valid data-ad-slot and an approved or Google-managed placement').toEqual([]);
