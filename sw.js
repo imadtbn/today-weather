@@ -1,4 +1,17 @@
-const CACHE_NAME = 'today-weather-shell-v14';
+const CACHE_NAME = 'today-weather-shell-v15';
+const RUNTIME_CACHE_NAME = 'today-weather-runtime-v1';
+const MAX_RUNTIME_ENTRIES = 120;
+const MAX_CACHED_IMAGES = 45;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_RESOURCE_BYTES = 4 * 1024 * 1024;
+const NETWORK_TIMEOUT_MS = 12000;
+const NAVIGATION_TIMEOUT_MS = 18000;
+const CACHEABLE_EXTERNAL_HOSTS = new Set([
+    'cdnjs.cloudflare.com',
+    'unpkg.com',
+    'cdn.jsdelivr.net'
+]);
+
 const APP_SHELL = [
     './index.html',
     './sitemap.html',
@@ -23,32 +36,97 @@ const APP_SHELL = [
     './assets/images/icon1.webp'
 ];
 
-// Third-party font files are deliberately left to the browser. Intercepting them
-// can turn a transient CDN timeout into a failed font response inside the SW.
-const STATIC_EXTERNAL_HOSTS = new Set([
-    'cdnjs.cloudflare.com',
-    'unpkg.com',
-    'cdn.jsdelivr.net'
-]);
+let cacheWriteQueue = Promise.resolve();
+
+function withTimeout(request, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(request, { signal: controller.signal })
+        .then(response => {
+            // Stop the network timer as soon as headers arrive. Keeping it alive
+            // during Cache.put() can abort the response body while it is being stored.
+            clearTimeout(timeoutId);
+            return response;
+        })
+        .catch(error => {
+            clearTimeout(timeoutId);
+            throw error;
+        });
+}
+
+function isCacheableResponse(request, response) {
+    if (!response || response.status !== 200 || response.type === 'opaque') return false;
+    if (request.method !== 'GET' || request.headers.has('authorization')) return false;
+    const cacheControl = response.headers.get('cache-control') || '';
+    if (/\b(no-store|private)\b/i.test(cacheControl)) return false;
+    if (response.headers.get('vary') === '*') return false;
+
+    const url = new URL(request.url);
+    const isImage = request.destination === 'image' || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(url.pathname);
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > (isImage ? MAX_IMAGE_BYTES : MAX_RESOURCE_BYTES)) return false;
+    return true;
+}
+
+function isImageRequest(request) {
+    const url = new URL(request.url);
+    return request.destination === 'image' || /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(url.pathname);
+}
+
+async function trimRuntimeCache(cache) {
+    const keys = await cache.keys();
+    const imageKeys = keys.filter(isImageRequest);
+    const removeOldest = async (items, maximum) => {
+        const excess = items.length - maximum;
+        for (let index = 0; index < excess; index++) {
+            await cache.delete(items[index]);
+        }
+    };
+    await removeOldest(imageKeys, MAX_CACHED_IMAGES);
+    const remaining = await cache.keys();
+    await removeOldest(remaining, MAX_RUNTIME_ENTRIES);
+}
+
+function queueCacheWrite(cache, request, response) {
+    cacheWriteQueue = cacheWriteQueue
+        .then(async () => {
+            await cache.put(request, response);
+            await trimRuntimeCache(cache);
+        })
+        .catch(error => {
+            console.warn('[PWA] Cache write skipped:', request.url, error);
+        });
+    return cacheWriteQueue;
+}
+
+async function precacheAppShell(cache) {
+    let nextIndex = 0;
+    const workerCount = Math.min(3, APP_SHELL.length);
+    const workers = Array.from({ length: workerCount }, async () => {
+        while (nextIndex < APP_SHELL.length) {
+            const asset = APP_SHELL[nextIndex++];
+            try {
+                const response = await withTimeout(
+                    new Request(asset, { cache: 'reload' }),
+                    NETWORK_TIMEOUT_MS
+                );
+                if (response.ok) {
+                    await cache.put(asset, response);
+                } else {
+                    console.warn('[PWA] Precache skipped:', asset, response.status);
+                }
+            } catch (error) {
+                console.warn('[PWA] Precache failed:', asset, error);
+            }
+        }
+    });
+    await Promise.all(workers);
+}
 
 self.addEventListener('install', event => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE_NAME);
-        await Promise.all(APP_SHELL.map(async asset => {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-            try {
-                const response = await fetch(asset, { cache: 'reload', signal: controller.signal });
-                if (response.ok) await cache.put(asset, response);
-                else console.warn('[PWA] Precache skipped:', asset, response.status);
-            } catch (error) {
-                if (error?.name !== 'AbortError') {
-                    console.warn('[PWA] Precache failed:', asset, error);
-                }
-            } finally {
-                clearTimeout(timeoutId);
-            }
-        }));
+        await precacheAppShell(cache);
         await self.skipWaiting();
     })());
 });
@@ -57,8 +135,10 @@ self.addEventListener('activate', event => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
         await Promise.all(keys
-            .filter(key => key.startsWith('today-weather-') && key !== CACHE_NAME)
+            .filter(key => key.startsWith('today-weather-') &&
+                key !== CACHE_NAME && key !== RUNTIME_CACHE_NAME)
             .map(key => caches.delete(key)));
+        await caches.open(RUNTIME_CACHE_NAME);
         await self.clients.claim();
     })());
 });
@@ -69,46 +149,42 @@ self.addEventListener('fetch', event => {
 
     const url = new URL(request.url);
     const sameOrigin = url.origin === self.location.origin;
-    const externalStatic = !sameOrigin && STATIC_EXTERNAL_HOSTS.has(url.hostname);
+    const externalStatic = !sameOrigin && CACHEABLE_EXTERNAL_HOSTS.has(url.hostname);
     if (!sameOrigin && !externalStatic) return;
+    // Avoid caching query-string variants such as cache-busters and tracking URLs.
+    if (sameOrigin && url.search) return;
 
     event.respondWith((async () => {
-        const cache = await caches.open(CACHE_NAME);
-        const normalizedRequest = sameOrigin && url.pathname.endsWith('/assets/js/global-search.js')
-            ? new Request(url.origin + url.pathname)
-            : request;
-        const cached = await cache.match(request) || await cache.match(normalizedRequest);
+        const cacheName = sameOrigin ? RUNTIME_CACHE_NAME : CACHE_NAME;
+        const cache = await caches.open(cacheName);
+        const cached = await cache.match(request);
 
         if (externalStatic && cached) return cached;
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutMs = request.mode === 'navigate' || request.destination === 'document'
+            ? NAVIGATION_TIMEOUT_MS
+            : NETWORK_TIMEOUT_MS;
+
         try {
-            const response = await fetch(request, { signal: controller.signal });
-            if (response && (response.ok || response.type === 'opaque')) {
-                try {
-                    await cache.put(request, response.clone());
-                } catch (cacheError) {
-                    console.warn('[PWA] Cache write failed:', request.url, cacheError);
-                }
+            const response = await withTimeout(request, timeoutMs);
+            if (isCacheableResponse(request, response)) {
+                // The timeout has already been cleared before the response is
+                // cloned or written, preventing Cache.put() body cancellation.
+                const clone = response.clone();
+                void queueCacheWrite(cache, request, clone);
             }
             return response;
         } catch (error) {
             if (cached) return cached;
             if (request.mode === 'navigate') {
-                const shell = await cache.match('./index.html');
+                const shell = await (await caches.open(CACHE_NAME)).match('./index.html');
                 if (shell) return shell;
             }
-
-            // Always resolve the FetchEvent with an HTTP response. Returning a rejected
-            // promise here produces noisy "FetchEvent network error response" failures.
             return new Response('', {
                 status: 503,
                 statusText: error?.name === 'AbortError' ? 'Network timeout' : 'Network unavailable',
                 headers: { 'Cache-Control': 'no-store' }
             });
-        } finally {
-            clearTimeout(timeoutId);
         }
     })());
 });

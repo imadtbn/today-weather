@@ -253,6 +253,18 @@ for (const host of ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net']) {
 for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com']) {
   assert.ok(!sw.includes(host), 'Google Fonts must bypass service-worker interception: ' + host);
 }
+for (const marker of [
+  "const RUNTIME_CACHE_NAME = 'today-weather-runtime-v1'",
+  'MAX_RUNTIME_ENTRIES',
+  'MAX_CACHED_IMAGES',
+  'cacheWriteQueue',
+  'clearTimeout(timeoutId)',
+  'await trimRuntimeCache(cache)',
+  'response.clone()'
+]) assert.ok(sw.includes(marker), 'Service worker cache-safety control missing: ' + marker);
+assert.ok(!sw.includes('Promise.all(APP_SHELL.map'), 'App shell precache must use bounded concurrency');
+assert.ok(sw.indexOf('clearTimeout(timeoutId);') < sw.indexOf('return response;'),
+  'Network timeout must be cleared immediately after fetch headers arrive');
 
 assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, 'Unbalanced CSS braces');
 const cityCss = read('assets/css/city-pages.css');

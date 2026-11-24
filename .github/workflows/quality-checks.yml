@@ -2,7 +2,7 @@ name: Site quality checks
 
 on:
   push:
-    branches: [main, codex/phase-3-quality-pwa]
+    branches: [main, codex/phase-1-service-worker-cache]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -14,6 +14,7 @@ jobs:
   static-validation:
     name: Static site validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +26,7 @@ jobs:
   browser-tests:
     name: Responsive and offline browser tests
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: static-validation
     steps:
       - uses: actions/checkout@v4
