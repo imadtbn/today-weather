@@ -22,6 +22,8 @@ test('AdSense waits until the first approved slot has measurable width', async (
   await expect(page.locator('ins.adsbygoogle')).toHaveCount(6);
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBe(0);
 
+  await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBe(0);
   await page.locator('ins.adsbygoogle').first().evaluate(ad => {
     ad.style.removeProperty('width');
   });
@@ -69,5 +71,23 @@ test('AdSense push waits for an earlier Google-managed slot to finish before man
 
   await page.locator('body > .google-auto-placed ins.adsbygoogle')
     .evaluate(ad => ad.setAttribute('data-adsbygoogle-status', 'done'));
+  await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+});
+
+
+test('AdSense never queues a push before the async provider script has loaded', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__adsPushCount = 0;
+    window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.ad-container ins.adsbygoogle').first()).toBeVisible();
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.__adsPushCount)).toBe(0);
+
+  await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
 });
