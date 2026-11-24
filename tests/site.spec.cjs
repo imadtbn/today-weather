@@ -261,6 +261,26 @@ test('performance safeguards defer page scripts and omit unused heavy libraries'
 });
 
 
+test('mobile star field keeps canvas work bounded', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    window.__starArcCalls = 0;
+    const originalArc = CanvasRenderingContext2D.prototype.arc;
+    CanvasRenderingContext2D.prototype.arc = function (...args) {
+      if (this.canvas?.id === 'starCanvas') window.__starArcCalls += 1;
+      return originalArc.apply(this, args);
+    };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => window.initStarField());
+  await page.waitForTimeout(1200);
+
+  const arcCalls = await page.evaluate(() => window.__starArcCalls);
+  expect(arcCalls).toBeGreaterThan(0);
+  expect(arcCalls, 'Mobile star field should avoid the previous dense 70-star animation').toBeLessThan(450);
+});
+
 test('weather risk cards show forecast-derived source and severity', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('algeria_weather_location_v2', JSON.stringify({
