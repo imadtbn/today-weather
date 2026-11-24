@@ -464,6 +464,12 @@
         // watched on each approved slot, not across the entire page subtree.
         const observer = new MutationObserver(function (records) {
             records.forEach(function (record) {
+                if (record.type === 'attributes') {
+                    // A hidden tab, collapsed grid, or visibility class can change
+                    // without inserting nodes or changing the outer ad wrapper.
+                    schedulePendingAds();
+                    return;
+                }
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType !== Node.ELEMENT_NODE) return;
                     if (node.matches(AD_SELECTOR) || node.querySelector(AD_SELECTOR)) {
