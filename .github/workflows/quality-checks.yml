@@ -2,7 +2,7 @@ name: Site quality checks
 
 on:
   push:
-    branches: [main, codex/phase-1-service-worker-cache]
+    branches: [main, codex/phase-1-service-worker-cache, codex/phase-2-image-resource-loading]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -39,5 +39,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Generate static SEO city pages
         run: node scripts/generate-city-pages.mjs
+      - name: Optimize local city images
+        run: node scripts/optimize-images.mjs
+      - name: Audit optimized CSS, JavaScript, JSON and image resources
+        run: node scripts/audit-resources.mjs
       - name: Run browser tests
         run: npm run test:e2e

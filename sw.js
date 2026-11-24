@@ -1,4 +1,4 @@
-const CACHE_NAME = 'today-weather-shell-v15';
+const CACHE_NAME = 'today-weather-shell-v16';
 const RUNTIME_CACHE_NAME = 'today-weather-runtime-v1';
 const MAX_RUNTIME_ENTRIES = 120;
 const MAX_CACHED_IMAGES = 45;
@@ -30,6 +30,7 @@ const APP_SHELL = [
     './assets/js/global-search.js',
     './data/global-search-index.json',
     './assets/js/effects.js',
+    './assets/js/image-loader.js',
     './assets/js/specialized-weather.js',
     './assets/js/app.js',
     './assets/js/adsData.js',

@@ -3,11 +3,12 @@
   "private": true,
   "scripts": {
     "build:seo": "node scripts/generate-city-pages.mjs",
-    "validate": "npm run build:seo && node scripts/validate-site.mjs",
+    "validate": "npm run build:seo && node scripts/validate-site.mjs && node scripts/audit-resources.mjs",
     "verify:published-communes": "node scripts/verify-published-communes.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1"
+    "@playwright/test": "^1.56.1",
+    "sharp": "^0.34.5"
   }
 }

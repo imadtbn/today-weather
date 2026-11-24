@@ -27,8 +27,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install build dependencies
+        run: npm install --no-audit --no-fund --no-package-lock
       - name: Generate and validate all static city and commune pages
         run: npm run validate
+      - name: Optimize local city images and rewrite generated references
+        run: node scripts/optimize-images.mjs
+      - name: Audit optimized CSS, JavaScript, JSON and image resources
+        run: node scripts/audit-resources.mjs
       - name: Verify generated sitemap includes every commune
         run: |
           node --input-type=module <<'NODE'
@@ -93,6 +99,7 @@ jobs:
             Generated output is staged only after `npm run validate` and the exact page-count checks pass. No generated files are pushed directly to `main`.
           add-paths: |
             weather/
+            images/*.webp
             sitemap.html
             sitemap.xml
             data/global-search-index.json

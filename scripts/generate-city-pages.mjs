@@ -56,7 +56,9 @@ const communePath = item => BASE + '/weather/algeria/communes/' + item.wilaya.sl
 function imagePath(city) {
   const raw = String(city.countryImages || '').replace(/^\/+/, '');
   const local = raw.startsWith('today-weather/') ? raw.slice('today-weather/'.length) : raw;
-  if (local && existsSync(join(ROOT, local))) return `${BASE}/${local}`;
+  const optimized = local.replace(/\.(jpe?g)$/i, '.webp');
+  if (local && existsSync(join(ROOT, optimized))) return BASE + '/' + optimized;
+  if (local && existsSync(join(ROOT, local))) return BASE + '/' + local;
   missingImages.push({ slug: city.slug, expected: local || 'countryImages not set' });
   return `${BASE}/assets/images/icon1.webp`;
 }
@@ -139,6 +141,7 @@ function commonFooter() {
   footer = footer.replace(/href="#"([^>]*>)/g, 'href="' + BASE + '/"$1')
     .replace(/href="#([^"]+)"([^>]*>)/g, 'href="' + BASE + '/#$1"$2');
   return footer +
+    '<script defer src="' + BASE + '/assets/js/image-loader.js?v=20261124-phase2"></script>' +
     '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261115-ads-fix"></script>' +
     '<script defer src="' + BASE + '/assets/js/global-search.js?v=20261115-sitemap-footer-1"></script>' +
     '<script>(function(){' +
@@ -337,7 +340,7 @@ function buildDirectory(group) {
 <div class="city-directory-grid">${links}</div>
 ${group.key === 'algeria' ? '<section class="city-related commune-directory-promo"><h2 class="city-section-title">دليل البلديات الجزائرية</h2><p class="city-status">تصفح جميع البلديات الـ' + communeRecords.length + ' مرتبة حسب الولايات.</p><div class="city-related-links"><a href="' + BASE + '/weather/algeria/communes/">جميع البلديات الجزائرية</a></div></section>' : ''}</main>
 ${adBlock("bottom")}${commonFooter()}
-<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=window.matchMedia('(max-width: 600px)').matches?4:12;var shown=0;var observer=null;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';function revealCard(card){card.hidden=false;var img=card.querySelector('img[data-src]');if(img){img.setAttribute('src',img.dataset.src);img.removeAttribute('data-src');}card.classList.add('is-visible');}function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++)revealCard(cards[i]);shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}grid.classList.add('directory-progressive');grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(revealCard);sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'0px',threshold:0});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
+<script>(function(){var grid=document.querySelector('.city-directory-grid');if(!grid)return;var cards=Array.from(grid.children);var batchSize=window.matchMedia('(max-width: 600px)').matches?6:12;var shown=0;var observer=null;var sentinel=document.createElement('div');sentinel.className='directory-load-sentinel';sentinel.setAttribute('role','status');sentinel.setAttribute('aria-live','polite');sentinel.textContent='جارٍ تحميل المزيد من المدن…';function revealCard(card){card.hidden=false;card.classList.add('is-visible');}function revealBatch(){var end=Math.min(shown+batchSize,cards.length);for(var i=shown;i<end;i++)revealCard(cards[i]);shown=end;if(shown>=cards.length){sentinel.hidden=true;if(observer)observer.disconnect();}else{sentinel.hidden=false;}}grid.classList.add('directory-progressive');grid.insertAdjacentElement('afterend',sentinel);if(!('IntersectionObserver'in window)){cards.forEach(revealCard);sentinel.remove();return;}observer=new IntersectionObserver(function(entries){if(entries.some(function(entry){return entry.isIntersecting;}))revealBatch();},{rootMargin:'0px',threshold:0.01});revealBatch();if(shown<cards.length)observer.observe(sentinel);})();</script>
 </body></html>`;
 }
 

@@ -5,19 +5,26 @@ test('city directory renders compact responsive cards and reveals images in batc
   await page.goto('/weather/algeria/', { waitUntil: 'domcontentloaded' });
   const grid = page.locator('.city-directory-grid');
   await expect(grid.locator('.city-directory-item')).toHaveCount(69);
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(4);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(4);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(65);
-  await expect(page.locator('.directory-hero-media img')).toHaveAttribute('src', /images\/algiers\.jpg$/);
+  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(6);
+  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(6);
+  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(63);
+  await expect(page.locator('.directory-hero-media img')).toHaveAttribute('src', /images\/algiers\.(?:webp|jpg)$/);
   for (const [width, expectedColumns] of [[1440, 4], [1024, 3], [390, 2]]) {
     await page.setViewportSize({ width, height: 900 });
     const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns, 'wrong city-card column count at ' + width + 'px').toBe(expectedColumns);
   }
   await page.locator('.directory-load-sentinel').scrollIntoViewIfNeeded();
-  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(8);
-  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(8);
-  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(61);
+  await expect(grid.locator('.city-directory-item:not([hidden])')).toHaveCount(12);
+  await expect(grid.locator('.directory-city-image[src]')).toHaveCount(12);
+  await expect(grid.locator('.directory-city-image[data-src]')).toHaveCount(57);
+});
+
+test('large city photographs are served as optimized WebP', async ({ page }) => {
+  await page.goto('/weather/algeria/ouargla/', { waitUntil: 'domcontentloaded' });
+  const image = page.locator('.city-image-wrap img');
+  await expect(image).toHaveAttribute('src', /images\/ouargla\.webp$/);
+  await expect.poll(() => image.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
 });
 
 test('homepage exposes valid SEO and PWA metadata', async ({ page }) => {
@@ -465,4 +472,20 @@ test('five-day weather statistics use only future forecast data and fit small sc
       expect(rect.right).toBeLessThanOrEqual(layout.viewport + 1);
     }
   }
+});
+
+
+test('failed images retry and fall back to the local site icon', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.route('**/images/phase-two-missing-image.jpg**', route => route.abort());
+  await page.evaluate(() => {
+    const image = document.createElement('img');
+    image.id = 'phaseTwoFallbackImage';
+    image.alt = 'صورة اختبار بديلة';
+    image.src = '/today-weather/images/phase-two-missing-image.jpg';
+    document.body.append(image);
+  });
+  const image = page.locator('#phaseTwoFallbackImage');
+  await expect(image).toHaveAttribute('src', /assets\/images\/icon1\.webp$/, { timeout: 15000 });
+  await expect.poll(() => image.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
 });
