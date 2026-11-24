@@ -34,25 +34,43 @@ permissions:
 
 jobs:
   lighthouse:
-    name: Published site Lighthouse audit
+    name: Pull request and site Lighthouse audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Checkout pull request source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund --no-package-lock
+      - name: Generate and optimize local pages and images
+        run: |
+          node scripts/generate-city-pages.mjs
+          node scripts/optimize-images.mjs
+          node scripts/audit-resources.mjs
       - name: Install Lighthouse
         run: npm install --global lighthouse
+      - name: Start local preview server
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/today-weather-http.log 2>&1 &
+          echo $! > /tmp/today-weather-http.pid
+          curl --retry 20 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:4173/ > /dev/null
       - name: Create report directory
         run: mkdir -p lighthouse-reports
-      - name: Run mobile Lighthouse
+      - name: Run mobile Lighthouse against pull request source
         run: |
-          lighthouse https://imadtbn.github.io/today-weather/ \
+          lighthouse http://127.0.0.1:4173/ \
             --preset=perf \
             --only-categories=performance,accessibility,best-practices,seo \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
             --output=json --output=html \
             --output-path=./lighthouse-reports/mobile
-      - name: Run desktop Lighthouse
+      - name: Run desktop Lighthouse against pull request source
         run: |
-          lighthouse https://imadtbn.github.io/today-weather/ \
+          lighthouse http://127.0.0.1:4173/ \
             --preset=desktop \
             --only-categories=performance,accessibility,best-practices,seo \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
