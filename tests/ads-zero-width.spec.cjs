@@ -119,3 +119,84 @@ test('AdSense waits for an approved container to recover from zero width', async
   });
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
 });
+
+
+test('AdSense waits while an approved slot is inside a display-none ancestor', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__adsPushCount = 0;
+    window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const container = page.locator('.ad-container').first();
+  await container.evaluate(node => { node.style.setProperty('display', 'none', 'important'); });
+  await page.locator('script[src*="adsbygoogle.js"]')
+    .evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBe(0);
+
+  await container.evaluate(node => { node.style.removeProperty('display'); });
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+});
+
+test('AdSense pushes only after measurable width is stable across animation frames', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__adsPushCount = 0;
+    window.__adsStableFrames = [];
+    window.addEventListener('adsense:pre-push', event => {
+      if (event.detail && event.detail.available) {
+        window.__adsStableFrames.push(event.detail.stableFrames);
+      }
+    });
+    window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.locator('script[src*="adsbygoogle.js"]')
+    .evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+  const stableFrames = await page.evaluate(() => window.__adsStableFrames);
+  expect(stableFrames.length).toBeGreaterThan(0);
+  expect(stableFrames.every(frames => frames >= 2)).toBe(true);
+});
+
+test('AdSense does not initialize the same slot more than once after resize and mutations', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__adsPushCount = 0;
+    window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.locator('script[src*="adsbygoogle.js"]')
+    .evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+  const initialCount = await page.evaluate(() => window.__adsPushCount);
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new Event('resize'));
+    document.querySelectorAll('.ad-container').forEach(node => {
+      node.classList.toggle('ads-test-layout');
+      node.classList.toggle('ads-test-layout');
+    });
+  });
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => window.__adsPushCount)).toBe(initialCount);
+});
+
+test('AdSense reports zero-width TagErrors separately for Google-managed Auto Ads', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const diagnostic = await page.evaluate(() => new Promise(resolve => {
+    window.addEventListener('adsense:auto-placement-error', event => resolve(event.detail), { once: true });
+    window.dispatchEvent(new ErrorEvent('error', {
+      message: 'adsbygoogle.push() error: No slot size for availableWidth=0'
+    }));
+  }));
+
+  expect(diagnostic.message).toContain('No slot size');
+  expect(diagnostic.source).toBe('window.error');
+});
