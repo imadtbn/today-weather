@@ -247,8 +247,11 @@ for (const match of shell[1].matchAll(/["'](\.[^"']+)["']/g)) {
   const path = match[1].replace(/^\.\//, '');
   if (path) assert.ok(existsSync(resolve(root, path)), 'Missing cached asset: ' + path);
 }
-for (const host of ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com']) {
+for (const host of ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net']) {
   assert.ok(sw.includes(host), 'Static external cache allowlist missing: ' + host);
+}
+for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com']) {
+  assert.ok(!sw.includes(host), 'Google Fonts must bypass service-worker interception: ' + host);
 }
 
 assert.equal((css.match(/{/g) || []).length, (css.match(/}/g) || []).length, 'Unbalanced CSS braces');
