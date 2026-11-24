@@ -1,23 +1,28 @@
 const { test, expect } = require('@playwright/test');
 
-test('AdSense loader diagnostics recover a load completed before the listener attaches', async ({ page }) => {
+test('AdSense loader readiness requires an explicit successful onload marker', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
   await page.addInitScript(() => {
-    const original = performance.getEntriesByName.bind(performance);
-    performance.getEntriesByName = (name, type) => {
-      if (String(name).includes('adsbygoogle.js')) {
-        return [{ name, entryType: 'resource', startTime: 1, responseEnd: 24, responseStatus: 200, encodedBodySize: 128 }];
-      }
-      return original(name, type);
-    };
     window.__adsLoaderEvents = [];
     window.addEventListener('adsense:loader', event => window.__adsLoaderEvents.push(event.detail));
+    document.addEventListener('readystatechange', () => {
+      if (document.readyState === 'interactive') {
+        const loader = document.querySelector('script[src*="adsbygoogle.js"]');
+        if (loader) loader.dataset.adsenseLoaded = 'true';
+      }
+    });
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect.poll(() => page.evaluate(() => window.__adsLoaderEvents.some(item => item.status === 'loaded'))).toBe(true);
-  const recovered = await page.evaluate(() => window.__adsLoaderEvents.find(item => item.status === 'loaded'));
-  expect(recovered.detail).toContain('before diagnostics attached');
+  await expect.poll(() => page.evaluate(() =>
+    window.__adsLoaderEvents.some(item => item.status === 'loaded')
+  )).toBe(true);
+  const loaded = await page.evaluate(() =>
+    window.__adsLoaderEvents.find(item => item.status === 'loaded')
+  );
+  expect(loaded.detail).toContain('onload marker');
 });
+
 
 test('AdSense audit records mobile and desktop slots without changing placements', async ({ page }) => {
   const network = [];
