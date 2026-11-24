@@ -71,6 +71,7 @@ function assertSharedPageShell(page, pagePath) {
     'assets/css/style-main.css', 'assets/js/adsData.js'
   ]) assert.ok(page.includes(marker), 'Homepage shell marker missing (' + marker + '): ' + pagePath);
 
+  assert.ok(page.includes('onload="this.dataset.adsenseLoaded=\\'true\\'"'), 'AdSense loader onload handler must be valid on ' + pagePath);
   const pageLd = [...page.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
   assert.equal(pageLd.length, 1, 'Expected exactly one JSON-LD block: ' + pagePath);
   const pageGraph = JSON.parse(pageLd[0][1])['@graph'];
