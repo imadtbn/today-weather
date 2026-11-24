@@ -138,16 +138,19 @@
       }, { rootMargin: '700px 0px', threshold: 0.01 });
     }
 
-    document.querySelectorAll('img').forEach(observeImage);
     document.addEventListener('error', event => {
       if (event.target instanceof HTMLImageElement) retryFailedImage(event.target);
     }, true);
 
+    const lazyImages = document.querySelectorAll('img[data-src]');
+    if (!lazyImages.length) return;
+
+    lazyImages.forEach(observeImage);
     const mutationObserver = new MutationObserver(records => {
       records.forEach(record => record.addedNodes.forEach(node => {
         if (!(node instanceof Element)) return;
-        if (node.matches('img')) observeImage(node);
-        node.querySelectorAll?.('img').forEach(observeImage);
+        if (node.matches('img[data-src]')) observeImage(node);
+        node.querySelectorAll?.('img[data-src]').forEach(observeImage);
       }));
     });
     mutationObserver.observe(document.documentElement, { childList: true, subtree: true });
