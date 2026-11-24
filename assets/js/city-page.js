@@ -145,7 +145,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = CityWeathe
 (() => {
   const root=document.querySelector("[data-city-weather]"); if(!root)return;
   const city=JSON.parse(root.dataset.cityWeather),key="1151122405b6f7be33bf0de4b22bb5a4";
-  const $=id=>document.getElementById(id), key="1151122405b6f7be33bf0de4b22bb5a4", weatherClient=window.CityWeatherApi.createClient();
+  const $=id=>document.getElementById(id), weatherClient=window.CityWeatherApi.createClient();
   const num=v=>Number.isFinite(Number(v))?Math.round(Number(v)):"--";
   const icon=code=>code>=200&&code<300?"fa-cloud-bolt":code>=300&&code<600?"fa-cloud-rain":code>=600&&code<700?"fa-snowflake":code>=700&&code<800?"fa-smog":code===800?"fa-sun":"fa-cloud";
   const direction=deg=>{if(!Number.isFinite(Number(deg)))return"--";const dirs=["شمال","شمال شرقي","شرق","جنوب شرقي","جنوب","جنوب غربي","غرب","شمال غربي"];return dirs[Math.round((Number(deg)%360)/45)%8];};
