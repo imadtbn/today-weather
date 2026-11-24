@@ -19,11 +19,12 @@ assert.ok(weatherTips.rules.every(rule => rule.id && rule.category && rule.condi
 const adsTxt = read('ads.txt').trim();
 assert.equal(adsTxt, 'google.com, pub-5656416032906373, DIRECT, f08c47fec0942fa0', 'ads.txt publisher declaration is missing or malformed');
 const adsScript = read('assets/js/adsData.js');
-for (const marker of ['adsense:status', 'adsense:loader', 'filled', 'unfilled', 'requested', 'init-error', 'MutationObserver', 'attributeFilter', 'getEntriesByName', 'resource-observed', 'reportPreviouslyLoadedResource']) {
+for (const marker of ['adsense:status', 'adsense:loader', 'adsense:pre-push', 'adsense:blocked', 'adsense:placement-warning', 'filled', 'unfilled', 'requested', 'init-error', 'MutationObserver', 'attributeFilter', 'getSlotMeasurements', 'adsenseLoaded', 'reportPreviouslyLoadedResource']) {
   assert.ok(adsScript.includes(marker), 'AdSense diagnostics marker missing: ' + marker);
 }
 assert.ok(adsScript.includes("has('ads-debug')"), 'AdSense debug query switch missing');
 assert.ok(html.includes('data-ad-client="ca-pub-5656416032906373"'), 'Homepage AdSense publisher ID missing');
+assert.ok(html.includes('onload="this.dataset.adsenseLoaded=\'true\'"'), 'AdSense loader must persist successful load state');
 const homepageAdSlots = [...html.matchAll(/data-ad-slot="(\d+)"/g)].map(match => match[1]);
 assert.equal(new Set(homepageAdSlots).size, 6, 'Expected six distinct homepage AdSense ad slots');
 assert.equal(homepageAdSlots.length, 6, 'Expected each homepage ad slot exactly once');
