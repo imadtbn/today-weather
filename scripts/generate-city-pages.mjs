@@ -56,7 +56,7 @@ const communePath = item => BASE + '/weather/algeria/communes/' + item.wilaya.sl
 function imagePath(city) {
   const raw = String(city.countryImages || '').replace(/^\/+/, '');
   const local = raw.startsWith('today-weather/') ? raw.slice('today-weather/'.length) : raw;
-  const optimized = local.replace(/\\.(jpe?g)$/i, '.webp');
+  const optimized = local.replace(/\.(jpe?g)$/i, '.webp');
   if (local && existsSync(join(ROOT, optimized))) return BASE + '/' + optimized;
   if (local && existsSync(join(ROOT, local))) return BASE + '/' + local;
   missingImages.push({ slug: city.slug, expected: local || 'countryImages not set' });
