@@ -417,9 +417,10 @@
             const message = String(event && (event.message || (event.error && event.error.message)) || '');
             if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
 
-            const googleManagedSlots = Array.from(document.querySelectorAll(
-                '.google-auto-placed ' + AD_SELECTOR + ', ' + AD_SELECTOR + '[data-adsbygoogle-status]:not(' + AD_CONTAINER_SELECTOR + ' ' + AD_SELECTOR + ')'
-            )).map(function (ad) {
+            const googleManagedSlots = Array.from(document.querySelectorAll(AD_SELECTOR)).filter(function (ad) {
+                return Boolean(ad.closest('.google-auto-placed')) ||
+                    (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
+            }).map(function (ad) {
                 return {
                     slot: ad.getAttribute('data-ad-slot') || 'google-auto',
                     measurements: getSlotMeasurements(ad)
