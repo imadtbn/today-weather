@@ -109,18 +109,18 @@
 
   function retryFailedImage(img) {
     if (img.dataset.imageManaged === 'true' || img.dataset.imageFallbackApplied === 'true') return;
+    img.dataset.imageManaged = 'true';
     enqueue(async () => {
       const original = img.dataset.imageOriginal || img.currentSrc || img.src;
       img.dataset.imageOriginal = original;
-      const retries = Number(img.dataset.imageRetries || 0);
-      if (retries < MAX_RETRIES) {
-        img.dataset.imageRetries = String(retries + 1);
-        const loaded = await waitForImage(img, withRetryParam(original, retries + 1));
-        if (loaded) return;
-        retryFailedImage(img);
-        return;
+      let loaded = false;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        img.dataset.imageRetries = String(attempt);
+        loaded = await waitForImage(img, withRetryParam(original, attempt));
+        if (loaded) break;
+        await new Promise(resolve => setTimeout(resolve, 250 * attempt));
       }
-      await applyFallback(img);
+      if (!loaded) await applyFallback(img);
     });
   }
 
