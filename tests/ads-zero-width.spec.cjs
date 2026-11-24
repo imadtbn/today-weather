@@ -171,7 +171,8 @@ test('AdSense does not initialize the same slot more than once after resize and 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('script[src*="adsbygoogle.js"]')
     .evaluate(script => script.dispatchEvent(new Event('load')));
-  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
+  const expectedSlots = await page.locator('.ad-container ins.adsbygoogle').count();
+  await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBe(expectedSlots);
   const initialCount = await page.evaluate(() => window.__adsPushCount);
 
   await page.evaluate(() => {
