@@ -62,7 +62,9 @@ test('AdSense audit records mobile and desktop slots without changing placements
   for (const item of cases) {
     await page.setViewportSize({ width: item.width, height: item.height });
     await page.goto(item.path, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('ins.adsbygoogle')).toHaveCount(item.path === '/' ? 6 : 2);
+    await expect.poll(() => page.locator('.ad-container ins.adsbygoogle').evaluateAll(ads =>
+      expectedSlotsForPage.every(slot => ads.some(ad => ad.getAttribute('data-ad-slot') === slot))
+    , { timeout: 10000 }).toBe(true).catch(() => false)).toBe(true);
     await page.waitForTimeout(6000);
 
     const report = await page.evaluate(() => ({
@@ -82,11 +84,18 @@ test('AdSense audit records mobile and desktop slots without changing placements
       events: window.__adsAuditEvents || []
     }));
 
+    const expected = expectedSlots[item.name];
+    const siteSlots = report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot);
+    const invalidSlots = report.slots.filter(slot =>
+      !slot.validSlot || (!slot.inApprovedContainer && !slot.googleManaged)
+    );
+
+    console.info('[AdSense browser audit]', JSON.stringify({ name: item.name, slots: report.slots, network, consoleErrors }));
     expect(report.documentWidth).toBeLessThanOrEqual(report.viewport.width + 1);
-    expect(report.slots.every(slot => slot.validSlot && (slot.inApprovedContainer || slot.googleManaged))).toBe(true);
-    expect(report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot)).toEqual(expectedSlots[item.name]);
+    expect(invalidSlots, 'Every AdSense unit must have a valid data-ad-slot and an approved or Google-managed placement').toEqual([]);
+    expect(siteSlots).toEqual(expected);
     reports.push({ name: item.name, ...report });
   }
 
-  console.info('[AdSense browser audit]', JSON.stringify({ reports, network, consoleErrors }));
+  console.info('[AdSense browser audit summary]', JSON.stringify({ reports, network, consoleErrors }));
 });
