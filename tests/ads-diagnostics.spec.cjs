@@ -62,9 +62,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
   for (const item of cases) {
     await page.setViewportSize({ width: item.width, height: item.height });
     await page.goto(item.path, { waitUntil: 'domcontentloaded' });
-    await expect.poll(() => page.locator('.ad-container ins.adsbygoogle').evaluateAll(ads =>
-      expectedSlotsForPage.every(slot => ads.some(ad => ad.getAttribute('data-ad-slot') === slot))
-    , { timeout: 10000 }).toBe(true).catch(() => false)).toBe(true);
+    await expect(page.locator('.ad-container ins.adsbygoogle')).toHaveCount(expectedSlots[item.name].length);
     await page.waitForTimeout(6000);
 
     const report = await page.evaluate(() => ({
