@@ -1,5 +1,5 @@
-import { readdirSync, statSync, existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { join, relative, dirname, extname } from 'node:path';
+import { readdirSync, statSync, existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'node:fs';
+import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
@@ -40,15 +40,21 @@ async function worker() {
       .resize({ width: MAX_WIDTH, height: MAX_HEIGHT, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: QUALITY, effort: 5, smartSubsample: true })
       .toFile(output);
-    converted++;
+    const outputBytes = statSync(output).size;
     originalBytes += sourceStat.size;
-    optimizedBytes += statSync(output).size;
+    if (outputBytes >= sourceStat.size) {
+      unlinkSync(output);
+      optimizedBytes += sourceStat.size;
+      continue;
+    }
+    converted++;
+    optimizedBytes += outputBytes;
   }
 }
 
 await Promise.all(Array.from({ length: Math.min(CONCURRENCY, sources.length) }, worker));
 
-const htmlFiles = walk(ROOT, path => extname(path).toLowerCase() === '.html');
+const htmlFiles = [join(ROOT, 'index.html'), join(ROOT, 'sitemap.html'), ...walk(join(ROOT, 'weather'), path => extname(path).toLowerCase() === '.html')].filter(existsSync);
 let rewrittenReferences = 0;
 const imageReference = /(^|[\"'(=\s])((?:https?:\/\/imadtbn\.github\.io)?(?:\/today-weather)?\/?images\/[^\"'?#\s)]+)\.(jpe?g)(?=[?#\"'\s)]|$)/gi;
 
