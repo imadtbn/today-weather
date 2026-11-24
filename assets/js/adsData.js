@@ -5,6 +5,7 @@
     const AD_SELECTOR = 'ins.adsbygoogle';
     const AD_CONTAINER_SELECTOR = '.ad-container';
     const initializedAds = new WeakSet();
+    const observedAds = new WeakSet();
     const pendingAds = new Set();
     let resizeObserver = null;
     let flushScheduled = false;
@@ -217,6 +218,17 @@
         });
 
         candidates.forEach(function (ad) {
+            if (!observedAds.has(ad)) {
+                const statusObserver = new MutationObserver(function () {
+                    reportAdStatus(ad);
+                });
+                statusObserver.observe(ad, {
+                    attributes: true,
+                    attributeFilter: ['data-ad-status', 'data-adsbygoogle-status']
+                });
+                observedAds.add(ad);
+            }
+
             if (!isApproved(ad) || initializedAds.has(ad) ||
                 ad.dataset.adsInit === 'pending' || ad.hasAttribute('data-adsbygoogle-status')) {
                 reportAdStatus(ad);
@@ -241,17 +253,12 @@
         window.addEventListener('resize', schedulePendingAds, { passive: true });
         initializeAds();
 
+        // Observe DOM insertions only at document level. Ad status attributes are
+        // watched on each approved slot, not across the entire page subtree.
         const observer = new MutationObserver(function (records) {
             records.forEach(function (record) {
-                if (record.type === 'attributes') {
-                    reportAdStatus(record.target);
-                    return;
-                }
-
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    // Google inserts its own .google-auto-placed wrappers asynchronously.
-                    // Do not pass those nodes through page-owned placement cleanup.
                     if (node.matches('.google-auto-placed') || node.closest('.google-auto-placed')) return;
                     if (node.matches(AD_SELECTOR) || node.querySelector(AD_SELECTOR)) {
                         initializeAds(node);
@@ -260,12 +267,7 @@
             });
         });
 
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['data-ad-status', 'data-adsbygoogle-status']
-        });
+        observer.observe(document.body, { childList: true, subtree: true });
     }
 
     if (document.readyState === 'loading') {
