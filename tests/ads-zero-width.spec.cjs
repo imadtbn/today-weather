@@ -192,6 +192,11 @@ test('AdSense reports zero-width TagErrors separately for Google-managed Auto Ad
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const diagnostic = await page.evaluate(() => new Promise(resolve => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-client="ca-pub-5656416032906373" data-ad-slot="auto-test" style="display:block;width:0px"></ins>';
+    document.body.appendChild(wrapper);
+
     window.addEventListener('adsense:auto-placement-error', event => resolve(event.detail), { once: true });
     window.dispatchEvent(new ErrorEvent('error', {
       message: 'adsbygoogle.push() error: No slot size for availableWidth=0'
@@ -200,4 +205,6 @@ test('AdSense reports zero-width TagErrors separately for Google-managed Auto Ad
 
   expect(diagnostic.message).toContain('No slot size');
   expect(diagnostic.source).toBe('window.error');
+  expect(diagnostic.likelyAutoPlacement).toBe(true);
+  expect(diagnostic.googleManagedSlots).toHaveLength(1);
 });
