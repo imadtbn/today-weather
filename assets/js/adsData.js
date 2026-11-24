@@ -265,7 +265,12 @@
             }
             pendingAds.add(ad);
             const container = ad.closest(AD_CONTAINER_SELECTOR);
-            if (resizeObserver && container) resizeObserver.observe(container);
+            if (resizeObserver) {
+                // Observe the slot itself: its width can change while the wrapper
+                // remains the same size (for example, when a hidden slot is revealed).
+                resizeObserver.observe(ad);
+                if (container) resizeObserver.observe(container);
+            }
         });
         schedulePendingAds();
     }
