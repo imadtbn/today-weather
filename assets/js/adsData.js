@@ -145,11 +145,33 @@
 
     function getAvailableWidth(ad) {
         const container = ad.closest(AD_CONTAINER_SELECTOR);
-        if (!container || !ad.isConnected) return 0;
-        const adWidth = ad.getBoundingClientRect().width;
-        const parentWidth = ad.parentElement ? ad.parentElement.getBoundingClientRect().width : 0;
-        const containerWidth = container.getBoundingClientRect().width;
-        return Math.max(adWidth, parentWidth, containerWidth);
+        if (!container || !ad.isConnected || !container.isConnected) return 0;
+
+        // AdSense measures the <ins> element itself, not the width of its wrapper.
+        // A wide parent must never make a zero-width slot look ready.
+        const rect = ad.getBoundingClientRect();
+        const parentRect = ad.parentElement ? ad.parentElement.getBoundingClientRect() : null;
+        const containerRect = container.getBoundingClientRect();
+        const style = window.getComputedStyle(ad);
+
+        if (!ad.getClientRects().length || style.display === 'none' ||
+            style.visibility === 'hidden' || !parentRect ||
+            parentRect.width < 2 || containerRect.width < 2) {
+            return 0;
+        }
+
+        return rect.width >= 2 ? rect.width : 0;
+    }
+
+    function getNextUninitializedAd() {
+        const ads = document.querySelectorAll(AD_SELECTOR);
+        for (const candidate of ads) {
+            if (initializedAds.has(candidate) || candidate.hasAttribute('data-adsbygoogle-status')) {
+                continue;
+            }
+            return candidate;
+        }
+        return null;
     }
 
     function schedulePendingAds() {
@@ -178,8 +200,14 @@
                 continue;
             }
 
-            // AdSense throws TagError when its next slot has no measurable width.
-            // Preserve DOM order and wait for the first pending slot to become visible.
+            // adsbygoogle.push({}) processes the first uninitialized <ins> in DOM order.
+            // Never push a later approved slot while another uninitialized slot precedes it.
+            if (getNextUninitializedAd() !== ad) {
+                reportAdStatus(ad);
+                break;
+            }
+
+            // Wait until the actual <ins> element (not merely its wrapper) has width.
             if (getAvailableWidth(ad) < 2) {
                 reportAdStatus(ad);
                 break;
@@ -221,6 +249,7 @@
             if (!observedAds.has(ad)) {
                 const statusObserver = new MutationObserver(function () {
                     reportAdStatus(ad);
+                    schedulePendingAds();
                 });
                 statusObserver.observe(ad, {
                     attributes: true,
@@ -259,7 +288,6 @@
             records.forEach(function (record) {
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    if (node.matches('.google-auto-placed') || node.closest('.google-auto-placed')) return;
                     if (node.matches(AD_SELECTOR) || node.querySelector(AD_SELECTOR)) {
                         initializeAds(node);
                     }
