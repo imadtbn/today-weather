@@ -74,7 +74,9 @@ test('AdSense audit records mobile and desktop slots without changing placements
           slot,
           validSlot: /^\d{8,12}$/.test(slot),
           inApprovedContainer: Boolean(ad.closest('.ad-container')),
-          googleManaged: Boolean(ad.closest('.google-auto-placed')),
+          googleManaged: Boolean(ad.closest('.google-auto-placed')) ||
+            (ad.hasAttribute('data-adsbygoogle-status') && !slot && !ad.closest('.ad-container')),
+          inHeader: Boolean(ad.closest('.site-header')),
           status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
           initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
         };
@@ -85,7 +87,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     const expected = expectedSlots[item.name];
     const siteSlots = report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot);
     const invalidSlots = report.slots.filter(slot =>
-      !slot.validSlot || (!slot.inApprovedContainer && !slot.googleManaged)
+      !slot.validSlot || (!slot.inApprovedContainer && !slot.googleManaged) || slot.inHeader
     );
 
     console.info('[AdSense browser audit]', JSON.stringify({ name: item.name, slots: report.slots, network, consoleErrors }));
