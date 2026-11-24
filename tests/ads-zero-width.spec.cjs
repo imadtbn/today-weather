@@ -26,3 +26,19 @@ test('AdSense waits until the first approved slot has measurable width', async (
   });
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
 });
+
+
+test('AdSense-generated auto-placement wrappers are not removed during mutation handling', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  await page.evaluate(() => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-client="ca-pub-5656416032906373" data-ad-slot="9999999999"></ins>';
+    document.body.appendChild(wrapper);
+  });
+
+  await expect(page.locator('body > .google-auto-placed')).toHaveCount(1);
+  await expect(page.locator('body > .google-auto-placed ins.adsbygoogle')).toHaveCount(1);
+});
