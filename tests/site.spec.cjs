@@ -23,7 +23,7 @@ test('city directory renders compact responsive cards and reveals images in batc
 test('large city photographs are served as optimized WebP', async ({ page }) => {
   await page.goto('/weather/algeria/ouargla/', { waitUntil: 'domcontentloaded' });
   const image = page.locator('.city-image-wrap img');
-  await expect(image).toHaveAttribute('src', /images\\/ouargla\\.webp$/);
+  await expect(image).toHaveAttribute('src', /images\/ouargla\.webp$/);
   await expect.poll(() => image.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
 });
 
