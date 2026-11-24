@@ -184,11 +184,6 @@
         };
     }
 
-    function getAvailableWidth(ad) {
-        const m = getSlotMeasurements(ad);
-        if (!ad.closest(AD_CONTAINER_SELECTOR) || !m.visible || m.parentWidth < 2 || m.containerWidth < 2) return 0;
-        return m.slotWidth >= 2 ? m.slotWidth : 0;
-    }
 
     function getNextUninitializedAd() {
         const ads = document.querySelectorAll(AD_SELECTOR);
@@ -244,7 +239,7 @@
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
                 stage: 'before-push',
-                available: getAvailableWidth(ad) >= 2
+                available: Boolean(measurements.visible && measurements.slotWidth >= 2 && measurements.parentWidth >= 2 && measurements.containerWidth >= 2)
             }, measurements);
             emitDiagnostic('adsense:pre-push', diagnostic);
             if (!diagnostic.available) {
