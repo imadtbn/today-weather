@@ -9,6 +9,7 @@
     const reportedHeaderAds = new WeakSet();
     const reportedGoogleManagedAds = new WeakSet();
     const pendingAds = new Set();
+    const stableMeasurements = new WeakMap();
     let resizeObserver = null;
     let flushScheduled = false;
     let adsenseReady = false;
@@ -154,6 +155,13 @@
             Boolean(ad.getAttribute('data-ad-slot'));
     }
 
+    function getContentWidth(element) {
+        if (!element) return 0;
+        const style = window.getComputedStyle(element);
+        const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+        return Math.max(0, element.clientWidth - padding);
+    }
+
     function getSlotMeasurements(ad) {
         const container = ad.closest(AD_CONTAINER_SELECTOR);
         const parent = ad.parentElement;
@@ -162,29 +170,91 @@
         const containerRect = container ? container.getBoundingClientRect() : null;
         const style = window.getComputedStyle(ad);
         let hiddenAncestor = null;
+        let narrowestAncestorWidth = Infinity;
+        const ancestorWidths = [];
+
         for (let node = ad; node && node.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
             const computed = window.getComputedStyle(node);
-            if (computed.display === 'none' || computed.visibility === 'hidden' || computed.visibility === 'collapse' || computed.contentVisibility === 'hidden') {
-                hiddenAncestor = node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') + (node.classList && node.classList.length ? '.' + Array.from(node.classList).join('.') : '');
-                break;
+            const contentWidth = getContentWidth(node);
+            ancestorWidths.push({
+                element: node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') +
+                    (node.classList && node.classList.length ? '.' + Array.from(node.classList).join('.') : ''),
+                clientWidth: node.clientWidth,
+                contentWidth: Math.round(contentWidth * 100) / 100
+            });
+            narrowestAncestorWidth = Math.min(narrowestAncestorWidth, contentWidth);
+
+            if (!hiddenAncestor && (computed.display === 'none' ||
+                computed.visibility === 'hidden' || computed.visibility === 'collapse' ||
+                computed.contentVisibility === 'hidden' || node.hidden)) {
+                hiddenAncestor = node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') +
+                    (node.classList && node.classList.length ? '.' + Array.from(node.classList).join('.') : '');
             }
         }
+
+        const slotWidth = Math.max(0, rect.width);
+        const parentContentWidth = getContentWidth(parent);
+        const containerContentWidth = getContentWidth(container);
+        const availableWidth = Math.max(0, Math.min(
+            slotWidth,
+            parentContentWidth || 0,
+            containerContentWidth || 0,
+            Number.isFinite(narrowestAncestorWidth) ? narrowestAncestorWidth : 0
+        ));
+        const visible = Boolean(ad.isConnected && ad.getClientRects().length &&
+            style.display !== 'none' && style.visibility !== 'hidden' && !hiddenAncestor);
+
         return {
-            slotWidth: Math.round(rect.width * 100) / 100,
+            slotWidth: Math.round(slotWidth * 100) / 100,
+            slotClientWidth: ad.clientWidth,
             slotHeight: Math.round(rect.height * 100) / 100,
             parentWidth: parentRect ? Math.round(parentRect.width * 100) / 100 : 0,
+            parentClientWidth: parent ? parent.clientWidth : 0,
+            parentContentWidth: Math.round(parentContentWidth * 100) / 100,
             parentHeight: parentRect ? Math.round(parentRect.height * 100) / 100 : 0,
             containerWidth: containerRect ? Math.round(containerRect.width * 100) / 100 : 0,
+            containerClientWidth: container ? container.clientWidth : 0,
+            containerContentWidth: Math.round(containerContentWidth * 100) / 100,
             containerHeight: containerRect ? Math.round(containerRect.height * 100) / 100 : 0,
+            availableWidth: Math.round(availableWidth * 100) / 100,
+            narrowestAncestorWidth: Math.round((Number.isFinite(narrowestAncestorWidth) ? narrowestAncestorWidth : 0) * 100) / 100,
+            ancestorWidths: ancestorWidths,
             display: style.display,
             visibility: style.visibility,
             hasClientRects: Boolean(ad.getClientRects().length),
             isConnected: ad.isConnected,
             hiddenAncestor: hiddenAncestor,
-            visible: Boolean(ad.isConnected && ad.getClientRects().length && style.display !== 'none' && style.visibility !== 'hidden' && !hiddenAncestor)
+            visible: visible
         };
     }
 
+    function isStableWidth(ad, measurements) {
+        if (!measurements.visible || measurements.availableWidth < 2) {
+            stableMeasurements.delete(ad);
+            return false;
+        }
+
+        const signature = [
+            measurements.availableWidth,
+            measurements.slotWidth,
+            measurements.parentContentWidth,
+            measurements.containerContentWidth
+        ].join('|');
+        const previous = stableMeasurements.get(ad);
+
+        if (!previous || previous.signature !== signature) {
+            stableMeasurements.set(ad, { signature: signature, frames: 1 });
+            requestAnimationFrame(schedulePendingAds);
+            return false;
+        }
+
+        previous.frames += 1;
+        if (previous.frames < 2) {
+            requestAnimationFrame(schedulePendingAds);
+            return false;
+        }
+        return true;
+    }
 
     function getNextUninitializedAd() {
         const ads = document.querySelectorAll(AD_SELECTOR);
@@ -236,18 +306,26 @@
 
             // Record exact slot and ancestor geometry immediately before push().
             const measurements = getSlotMeasurements(ad);
+            const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2 &&
+                measurements.slotClientWidth >= 2 && measurements.parentContentWidth >= 2 &&
+                measurements.containerContentWidth >= 2);
+            const stable = hasWidth && isStableWidth(ad, measurements);
             const diagnostic = Object.assign({
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
                 stage: 'before-push',
-                available: Boolean(measurements.visible && measurements.slotWidth >= 2 && measurements.parentWidth >= 2 && measurements.containerWidth >= 2)
+                available: hasWidth && stable,
+                stableFrames: stableMeasurements.get(ad) ? stableMeasurements.get(ad).frames : 0
             }, measurements);
             emitDiagnostic('adsense:pre-push', diagnostic);
-            if (!diagnostic.available) {
-                emitDiagnostic('adsense:blocked', Object.assign({}, diagnostic, { reason: 'slot-width-not-measurable' }));
+            if (!hasWidth || !stable) {
+                emitDiagnostic('adsense:blocked', Object.assign({}, diagnostic, {
+                    reason: !hasWidth ? 'slot-width-not-measurable' : 'slot-width-not-stable-for-two-frames'
+                }));
                 reportAdStatus(ad);
                 break;
             }
+            stableMeasurements.delete(ad);
             pendingAds.delete(ad);
             initializedAds.add(ad);
             ad.dataset.adsInit = 'pending';
@@ -323,17 +401,54 @@
             pendingAds.add(ad);
             const container = ad.closest(AD_CONTAINER_SELECTOR);
             if (resizeObserver) {
-                // Observe the slot itself: its width can change while the wrapper
-                // remains the same size (for example, when a hidden slot is revealed).
-                resizeObserver.observe(ad);
-                if (container) resizeObserver.observe(container);
+                // Observe the slot and every sizing ancestor: an intermediate grid/flex
+                // wrapper can collapse while the outer ad container remains unchanged.
+                for (let node = ad; node && node.nodeType === Node.ELEMENT_NODE; node = node.parentElement) {
+                    resizeObserver.observe(node);
+                    if (node === document.body) break;
+                }
             }
         });
         schedulePendingAds();
     }
 
+    function watchAdSenseErrors() {
+        window.addEventListener('error', function (event) {
+            const message = String(event && (event.message || (event.error && event.error.message)) || '');
+            if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
+
+            const googleManagedSlots = Array.from(document.querySelectorAll(AD_SELECTOR)).filter(function (ad) {
+                return Boolean(ad.closest('.google-auto-placed')) ||
+                    (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
+            }).map(function (ad) {
+                return {
+                    slot: ad.getAttribute('data-ad-slot') || 'google-auto',
+                    measurements: getSlotMeasurements(ad)
+                };
+            });
+            emitDiagnostic('adsense:auto-placement-error', {
+                source: 'window.error',
+                message: message,
+                googleManagedSlots: googleManagedSlots,
+                likelyAutoPlacement: googleManagedSlots.length > 0
+            });
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+            const reason = event && event.reason;
+            const message = String(reason && reason.message || reason || '');
+            if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
+            emitDiagnostic('adsense:auto-placement-error', {
+                source: 'unhandledrejection',
+                message: message,
+                likelyAutoPlacement: true
+            });
+        });
+    }
+
     function start() {
         watchLoader();
+        watchAdSenseErrors();
 
         if ('ResizeObserver' in window) {
             resizeObserver = new ResizeObserver(schedulePendingAds);
@@ -342,6 +457,7 @@
             });
         }
         window.addEventListener('resize', schedulePendingAds, { passive: true });
+        document.addEventListener('visibilitychange', schedulePendingAds);
         initializeAds();
 
         // Observe DOM insertions only at document level. Ad status attributes are
@@ -357,7 +473,12 @@
             });
         });
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden']
+        });
     }
 
     if (document.readyState === 'loading') {
