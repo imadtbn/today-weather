@@ -81,11 +81,13 @@
   async function applyFallback(img) {
     if (img.dataset.imageFallbackApplied === 'true') {
       img.classList.add('image-load-failed');
+      img.style.visibility = 'hidden';
       img.setAttribute('aria-hidden', 'true');
       return;
     }
     img.dataset.imageFallbackApplied = 'true';
     img.dataset.imageManaged = 'true';
+    img.alt = 'صورة توضيحية بديلة';
     img.removeAttribute('srcset');
     const loaded = await waitForImage(img, fallbackUrl);
     if (loaded) img.dataset.imageLoaded = 'true';
