@@ -113,22 +113,24 @@
     }
 
     function removeUnapprovedPlacements(root) {
+        // Never remove Google-managed placements. AdSense may still be resolving
+        // a generated slot when its wrapper first appears in the DOM; removing it
+        // at that moment causes the provider's "no_div" TagError.
         const scope = root && root.querySelectorAll ? root : document;
-        if (scope.matches && scope.matches('.google-auto-placed') &&
-            (!scope.closest(AD_CONTAINER_SELECTOR) || scope.closest('.site-header'))) {
-            scope.remove();
-            return;
-        }
-        if (scope.matches && scope.matches(AD_SELECTOR) &&
-            (!scope.closest(AD_CONTAINER_SELECTOR) || scope.closest('.site-header'))) {
-            scope.remove();
-            return;
-        }
-        scope.querySelectorAll('.google-auto-placed').forEach(function (wrapper) {
-            if (!wrapper.closest(AD_CONTAINER_SELECTOR) || wrapper.closest('.site-header')) wrapper.remove();
-        });
+        const candidates = [];
+        if (scope.matches && scope.matches(AD_SELECTOR)) candidates.push(scope);
         scope.querySelectorAll(AD_SELECTOR).forEach(function (ad) {
-            if (!ad.closest(AD_CONTAINER_SELECTOR) || ad.closest('.site-header')) ad.remove();
+            candidates.push(ad);
+        });
+
+        candidates.forEach(function (ad) {
+            if (ad.closest('.google-auto-placed')) return;
+            if (ad.hasAttribute('data-adsbygoogle-status')) return;
+            if (!ad.closest(AD_CONTAINER_SELECTOR) || ad.closest('.site-header')) {
+                // This is uninitialized markup owned by the page, not an
+                // AdSense-generated node. Safe to discard before provider pickup.
+                ad.remove();
+            }
         });
     }
 
@@ -248,8 +250,10 @@
 
                 record.addedNodes.forEach(function (node) {
                     if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    if (node.matches(AD_SELECTOR) || node.querySelector(AD_SELECTOR) ||
-                        node.matches('.google-auto-placed') || node.querySelector('.google-auto-placed')) {
+                    // Google inserts its own .google-auto-placed wrappers asynchronously.
+                    // Do not pass those nodes through page-owned placement cleanup.
+                    if (node.matches('.google-auto-placed') || node.closest('.google-auto-placed')) return;
+                    if (node.matches(AD_SELECTOR) || node.querySelector(AD_SELECTOR)) {
                         initializeAds(node);
                     }
                 });
