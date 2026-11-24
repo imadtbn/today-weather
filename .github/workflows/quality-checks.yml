@@ -2,7 +2,7 @@ name: Site quality checks
 
 on:
   push:
-    branches: [main, codex/phase-3-quality-pwa]
+    branches: [main, codex/phase-1-service-worker-cache]
   pull_request:
     branches: [main]
   workflow_dispatch:
