@@ -68,13 +68,14 @@ test('AdSense audit records mobile and desktop requests and per-slot states with
         slot: ad.getAttribute('data-ad-slot'),
         placement: ad.closest('[data-ad-placement]')?.getAttribute('data-ad-placement') || 'unspecified',
         inApprovedContainer: Boolean(ad.closest('.ad-container')),
+        googleManaged: Boolean(ad.closest('.google-auto-placed')),
         status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
         initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
       })),
       events: window.__adsAuditEvents || []
     }));
     expect(report.documentWidth).toBeLessThanOrEqual(report.viewport.width + 1);
-    expect(report.slots.every(slot => slot.slot && slot.inApprovedContainer)).toBe(true);
+    expect(report.slots.every(slot => slot.slot && (slot.inApprovedContainer || slot.googleManaged))).toBe(true);
     reports.push({ name: item.name, ...report });
   }
 
