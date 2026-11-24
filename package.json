@@ -5,7 +5,9 @@
     "build:seo": "node scripts/generate-city-pages.mjs",
     "validate": "npm run build:seo && node scripts/validate-site.mjs && node scripts/audit-resources.mjs",
     "verify:published-communes": "node scripts/verify-published-communes.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:city-weather-api": "node --test tests/city-weather-api.test.cjs",
+    "test:api": "npm run test:city-weather-api"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
