@@ -7,6 +7,7 @@
     const initializedAds = new WeakSet();
     const observedAds = new WeakSet();
     const reportedHeaderAds = new WeakSet();
+    const reportedGoogleManagedAds = new WeakSet();
     const pendingAds = new Set();
     let resizeObserver = null;
     let flushScheduled = false;
@@ -280,7 +281,20 @@
         });
 
         candidates.forEach(function (ad) {
-            if (ad.closest('.site-header') && (ad.closest('.google-auto-placed') || ad.hasAttribute('data-adsbygoogle-status')) && !reportedHeaderAds.has(ad)) {
+            const googleManaged = Boolean(ad.closest('.google-auto-placed')) ||
+                (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
+            if (googleManaged && !reportedGoogleManagedAds.has(ad)) {
+                reportedGoogleManagedAds.add(ad);
+                const measurements = getSlotMeasurements(ad);
+                const inHeader = Boolean(ad.closest('.site-header'));
+                emitDiagnostic('adsense:auto-placement', {
+                    slot: ad.getAttribute('data-ad-slot') || 'google-auto',
+                    placement: inHeader ? 'site-header' : 'google-auto-placement',
+                    zeroWidth: measurements.slotWidth < 2 || measurements.parentWidth < 2,
+                    measurements
+                });
+            }
+            if (ad.closest('.site-header') && googleManaged && !reportedHeaderAds.has(ad)) {
                 reportedHeaderAds.add(ad);
                 emitDiagnostic('adsense:placement-warning', {
                     slot: ad.getAttribute('data-ad-slot') || 'google-auto',
