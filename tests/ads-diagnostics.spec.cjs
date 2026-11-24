@@ -52,6 +52,8 @@ test('AdSense audit records mobile and desktop slots without changing placements
     window.__adsAuditEvents = [];
     window.addEventListener('adsense:loader', event => window.__adsAuditEvents.push({ kind: 'loader', ...event.detail }));
     window.addEventListener('adsense:status', event => window.__adsAuditEvents.push({ kind: 'slot', ...event.detail }));
+    window.addEventListener('adsense:pre-push', event => window.__adsAuditEvents.push({ kind: 'pre-push', ...event.detail }));
+    window.addEventListener('adsense:placement-warning', event => window.__adsAuditEvents.push({ kind: 'placement-warning', ...event.detail }));
   });
 
   const cases = [
@@ -83,6 +85,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
             (ad.hasAttribute('data-adsbygoogle-status') && !slot && !ad.closest('.ad-container')),
           inHeader: Boolean(ad.closest('.site-header')),
           status: ad.getAttribute('data-ad-status') || ad.dataset.adsDiagnosticStatus || 'pending',
+          geometry: { slotWidth: ad.getBoundingClientRect().width, parentWidth: ad.parentElement?.getBoundingClientRect().width || 0, containerWidth: ad.closest('.ad-container')?.getBoundingClientRect().width || 0, visible: Boolean(ad.getClientRects().length && getComputedStyle(ad).display !== 'none') },
           initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
         };
       }),
@@ -107,4 +110,29 @@ test('AdSense audit records mobile and desktop slots without changing placements
   }
 
   console.info('[AdSense browser audit summary]', JSON.stringify({ reports, network, consoleErrors }));
+});
+
+
+test('Google-managed Auto ads in the header remain hidden and are diagnosed', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__headerAdWarnings = [];
+    window.addEventListener('adsense:placement-warning', event => window.__headerAdWarnings.push(event.detail));
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-adsbygoogle-status="done"></ins>';
+    document.querySelector('.site-header').appendChild(wrapper);
+  });
+
+  const autoAd = page.locator('.site-header .google-auto-placed ins.adsbygoogle');
+  await expect(autoAd).toHaveCount(1);
+  await expect.poll(() => autoAd.evaluate(node => getComputedStyle(node.parentElement).display)).toBe('none');
+  await expect.poll(() => page.evaluate(() => window.__headerAdWarnings.length)).toBe(1);
+  const warning = await page.evaluate(() => window.__headerAdWarnings[0]);
+  expect(warning.placement).toBe('site-header');
+  expect(warning.reason).toContain('exclude header placements');
 });
