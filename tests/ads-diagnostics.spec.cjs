@@ -25,6 +25,8 @@ test('AdSense loader readiness requires an explicit successful onload marker', a
 
 
 test('AdSense audit records mobile and desktop slots without changing placements', async ({ page }) => {
+  // Ten page/viewport combinations each retain the six-second provider observation window.
+  test.setTimeout(90000);
   const network = [];
   const consoleErrors = [];
   page.on('request', request => {
