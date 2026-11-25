@@ -3197,6 +3197,14 @@ body {
 @media(max-width:360px){.city-discovery-card{min-height:154px;}.city-discovery-image{min-height:140px;}}
 
 
+/* Shared width boundary for primary ad placements across the homepage and generated pages. */
+.ad-placement-wrap {
+    width: min(100%, 1180px);
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 0;
+}
+
 /* Consistent AdSense presentation: visible, centered and responsive without oversized blank gaps. */
 .ad-container {
     width: min(100%, 970px);
