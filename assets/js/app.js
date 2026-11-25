@@ -285,12 +285,6 @@ const App = {
         // قائمة الجوال
         const menuButton = document.getElementById('mobileMenuBtn');
         const mainNav = document.getElementById('mainNav');
-        menuButton?.addEventListener('click', () => {
-            const expanded = mainNav?.classList.toggle('active') || false;
-            menuButton.setAttribute('aria-expanded', String(expanded));
-            menuButton.setAttribute('aria-label', expanded ? 'إغلاق قائمة التنقل' : 'فتح قائمة التنقل');
-        });
-
         // طبقات الخريطة
         document.querySelectorAll('.map-btn').forEach(btn => {
             btn.addEventListener('click', function() {
