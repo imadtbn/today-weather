@@ -514,7 +514,7 @@
                 const message = parts.join(' ');
                 if (/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message)) {
                     reportAdSenseProviderError('console.error', message, {
-                    stack: parts.find(function (part) { return part.indexOf(' at ') !== -1; }) || null
+                        stack: parts.find(function (part) { return part.indexOf(' at ') !== -1; }) || null
                     });
                 }
                 return originalError.apply(this, arguments);
