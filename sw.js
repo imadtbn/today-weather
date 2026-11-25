@@ -1,4 +1,4 @@
-const CACHE_NAME = 'today-weather-shell-v21';
+const CACHE_NAME = 'today-weather-shell-v22';
 const RUNTIME_CACHE_NAME = 'today-weather-runtime-v1';
 const MAX_RUNTIME_ENTRIES = 120;
 const MAX_CACHED_IMAGES = 45;

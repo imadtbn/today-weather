@@ -285,7 +285,7 @@ function adBlock(position) {
     ? '<ins class="adsbygoogle" style="display:block;width:100%;min-height:90px" data-ad-format="fluid" data-ad-layout-key="-fr+56+4k-d4+74" data-ad-client="ca-pub-5656416032906373" data-ad-slot="7867079394"></ins>'
     : '<ins class="adsbygoogle" style="display:block;width:100%;min-height:90px" data-ad-client="ca-pub-5656416032906373" data-ad-slot="3143411927" data-ad-format="auto" data-full-width-responsive="true"></ins>';
   const placement = position === 'top' ? 'top' : 'footer';
-  return '<div class="container city-ad-wrap"><div class="ad-container" data-ad-placement="' + placement + '"><span class="ad-label">إعلان</span><div class="ad-placeholder">' + unit + '</div></div></div>';
+  return '<div class="ad-placement-wrap"><div class="ad-container" data-ad-placement="' + placement + '"><span class="ad-label">إعلان</span><div class="ad-placeholder">' + unit + '</div></div></div>';
 }
 
 function buildDirectory(group) {
