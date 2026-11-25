@@ -282,9 +282,17 @@ const App = {
             }
         });
 
-        // قائمة الجوال
+        // قائمة الجوال: معالج موحد تستخدمه الصفحة الرئيسية والصفحات الداخلية.
         const menuButton = document.getElementById('mobileMenuBtn');
         const mainNav = document.getElementById('mainNav');
+        if (menuButton && mainNav && !menuButton.dataset.navigationBound) {
+            menuButton.dataset.navigationBound = 'true';
+            menuButton.addEventListener('click', () => {
+                const isOpen = mainNav.classList.toggle('active');
+                menuButton.setAttribute('aria-expanded', String(isOpen));
+                menuButton.setAttribute('aria-label', isOpen ? 'إغلاق قائمة التنقل' : 'فتح قائمة التنقل');
+            });
+        }
         // طبقات الخريطة
         document.querySelectorAll('.map-btn').forEach(btn => {
             btn.addEventListener('click', function() {
