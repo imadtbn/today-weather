@@ -374,3 +374,5 @@ const CubeWeather = {
         this.timer = setInterval(() => this.refresh(), this.REFRESH_INTERVAL);
     }
 };
+
+if (typeof module !== 'undefined' && module.exports) module.exports = WeatherService;
