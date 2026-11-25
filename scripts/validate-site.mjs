@@ -330,7 +330,7 @@ assert.ok(html.includes('id="weather-guide-title"'), 'Indexable weather guide co
 const homeHeroStart = html.indexOf('class="hero-section"');
 const homeHeroEnd = html.indexOf('</section>', homeHeroStart);
 const homeHeroAd = html.indexOf('data-ad-slot="7867079394"');
-const homeFooterAd = html.indexOf('data-ad-slot="6528123169"');
+const homeFooterAd = html.indexOf('data-ad-slot="3143411927"');
 const homeFooter = html.indexOf('<footer class="site-footer"');
 assert.ok(homeHeroStart >= 0 && homeHeroEnd > homeHeroStart && homeHeroAd > homeHeroEnd && homeHeroAd < html.indexOf('id="currentWeather"'), 'Homepage hero ad must appear immediately after the hero');
 assert.ok(homeFooterAd > html.indexOf('</main>') && homeFooterAd < homeFooter, 'Homepage footer ad must appear between main and footer');
