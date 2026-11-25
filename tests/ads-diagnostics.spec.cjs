@@ -55,22 +55,28 @@ test('AdSense audit records mobile and desktop slots without changing placements
     window.addEventListener('adsense:pre-push', event => window.__adsAuditEvents.push({ kind: 'pre-push', ...event.detail }));
     window.addEventListener('adsense:placement-warning', event => window.__adsAuditEvents.push({ kind: 'placement-warning', ...event.detail }));
     window.addEventListener('adsense:auto-placement', event => window.__adsAuditEvents.push({ kind: 'auto-placement', ...event.detail }));
+    window.addEventListener('adsense:push', event => window.__adsAuditEvents.push({ kind: 'push', ...event.detail }));
+    window.addEventListener('adsense:tag-error', event => window.__adsAuditEvents.push({ kind: 'tag-error', ...event.detail }));
+    window.addEventListener('adsense:auto-placement-error', event => window.__adsAuditEvents.push({ kind: 'auto-placement-error', ...event.detail }));
   });
 
-  const cases = [
-    { name: 'mobile-home', width: 390, height: 844, path: '/' },
-    { name: 'desktop-city', width: 1440, height: 1000, path: '/weather/algeria/algiers/' }
+  const routes = [
+    { name: 'home', path: '/', slots: ['7867079394', '6528123169', '8546947691', '1760836049', '6152718642', '3143411927'] },
+    { name: 'wilaya', path: '/weather/algeria/batna/', slots: ['7867079394', '3143411927'] },
+    { name: 'commune', path: '/weather/algeria/communes/batna/tilatou/', slots: ['7867079394', '3143411927'] },
+    { name: 'arab-capital', path: '/weather/arab/doha/', slots: ['7867079394', '3143411927'] },
+    { name: 'world-city', path: '/weather/world/dakar/', slots: ['7867079394', '3143411927'] }
   ];
-  const expectedSlots = {
-    'mobile-home': ['7867079394', '6528123169', '8546947691', '1760836049', '6152718642', '3143411927'],
-    'desktop-city': ['7867079394', '3143411927']
-  };
+  const cases = routes.flatMap(route => [
+    { ...route, name: 'mobile-' + route.name, width: 390, height: 844 },
+    { ...route, name: 'desktop-' + route.name, width: 1440, height: 1000 }
+  ]);
   const reports = [];
 
   for (const item of cases) {
     await page.setViewportSize({ width: item.width, height: item.height });
     await page.goto(item.path, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.ad-container ins.adsbygoogle')).toHaveCount(expectedSlots[item.name].length);
+    await expect(page.locator('.ad-container ins.adsbygoogle')).toHaveCount(item.slots.length);
     await page.waitForTimeout(6000);
 
     const report = await page.evaluate(() => ({
@@ -90,10 +96,12 @@ test('AdSense audit records mobile and desktop slots without changing placements
           initialized: ad.getAttribute('data-adsbygoogle-status') || ad.dataset.adsInit || 'not-marked'
         };
       }),
-      events: window.__adsAuditEvents || []
+      events: window.__adsAuditEvents || [],
+      pushEvents: (window.__adsAuditEvents || []).filter(event => event.kind === 'push'),
+      tagErrors: (window.__adsAuditEvents || []).filter(event => event.kind === 'tag-error' || event.kind === 'auto-placement-error')
     }));
 
-    const expected = expectedSlots[item.name];
+    const expected = item.slots;
     const siteSlots = report.slots.filter(slot => slot.inApprovedContainer).map(slot => slot.slot);
     const invalidSlots = report.slots.filter(slot =>
       (!slot.validSlot && !slot.googleManaged) || (!slot.inApprovedContainer && !slot.googleManaged) || slot.inHeader
@@ -105,6 +113,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     ).toEqual([]);
     console.info('[AdSense browser audit]', JSON.stringify({ name: item.name, slots: report.slots, network, consoleErrors }));
     expect(report.documentWidth).toBeLessThanOrEqual(report.viewport.width + 1);
+    expect(report.tagErrors, 'AdSense TagError diagnostics must be empty during the browser audit').toEqual([]);
     expect(invalidSlots, 'Every AdSense unit must have a valid data-ad-slot and an approved or Google-managed placement').toEqual([]);
     expect(siteSlots).toEqual(expected);
     reports.push({ name: item.name, ...report });
@@ -211,4 +220,74 @@ test('Unified ad placements stay visible until AdSense confirms a final unfilled
     await expect(page.locator('.ad-container[data-ad-placement="footer"]')).not.toHaveCSS('display', 'none');
     }
   }
+});
+
+
+test('AdSense TagError diagnostics preserve the original message, stack, push count and slot states', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__tagErrorReports = [];
+    window.addEventListener('adsense:tag-error', event => window.__tagErrorReports.push(event.detail));
+  });
+
+  await page.goto('/weather/algeria/communes/batna/tilatou/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    const error = new Error('TagError: simulated provider failure');
+    error.stack = 'TagError: simulated provider failure\\n    at simulatedAdCall (adsbygoogle.js:155:253)';
+    window.dispatchEvent(new ErrorEvent('error', {
+      message: 'TagError: simulated provider failure',
+      filename: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
+      lineno: 155,
+      colno: 253,
+      error
+    }));
+  });
+
+  await expect.poll(() => page.evaluate(() => window.__tagErrorReports.length)).toBe(1);
+  const report = await page.evaluate(() => window.__tagErrorReports[0]);
+  expect(report.message).toContain('TagError: simulated provider failure');
+  expect(report.stack).toContain('simulatedAdCall');
+  expect(report.filename).toContain('adsbygoogle.js');
+  expect(report.line).toBe(155);
+  expect(report.column).toBe(253);
+  expect(report.pushCount).toBe(0);
+  expect(report.page).toContain('/weather/algeria/communes/batna/tilatou/');
+  expect(report.slots).toHaveLength(2);
+  expect(report.slots.every(slot => slot.owner === 'manual')).toBe(true);
+  expect(report.slots.every(slot => slot.measurements.containerContentWidth >= 0)).toBe(true);
+});
+
+
+test('Manual AdSense units are pushed once each and are not reinitialized by repeated observers', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.fulfill({
+    contentType: 'application/javascript',
+    body: 'window.__adsPushes = []; window.adsbygoogle = { push: function (item) { window.__adsPushes.push(item); return window.__adsPushes.length; } };'
+  }));
+
+  await page.addInitScript(() => {
+    window.__adsPushEvents = [];
+    window.addEventListener('adsense:push', event => window.__adsPushEvents.push(event.detail));
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/weather/algeria/communes/batna/tilatou/', { waitUntil: 'domcontentloaded' });
+  await expect.poll(() => page.evaluate(() => (window.__adsPushes || []).length)).toBe(2);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new Event('resize'));
+    document.querySelectorAll('.ad-container').forEach(container => {
+      container.classList.toggle('ads-test-observed');
+    });
+  });
+  await page.waitForTimeout(250);
+
+  const result = await page.evaluate(() => ({
+    pushes: window.__adsPushes.length,
+    events: window.__adsPushEvents,
+    slots: [...document.querySelectorAll('.ad-container ins.adsbygoogle')].map(ad => ad.dataset.adsInit)
+  }));
+  expect(result.pushes).toBe(2);
+  expect(result.events).toHaveLength(2);
+  expect(new Set(result.events.map(event => event.slot))).toEqual(new Set(['7867079394', '3143411927']));
+  expect(result.slots).toEqual(['queued', 'queued']);
 });
