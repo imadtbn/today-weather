@@ -70,8 +70,11 @@ const SpecializedWeather = (() => {
   function total(values, start, count) {
     return (values || []).slice(start, start + count).reduce((sum, item) => sum + (Number(item) || 0), 0);
   }
+  function toNumber(value) {
+    return value === null || value === undefined || value === "" ? NaN : Number(value);
+  }
   function number(value, digits = 1) {
-    const parsed = Number(value);
+    const parsed = toNumber(value);
     return Number.isFinite(parsed) ? parsed.toFixed(digits) : "غير متاح";
   }
   function extra(cardId, key, label, content) {
@@ -108,9 +111,9 @@ const SpecializedWeather = (() => {
         "&hourly=et0_fao_evapotranspiration,soil_moisture_0_to_7cm,soil_moisture_7_to_28cm,soil_temperature_0cm,precipitation&forecast_days=2");
       const hourly = data.hourly || {}, start = index(hourly.time);
       const et0 = total(hourly.et0_fao_evapotranspiration, start, 24);
-      const soil = Number(hourly.soil_moisture_0_to_7cm?.[start]);
-      const soilDeep = Number(hourly.soil_moisture_7_to_28cm?.[start]);
-      const soilTemp = Number(hourly.soil_temperature_0cm?.[start]);
+      const soil = toNumber(hourly.soil_moisture_0_to_7cm?.[start]);
+      const soilDeep = toNumber(hourly.soil_moisture_7_to_28cm?.[start]);
+      const soilTemp = toNumber(hourly.soil_temperature_0cm?.[start]);
       const precipitation = total(hourly.precipitation, start, 24);
       value("agriEt0", number(et0));
       value("agriSoil", Number.isFinite(soil) ? number(soil, 3) : "غير متاح");
@@ -135,15 +138,15 @@ const SpecializedWeather = (() => {
         "&hourly=wave_height,wave_direction,wave_period,wind_wave_height,swell_wave_height,sea_surface_temperature&forecast_days=3");
       const hourly = data.hourly || {}, start = index(hourly.time);
       if (!hourly.time?.length || hourly.wave_height?.[start] == null) throw new Error("Marine data unavailable for coordinates");
-      const height = Number(hourly.wave_height[start]);
-      const direction = Number(hourly.wave_direction?.[start]);
-      const period = Number(hourly.wave_period?.[start]);
-      const temperature = Number(hourly.sea_surface_temperature?.[start]);
+      const height = toNumber(hourly.wave_height[start]);
+      const direction = toNumber(hourly.wave_direction?.[start]);
+      const period = toNumber(hourly.wave_period?.[start]);
+      const temperature = toNumber(hourly.sea_surface_temperature?.[start]);
       value("marineWave", number(height) + " م");
       value("marineDirection", Number.isFinite(direction) ? Math.round(direction) + "°" : "غير متاح");
       value("marinePeriod", Number.isFinite(period) ? number(period) + " ث" : "غير متاح");
-      extra("marineCard", "wind-wave", "موج الرياح", Number.isFinite(Number(hourly.wind_wave_height?.[start])) ? number(hourly.wind_wave_height[start]) + " م" : "غير متاح");
-      extra("marineCard", "swell-wave", "موج الانتفاخ", Number.isFinite(Number(hourly.swell_wave_height?.[start])) ? number(hourly.swell_wave_height[start]) + " م" : "غير متاح");
+      extra("marineCard", "wind-wave", "موج الرياح", Number.isFinite(toNumber(hourly.wind_wave_height?.[start])) ? number(hourly.wind_wave_height[start]) + " م" : "غير متاح");
+      extra("marineCard", "swell-wave", "موج الانتفاخ", Number.isFinite(toNumber(hourly.swell_wave_height?.[start])) ? number(hourly.swell_wave_height[start]) + " م" : "غير متاح");
       const condition = height < .5 ? "هادئة نسبياً" : height < 1.25 ? "معتدلة" : height < 2.5 ? "مرتفعة" : "عالية جداً";
       value("marineAdvice", "حالة الموج " + condition + "." +
         (Number.isFinite(temperature) ? " حرارة سطح البحر " + number(temperature) + " °C." : "") +
@@ -159,9 +162,9 @@ const SpecializedWeather = (() => {
       const data = await request("https://air-quality-api.open-meteo.com/v1/air-quality?" + query +
         "&hourly=european_aqi,us_aqi,pm2_5,pm10,nitrogen_dioxide,ozone&forecast_days=2");
       const hourly = data.hourly || {}, start = index(hourly.time);
-      const eu = Number(hourly.european_aqi?.[start]), us = Number(hourly.us_aqi?.[start]);
-      const pm25 = Number(hourly.pm2_5?.[start]), pm10 = Number(hourly.pm10?.[start]);
-      const no2 = Number(hourly.nitrogen_dioxide?.[start]), ozone = Number(hourly.ozone?.[start]);
+      const eu = toNumber(hourly.european_aqi?.[start]), us = toNumber(hourly.us_aqi?.[start]);
+      const pm25 = toNumber(hourly.pm2_5?.[start]), pm10 = toNumber(hourly.pm10?.[start]);
+      const no2 = toNumber(hourly.nitrogen_dioxide?.[start]), ozone = toNumber(hourly.ozone?.[start]);
       if (![eu, us, pm25, pm10, no2, ozone].some(Number.isFinite)) throw new Error("No air-quality data");
       value("airAqi", Number.isFinite(eu) ? Math.round(eu) : "غير متاح");
       value("airPm25", Number.isFinite(pm25) ? number(pm25) : "غير متاح");
@@ -187,10 +190,10 @@ const SpecializedWeather = (() => {
         "&hourly=precipitation,precipitation_probability,rain,showers&daily=precipitation_sum,precipitation_probability_max,precipitation_hours&forecast_days=7");
       const hourly = data.hourly || {}, daily = data.daily || {}, start = index(hourly.time);
       const next24 = total(hourly.precipitation, start, 24);
-      const probability = Math.max(0, ...(hourly.precipitation_probability || []).slice(start, start + 24).map(v => Number(v) || 0));
+      const probability = Math.max(0, ...(hourly.precipitation_probability || []).slice(start, start + 24).map(v => toNumber(v) || 0));
       const rain7 = total(daily.precipitation_sum, 0, 7);
       const hours7 = total(daily.precipitation_hours, 0, 7);
-      const maxDailyProbability = Math.max(0, ...(daily.precipitation_probability_max || []).map(v => Number(v) || 0));
+      const maxDailyProbability = Math.max(0, ...(daily.precipitation_probability_max || []).map(v => toNumber(v) || 0));
       value("rainNext24", number(next24) + " مم");
       value("rainProbability", Math.round(probability) + "%");
       value("rainNext7", number(rain7) + " مم");
