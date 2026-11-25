@@ -62,7 +62,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     { name: 'desktop-city', width: 1440, height: 1000, path: '/weather/algeria/algiers/' }
   ];
   const expectedSlots = {
-    'mobile-home': ['7867079394', '3143411927', '8546947691', '1760836049', '6152718642', '3143411927'],
+    'mobile-home': ['7867079394', '6528123169', '8546947691', '1760836049', '6152718642', '3143411927'],
     'desktop-city': ['7867079394', '3143411927']
   };
   const reports = [];
