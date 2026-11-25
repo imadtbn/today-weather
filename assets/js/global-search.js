@@ -248,16 +248,6 @@
     });
     var hasAppController = !!document.querySelector('script[src$="app.js"]');
     if (!hasAppController) {
-      var menu = document.getElementById('mobileMenuBtn');
-      var nav = document.getElementById('mainNav');
-      if (menu && nav && !menu.dataset.globalSearchMenuBound) {
-        menu.dataset.globalSearchMenuBound = 'true';
-        menu.addEventListener('click', function () {
-          var open = nav.classList.toggle('active');
-          menu.setAttribute('aria-expanded', String(open));
-          menu.setAttribute('aria-label', open ? 'إغلاق قائمة التنقل' : 'فتح قائمة التنقل');
-        });
-      }
       var locationButton = document.getElementById('locationBtn');
       if (locationButton && !locationButton.dataset.globalSearchLocationBound) {
         locationButton.dataset.globalSearchLocationBound = 'true';
