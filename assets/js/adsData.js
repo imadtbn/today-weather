@@ -460,10 +460,7 @@
     function reportAdSenseProviderError(source, message, errorDetails) {
         const googleManagedSlots = getGoogleManagedSlots();
         const snapshot = getAdDiagnosticsSnapshot();
-        const isAutoPlacementError = googleManagedSlots.length > 0 &&
-            (!lastPush || snapshot.some(function (slot) {
-                return slot.owner === 'google-managed' && slot.providerStatus !== 'done';
-            }));
+        const isAutoPlacementError = !lastPush && googleManagedSlots.length > 0;
         emitDiagnostic(isAutoPlacementError ? 'adsense:auto-placement-error' : 'adsense:tag-error', {
             source: source,
             message: message || 'AdSense reported an error without a readable message',
