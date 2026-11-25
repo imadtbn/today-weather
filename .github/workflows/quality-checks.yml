@@ -22,3 +22,19 @@ jobs:
           node-version: 22
       - name: Generate and validate all static city and commune pages
         run: npm run validate
+
+  ads-browser:
+    name: AdSense placement browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund --no-package-lock
+      - name: Install Chromium for focused AdSense tests
+        run: npx playwright install --with-deps chromium
+      - name: Test AdSense placements across mobile and desktop page templates
+        run: npm run test:ads
