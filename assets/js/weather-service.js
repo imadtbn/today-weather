@@ -1,26 +1,150 @@
 // 6. WEATHER SERVICE
 // ============================================
+const primaryWeatherCache = new Map();
+const primaryWeatherPending = new Map();
+const PRIMARY_WEATHER_TTL = 10 * 60 * 1000;
+
+function primaryWeatherId(code) {
+    if (code === 0) return 800;
+    if (code === 1) return 801;
+    if (code === 2) return 802;
+    if (code === 3) return 804;
+    if (code === 45 || code === 48) return 741;
+    if (code >= 51 && code <= 57) return 300;
+    if (code >= 61 && code <= 67) return code >= 65 ? 502 : 500;
+    if (code >= 71 && code <= 77) return code >= 75 ? 602 : 600;
+    if (code >= 80 && code <= 82) return code === 82 ? 522 : 520;
+    if (code === 85 || code === 86) return 602;
+    if (code >= 95) return 200;
+    return 800;
+}
+
+const primaryWeatherDescriptions = {
+    0: 'سماء صافية', 1: 'غائم غالباً', 2: 'غائم جزئياً', 3: 'غائم',
+    45: 'ضباب', 48: 'ضباب متجمد', 51: 'رذاذ خفيف', 53: 'رذاذ',
+    55: 'رذاذ كثيف', 61: 'مطر خفيف', 63: 'مطر', 65: 'مطر غزير',
+    71: 'ثلوج خفيفة', 73: 'ثلوج', 75: 'ثلوج كثيفة',
+    80: 'زخات مطر خفيفة', 81: 'زخات مطر', 82: 'زخات مطر غزيرة',
+    95: 'عاصفة رعدية', 96: 'عاصفة رعدية مع برد', 99: 'عاصفة رعدية قوية'
+};
+
+function normalizePrimaryWeather(data, lat, lon) {
+    const current = data.current || {}, hourly = data.hourly || {}, daily = data.daily || {};
+    if (!Array.isArray(hourly.time) || !hourly.time.length ||
+        !Number.isFinite(Number(current.temperature_2m))) {
+        throw new Error('استجابة Open-Meteo غير مكتملة: بيانات الطقس الحالية أو الساعية مفقودة');
+    }
+    const offset = Number(data.utc_offset_seconds) || 0;
+    const localTimestamp = value => {
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? Math.floor((parsed - offset * 1000) / 1000) : 0;
+    };
+    const currentDate = String(current.time || '').slice(0, 10);
+    const dayIndex = Math.max(0, (daily.time || []).indexOf(currentDate));
+    const code = Number(current.weather_code);
+    const currentWeather = {
+        coord: { lat, lon },
+        dt: Math.floor(Date.now() / 1000),
+        timezone: offset,
+        main: {
+            temp: Number(current.temperature_2m),
+            feels_like: Number(current.apparent_temperature ?? current.temperature_2m),
+            humidity: Number(current.relative_humidity_2m),
+            pressure: Number(current.surface_pressure ?? current.pressure_msl),
+            temp_max: Number(daily.temperature_2m_max?.[dayIndex] ?? current.temperature_2m),
+            temp_min: Number(daily.temperature_2m_min?.[dayIndex] ?? current.temperature_2m)
+        },
+        weather: [{ id: primaryWeatherId(code), description: primaryWeatherDescriptions[code] || 'حالة الطقس' }],
+        wind: { speed: Number(current.wind_speed_10m || 0) / 3.6, deg: Number(current.wind_direction_10m) },
+        clouds: { all: Number(current.cloud_cover) },
+        visibility: Number(current.visibility),
+        sys: {
+            sunrise: localTimestamp(daily.sunrise?.[dayIndex]),
+            sunset: localTimestamp(daily.sunset?.[dayIndex])
+        }
+    };
+    const list = [];
+    for (let i = 0; i < hourly.time.length; i += 3) {
+        const timestamp = localTimestamp(hourly.time[i]);
+        if (!timestamp) continue;
+        const date = String(hourly.time[i]).slice(0, 10);
+        const index = (daily.time || []).indexOf(date);
+        const hourCode = Number(hourly.weather_code?.[i]);
+        const rain = (hourly.precipitation || []).slice(i, i + 3)
+            .reduce((sum, value) => sum + (Number(value) || 0), 0);
+        list.push({
+            dt: timestamp,
+            dt_txt: String(hourly.time[i]).replace('T', ' ') + ':00',
+            main: {
+                temp: Number(hourly.temperature_2m?.[i] ?? current.temperature_2m),
+                feels_like: Number(hourly.apparent_temperature?.[i] ?? current.apparent_temperature ?? current.temperature_2m),
+                humidity: Number(hourly.relative_humidity_2m?.[i] ?? current.relative_humidity_2m),
+                temp_max: Number(daily.temperature_2m_max?.[index] ?? hourly.temperature_2m?.[i] ?? current.temperature_2m),
+                temp_min: Number(daily.temperature_2m_min?.[index] ?? hourly.temperature_2m?.[i] ?? current.temperature_2m)
+            },
+            weather: [{ id: primaryWeatherId(hourCode), description: primaryWeatherDescriptions[hourCode] || 'حالة الطقس' }],
+            wind: { speed: Number(hourly.wind_speed_10m?.[i] || 0) / 3.6, deg: Number(hourly.wind_direction_10m?.[i]) },
+            rain: { '3h': rain },
+            pop: Number(hourly.precipitation_probability?.[i] || 0) / 100
+        });
+    }
+    if (!list.length) throw new Error('لم تتوفر توقعات ساعية صالحة من Open-Meteo');
+    return {
+        current: currentWeather,
+        forecast: { city: { timezone: offset }, list },
+        uvIndex: Number.isFinite(Number(current.uv_index)) ? Number(current.uv_index) : null
+    };
+}
+
+async function fetchPrimaryWeather(lat, lon) {
+    lat = Number(lat); lon = Number(lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+        throw new Error('إحداثيات الموقع غير صالحة');
+    }
+    const key = lat.toFixed(3) + ':' + lon.toFixed(3);
+    const cached = primaryWeatherCache.get(key);
+    if (cached && Date.now() - cached.savedAt < PRIMARY_WEATHER_TTL) return cached.data;
+    if (primaryWeatherPending.has(key)) return primaryWeatherPending.get(key);
+    const params = new URLSearchParams({
+        latitude: String(lat), longitude: String(lon),
+        current: 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,visibility,uv_index',
+        hourly: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
+        daily: 'temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max',
+        timezone: 'auto', forecast_days: '7'
+    });
+    const task = (async () => {
+        try {
+            const response = await fetchWithTimeout('https://api.open-meteo.com/v1/forecast?' + params.toString(), { headers: { Accept: 'application/json' } }, 15000);
+            if (!response.ok) {
+                let detail = '';
+                try { detail = (await response.json()).reason || ''; } catch {}
+                throw new Error('Open-Meteo HTTP ' + response.status + (detail ? ': ' + detail : ''));
+            }
+            const normalized = normalizePrimaryWeather(await response.json(), lat, lon);
+            primaryWeatherCache.set(key, { savedAt: Date.now(), data: normalized });
+            return normalized;
+        } catch (error) {
+            if (cached) {
+                console.warn('[WeatherService] Using cached primary weather after API failure:', error);
+                return cached.data;
+            }
+            throw error;
+        }
+    })();
+    primaryWeatherPending.set(key, task);
+    try { return await task; }
+    finally { primaryWeatherPending.delete(key); }
+}
+
 const WeatherService = {
     async fetchCurrent(lat, lon) {
-        const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetchWithTimeout(url);
-        if (!res.ok) throw new Error('فشل جلب بيانات الطقس الحالية');
-        const data = await res.json();
-        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
-            throw new Error('استجابة الطقس الحالية غير مكتملة');
-        }
-        return data;
+        const result = await fetchPrimaryWeather(lat, lon);
+        return result.current;
     },
 
     async fetchForecast(lat, lon) {
-        const url = `${CONFIG.API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetchWithTimeout(url);
-        if (!res.ok) throw new Error('فشل جلب التنبؤات');
-        const data = await res.json();
-        if (!Array.isArray(data?.list) || data.list.length === 0) {
-            throw new Error('بيانات التنبؤ غير متاحة أو غير مكتملة');
-        }
-        return data;
+        const result = await fetchPrimaryWeather(lat, lon);
+        return result.forecast;
     },
 
     buildWeatherAlerts(forecast) {
@@ -35,7 +159,7 @@ const WeatherService = {
         );
         const add = (type, title, icon, severity, text, item, value) => {
             if (!item) return;
-            alerts.push({ type, title, icon, severity, text, value, time: Number(item.dt), source: 'OpenWeatherMap' });
+            alerts.push({ type, title, icon, severity, text, value, time: Number(item.dt), source: 'Open-Meteo' });
         };
 
         const rainPeak = peak(upcoming, item => Number(item.rain?.['3h'] || 0));
