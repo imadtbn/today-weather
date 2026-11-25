@@ -62,7 +62,7 @@ test('AdSense audit records mobile and desktop slots without changing placements
     { name: 'desktop-city', width: 1440, height: 1000, path: '/weather/algeria/algiers/' }
   ];
   const expectedSlots = {
-    'mobile-home': ['7867079394', '3143411927', '8546947691', '1760836049', '6152718642', '6528123169'],
+    'mobile-home': ['7867079394', '6528123169', '8546947691', '1760836049', '6152718642', '3143411927'],
     'desktop-city': ['7867079394', '3143411927']
   };
   const reports = [];
@@ -160,4 +160,54 @@ test('Zero-width Google-managed Auto ads placements are surfaced in diagnostics'
   expect(diagnostic.placement).toBe('google-auto-placement');
   expect(diagnostic.zeroWidth).toBe(true);
   expect(diagnostic.measurements.containerWidth).toBe(0);
+});
+
+
+test('Unified ad placements stay visible until AdSense confirms a final unfilled result', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+
+  const pages = [
+    '/',
+    '/weather/algeria/algiers/',
+    '/weather/arab/doha/',
+    '/weather/world/dakar/',
+    '/weather/algeria/communes/adrar/adrar/'
+  ];
+
+  const viewports = [
+    { width: 390, height: 844, label: 'mobile' },
+    { width: 1440, height: 900, label: 'desktop' }
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const path of pages) {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+
+    const top = page.locator('.ad-container[data-ad-placement="top"] ins.adsbygoogle[data-ad-slot="7867079394"]');
+    const footer = page.locator('.ad-container[data-ad-placement="footer"] ins.adsbygoogle[data-ad-slot="3143411927"]');
+    await expect(top, 'Top ad slot must exist on ' + path).toHaveCount(1);
+    await expect(footer, 'Footer ad slot must exist on ' + path).toHaveCount(1);
+
+    const initial = await page.evaluate(() => ({
+      top: getComputedStyle(document.querySelector('.ad-container[data-ad-placement="top"]')).display,
+      footer: getComputedStyle(document.querySelector('.ad-container[data-ad-placement="footer"]')).display,
+      topWidth: document.querySelector('.ad-container[data-ad-placement="top"] ins').getBoundingClientRect().width,
+      footerWidth: document.querySelector('.ad-container[data-ad-placement="footer"] ins').getBoundingClientRect().width
+    }));
+    expect(initial.top, 'Top container must remain visible while its request is pending').not.toBe('none');
+    expect(initial.footer, 'Footer container must remain visible while its request is pending').not.toBe('none');
+    expect(initial.topWidth).toBeGreaterThan(0);
+    expect(initial.footerWidth).toBeGreaterThan(0);
+
+    await top.evaluate(node => node.setAttribute('data-ad-status', 'unfilled'));
+    await expect(page.locator('.ad-container[data-ad-placement="top"]')).not.toHaveCSS('display', 'none');
+
+    await top.evaluate(node => node.setAttribute('data-adsbygoogle-status', 'done'));
+    await expect(page.locator('.ad-container[data-ad-placement="top"]')).toHaveCSS('display', 'none');
+
+    await footer.evaluate(node => node.setAttribute('data-ad-status', 'filled'));
+    await expect(page.locator('.ad-container[data-ad-placement="footer"]')).not.toHaveCSS('display', 'none');
+    }
+  }
 });

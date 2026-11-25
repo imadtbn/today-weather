@@ -89,6 +89,8 @@ function assertSharedPageShell(page, pagePath) {
   assert.equal((page.match(/class="ad-container"/g) || []).length, 2, 'Expected exactly two ad containers: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="7867079394"/g) || []).length, 1, 'Top ad slot must appear exactly once: ' + pagePath);
   assert.equal((page.match(/data-ad-slot="3143411927"/g) || []).length, 1, 'Footer ad slot must appear exactly once: ' + pagePath);
+  assert.equal((page.match(/data-ad-placement="top"/g) || []).length, 1, 'Shared top placement must appear exactly once: ' + pagePath);
+  assert.equal((page.match(/data-ad-placement="footer"/g) || []).length, 1, 'Shared footer placement must appear exactly once: ' + pagePath);
   assert.equal((page.match(/adsbygoogle.js\?client=ca-pub-5656416032906373/g) || []).length, 1, 'AdSense loader must appear once: ' + pagePath);
   assert.equal((page.match(/assets\/js\/adsData.js/g) || []).length, 1, 'Ad placement guard must appear once: ' + pagePath);
   const heroStart = Math.max(page.indexOf('class="directory-hero"'), page.indexOf('class="city-hero"'), page.indexOf('class="sitemap-hero"'));
@@ -330,9 +332,11 @@ assert.ok(html.includes('id="weather-guide-title"'), 'Indexable weather guide co
 const homeHeroStart = html.indexOf('class="hero-section"');
 const homeHeroEnd = html.indexOf('</section>', homeHeroStart);
 const homeHeroAd = html.indexOf('data-ad-slot="7867079394"');
-const homeFooterAd = html.indexOf('data-ad-slot="6528123169"');
+const homeFooterAd = html.lastIndexOf('data-ad-slot="3143411927"');
 const homeFooter = html.indexOf('<footer class="site-footer"');
 assert.ok(homeHeroStart >= 0 && homeHeroEnd > homeHeroStart && homeHeroAd > homeHeroEnd && homeHeroAd < html.indexOf('id="currentWeather"'), 'Homepage hero ad must appear immediately after the hero');
+assert.ok(html.includes('data-ad-placement="top"'), 'Homepage top placement must use the shared top identifier');
+assert.ok(html.includes('data-ad-placement="footer"'), 'Homepage footer placement must use the shared footer identifier');
 assert.ok(homeFooterAd > html.indexOf('</main>') && homeFooterAd < homeFooter, 'Homepage footer ad must appear between main and footer');
 assert.ok(html.slice(html.lastIndexOf('<div class="ad-container"', homeFooterAd), homeFooterAd).includes('data-ad-placement="footer"'), 'Homepage footer ad must use the approved footer placement container');
 console.log('Site validation passed: HTML, SEO, JSON-LD, sitemap, PWA cache, CSS and JavaScript.');

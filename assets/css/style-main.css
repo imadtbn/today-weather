@@ -2734,8 +2734,9 @@ body {
 
 
 /* Collapse empty AdSense placements so reserved ad space never obscures page content. */
-.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"]),
-.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"]) {
+/* Hide a placement only after AdSense has completed the request and confirmed it is unfilled. */
+.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"][data-adsbygoogle-status="done"]),
+.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"][data-adsbygoogle-status="done"]) {
     display: none !important;
     min-height: 0 !important;
     height: 0 !important;
@@ -2745,8 +2746,8 @@ body {
     background: transparent !important;
 }
 
-.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"]) .ad-placeholder,
-.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"]) .ad-placeholder {
+.ad-container:has(ins.adsbygoogle[data-ad-status="unfilled"][data-adsbygoogle-status="done"]) .ad-placeholder,
+.ad-container:has(.ad-placeholder ins.adsbygoogle[data-ad-status="unfilled"][data-adsbygoogle-status="done"]) .ad-placeholder {
     display: none !important;
     min-height: 0 !important;
     height: 0 !important;
