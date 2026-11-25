@@ -199,6 +199,7 @@ test('Unified ad placements stay visible until AdSense confirms a final unfilled
     expect(initial.footer, 'Footer container must remain visible while its request is pending').not.toBe('none');
     expect(initial.topWidth).toBeGreaterThan(0);
     expect(initial.footerWidth).toBeGreaterThan(0);
+    expect(Math.abs(initial.topWidth - initial.footerWidth)).toBeLessThan(2);
 
     await top.evaluate(node => node.setAttribute('data-ad-status', 'unfilled'));
     await expect(page.locator('.ad-container[data-ad-placement="top"]')).not.toHaveCSS('display', 'none');
