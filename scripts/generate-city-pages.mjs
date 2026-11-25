@@ -142,7 +142,7 @@ function commonFooter() {
     .replace(/href="#([^"]+)"([^>]*>)/g, 'href="' + BASE + '/#$1"$2');
   return footer +
     '<script defer src="' + BASE + '/assets/js/image-loader.js?v=20261124-phase2-light"></script>' +
-    '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261124-slot-diagnostics"></script>' +
+    '<script defer src="' + BASE + '/assets/js/adsData.js?v=20261125-tagerror-diagnostics"></script>' +
     '<script defer src="' + BASE + '/assets/js/global-search.js?v=20261115-sitemap-footer-1"></script>' +
     '<script>(function(){' +
     'var menu=document.getElementById("mobileMenuBtn"),nav=document.getElementById("mainNav");' +
