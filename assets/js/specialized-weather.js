@@ -80,7 +80,7 @@ const SpecializedWeather = (() => {
     if (!grid) return;
     let item = grid.querySelector('[data-specialized-extra="' + key + '"]');
     if (!item) {
-      item = document.createElement("span");
+      item = document.createElement("div");
       item.dataset.specializedExtra = key;
       const name = document.createElement("span");
       name.textContent = label;
