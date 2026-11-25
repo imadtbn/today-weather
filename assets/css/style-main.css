@@ -3463,3 +3463,9 @@ body {
         letter-spacing: 0;
     }
 }
+
+@media (max-width: 768px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+}
