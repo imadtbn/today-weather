@@ -174,7 +174,14 @@ test('Unified ad placements stay visible until AdSense confirms a final unfilled
     '/weather/algeria/communes/adrar/adrar/'
   ];
 
-  for (const path of pages) {
+  const viewports = [
+    { width: 390, height: 844, label: 'mobile' },
+    { width: 1440, height: 900, label: 'desktop' }
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    for (const path of pages) {
     await page.goto(path, { waitUntil: 'domcontentloaded' });
 
     const top = page.locator('.ad-container[data-ad-placement="top"] ins.adsbygoogle[data-ad-slot="7867079394"]');
@@ -201,5 +208,6 @@ test('Unified ad placements stay visible until AdSense confirms a final unfilled
 
     await footer.evaluate(node => node.setAttribute('data-ad-status', 'filled'));
     await expect(page.locator('.ad-container[data-ad-placement="footer"]')).not.toHaveCSS('display', 'none');
+    }
   }
 });
