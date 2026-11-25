@@ -199,14 +199,8 @@ const WeatherService = {
     },
 
     async fetchAtPoint(lat, lon) {
-        const url = `${CONFIG.API_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${CONFIG.OPENWEATHER_API_KEY}&lang=ar`;
-        const res = await fetchWithTimeout(url);
-        if (!res.ok) throw new Error('فشل جلب بيانات النقطة');
-        const data = await res.json();
-        if (!data?.main || !Array.isArray(data.weather) || !data.weather.length) {
-            throw new Error('بيانات الطقس للنقطة غير مكتملة');
-        }
-        return data;
+        const result = await fetchPrimaryWeather(lat, lon);
+        return result.current;
     },
 
     getIcon(id, isDay = true) {
