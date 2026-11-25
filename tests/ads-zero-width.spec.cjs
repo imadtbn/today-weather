@@ -140,6 +140,9 @@ test('AdSense waits while an approved slot is inside a display-none ancestor', a
 });
 
 test('AdSense pushes only after measurable width is stable across animation frames', async ({ page }) => {
+  // This test covers manual slot sizing only. Prevent GTM/Auto Ads from inserting
+  // an earlier Google-managed <ins> that correctly blocks manual push ordering.
+  await page.route('**/googletagmanager.com/gtm.js**', route => route.abort());
   await page.route('**/adsbygoogle.js**', route => route.abort());
   await page.addInitScript(() => {
     window.__adsPushCount = 0;
@@ -153,6 +156,15 @@ test('AdSense pushes only after measurable width is stable across animation fram
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    document.querySelectorAll('ins.adsbygoogle').forEach(ad => {
+      if (!ad.closest('.ad-container')) {
+        const wrapper = ad.closest('.google-auto-placed');
+        if (wrapper) wrapper.remove();
+        else ad.remove();
+      }
+    });
+  });
   await page.locator('script[src*="adsbygoogle.js"]')
     .evaluate(script => script.dispatchEvent(new Event('load')));
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
