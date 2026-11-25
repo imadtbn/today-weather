@@ -5,7 +5,7 @@
     "build:seo": "node scripts/generate-city-pages.mjs",
     "validate": "npm run build:seo && npm run test:city-weather-api && npm run test:specialized-weather && npm run test:primary-weather && node scripts/validate-site.mjs && node scripts/audit-resources.mjs",
     "verify:published-communes": "node scripts/verify-published-communes.mjs",
-    "test:e2e": "npm run test:city-weather-api && playwright test",
+    "test:e2e": "npm run build:seo && npm run test:city-weather-api && playwright test",
     "test:city-weather-api": "node --test tests/city-weather-api.test.cjs",
     "test:api": "npm run test:city-weather-api",
     "test:specialized-weather": "node --test tests/specialized-weather.test.cjs",
