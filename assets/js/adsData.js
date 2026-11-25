@@ -13,6 +13,8 @@
     let resizeObserver = null;
     let flushScheduled = false;
     let adsenseReady = false;
+    let pushCount = 0;
+    let lastPush = null;
     const debugEnabled = new URLSearchParams(window.location.search).has('ads-debug');
 
     function emitDiagnostic(name, detail) {
@@ -315,6 +317,7 @@
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
                 stage: 'before-push',
+                pushCount: pushCount,
                 available: hasWidth && stable,
                 stableFrames: stableMeasurements.get(ad) ? stableMeasurements.get(ad).frames : 0
             }, measurements);
@@ -331,6 +334,17 @@
             initializedAds.add(ad);
             ad.dataset.adsInit = 'pending';
             try {
+                pushCount += 1;
+                lastPush = {
+                    index: pushCount,
+                    slot: ad.getAttribute('data-ad-slot') || 'unknown',
+                    placement: getPlacement(ad),
+                    timestamp: new Date().toISOString()
+                };
+                emitDiagnostic('adsense:push', Object.assign({}, lastPush, {
+                    pendingCount: pendingAds.size,
+                    slotStatus: ad.getAttribute('data-ad-status') || 'pending'
+                }));
                 (window.adsbygoogle = window.adsbygoogle || []).push({});
                 ad.dataset.adsInit = 'queued';
                 reportAdStatus(ad);
@@ -425,12 +439,43 @@
         });
     }
 
-    function reportAdSenseProviderError(source, message) {
+    function getAdDiagnosticsSnapshot() {
+        return Array.from(document.querySelectorAll(AD_SELECTOR)).map(function (ad, index) {
+            const googleManaged = Boolean(ad.closest('.google-auto-placed')) ||
+                (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR));
+            return {
+                index: index + 1,
+                owner: googleManaged ? 'google-managed' : (isApproved(ad) ? 'manual' : 'unapproved'),
+                slot: ad.getAttribute('data-ad-slot') || 'unknown',
+                placement: getPlacement(ad),
+                initState: ad.dataset.adsInit || null,
+                diagnosticStatus: ad.dataset.adsDiagnosticStatus || null,
+                providerStatus: ad.getAttribute('data-adsbygoogle-status') || null,
+                adStatus: ad.getAttribute('data-ad-status') || null,
+                measurements: getSlotMeasurements(ad)
+            };
+        });
+    }
+
+    function reportAdSenseProviderError(source, message, errorDetails) {
         const googleManagedSlots = getGoogleManagedSlots();
-        const isAutoPlacementError = googleManagedSlots.length > 0;
+        const snapshot = getAdDiagnosticsSnapshot();
+        const isAutoPlacementError = googleManagedSlots.length > 0 &&
+            (!lastPush || snapshot.some(function (slot) {
+                return slot.owner === 'google-managed' && slot.providerStatus !== 'done';
+            }));
         emitDiagnostic(isAutoPlacementError ? 'adsense:auto-placement-error' : 'adsense:tag-error', {
             source: source,
-            message: message,
+            message: message || 'AdSense reported an error without a readable message',
+            stack: errorDetails && errorDetails.stack || null,
+            filename: errorDetails && errorDetails.filename || null,
+            line: errorDetails && errorDetails.lineno || null,
+            column: errorDetails && errorDetails.colno || null,
+            pushCount: pushCount,
+            lastPush: lastPush,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            page: window.location.pathname,
+            slots: snapshot,
             googleManagedSlots: googleManagedSlots,
             likelyAutoPlacement: isAutoPlacementError
         });
@@ -438,17 +483,48 @@
 
     function watchAdSenseErrors() {
         window.addEventListener('error', function (event) {
-            const message = String(event && (event.message || (event.error && event.error.message)) || '');
-            if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
-            reportAdSenseProviderError('window.error', message);
-        });
+            const error = event && event.error;
+            const message = String(event && (event.message || (error && error.message)) || '');
+            const stack = String(error && error.stack || '');
+            const filename = String(event && event.filename || '');
+            if (!/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message + ' ' + stack + ' ' + filename)) return;
+            reportAdSenseProviderError('window.error', message, {
+                stack: stack,
+                filename: filename,
+                lineno: event.lineno,
+                colno: event.colno
+            });
+        }, true);
 
         window.addEventListener('unhandledrejection', function (event) {
             const reason = event && event.reason;
             const message = String(reason && reason.message || reason || '');
-            if (!/adsbygoogle|TagError|No slot size/i.test(message)) return;
-            reportAdSenseProviderError('unhandledrejection', message);
+            const stack = String(reason && reason.stack || '');
+            if (!/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message + ' ' + stack)) return;
+            reportAdSenseProviderError('unhandledrejection', message, { stack: stack });
         });
+
+        // Some AdSense TagError variants are emitted through console.error rather
+        // than a readable ErrorEvent. Preserve the original console behavior.
+        if (window.console && typeof window.console.error === 'function' && !window.console.error.__adsenseDiagnostic) {
+            const originalError = window.console.error;
+            const diagnosticError = function () {
+                const parts = Array.from(arguments).map(function (item) {
+                    if (item && item.stack) return String(item.stack);
+                    if (typeof item === 'string') return item;
+                    try { return JSON.stringify(item); } catch (error) { return String(item); }
+                });
+                const message = parts.join(' ');
+                if (/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message)) {
+                    reportAdSenseProviderError('console.error', message, {
+                        stack: parts.find(function (part) { return /\\bat\\s/.test(part); }) || null
+                    });
+                }
+                return originalError.apply(this, arguments);
+            };
+            diagnosticError.__adsenseDiagnostic = true;
+            window.console.error = diagnosticError;
+        }
     }
 
     function start() {

@@ -3217,20 +3217,30 @@ body {
     background: rgba(255, 255, 255, 0.035);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
-.ad-container .ad-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.ad-container {
+    display: block;
     width: 100%;
+    min-width: 0;
+    max-width: min(970px, calc(100% - 24px));
+    margin-inline: auto;
+    box-sizing: border-box;
+}
+.ad-container .ad-placeholder {
+    display: block;
+    width: 100%;
+    min-width: 0;
     min-height: clamp(90px, 18vw, 180px);
-    overflow: hidden;
+    overflow: visible;
+    box-sizing: border-box;
 }
 .ad-container ins.adsbygoogle {
     display: block;
     width: 100%;
     max-width: 100%;
+    min-width: 0;
     min-height: 90px;
     margin-inline: auto;
+    box-sizing: border-box;
 }
 .ad-container .ad-label {
     z-index: 1;
