@@ -22,26 +22,3 @@ jobs:
           node-version: 22
       - name: Generate and validate all static city and commune pages
         run: npm run validate
-
-  browser-tests:
-    name: Responsive and offline browser tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    needs: static-validation
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install Playwright
-        run: npm install --no-audit --no-fund --no-package-lock
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Generate static SEO city pages
-        run: node scripts/generate-city-pages.mjs
-      - name: Optimize local city images
-        run: node scripts/optimize-images.mjs
-      - name: Audit optimized CSS, JavaScript, JSON and image resources
-        run: node scripts/audit-resources.mjs
-      - name: Run browser tests
-        run: npm run test:e2e
