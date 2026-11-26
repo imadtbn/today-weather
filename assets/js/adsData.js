@@ -279,9 +279,9 @@
 
             // Record exact slot and ancestor geometry immediately before push().
             const measurements = getSlotMeasurements(ad);
-            const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2 &&
-                measurements.slotClientWidth >= 2 && measurements.parentContentWidth >= 2 &&
-                measurements.containerContentWidth >= 2);
+            // availableWidth already represents the narrowest measurable slot,
+            // parent, container, and ancestor width. Avoid redundant per-element gates.
+            const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2);
             const diagnostic = Object.assign({
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
