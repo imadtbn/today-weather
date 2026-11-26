@@ -9,7 +9,6 @@
     const reportedHeaderAds = new WeakSet();
     const reportedGoogleManagedAds = new WeakSet();
     const pendingAds = new Set();
-    const stableMeasurements = new WeakMap();
     let resizeObserver = null;
     let flushScheduled = false;
     let adsenseReady = false;
@@ -230,34 +229,6 @@
         };
     }
 
-    function isStableWidth(ad, measurements) {
-        if (!measurements.visible || measurements.availableWidth < 2) {
-            stableMeasurements.delete(ad);
-            return false;
-        }
-
-        const signature = [
-            measurements.availableWidth,
-            measurements.slotWidth,
-            measurements.parentContentWidth,
-            measurements.containerContentWidth
-        ].join('|');
-        const previous = stableMeasurements.get(ad);
-
-        if (!previous || previous.signature !== signature) {
-            stableMeasurements.set(ad, { signature: signature, frames: 1 });
-            requestAnimationFrame(schedulePendingAds);
-            return false;
-        }
-
-        previous.frames += 1;
-        if (previous.frames < 2) {
-            requestAnimationFrame(schedulePendingAds);
-            return false;
-        }
-        return true;
-    }
-
     function getNextUninitializedAd() {
         const ads = document.querySelectorAll(AD_SELECTOR);
         for (const candidate of ads) {
@@ -311,25 +282,22 @@
             const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2 &&
                 measurements.slotClientWidth >= 2 && measurements.parentContentWidth >= 2 &&
                 measurements.containerContentWidth >= 2);
-            if (!hasWidth) stableMeasurements.delete(ad);
-            const stable = hasWidth && isStableWidth(ad, measurements);
             const diagnostic = Object.assign({
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
                 stage: 'before-push',
                 pushCount: pushCount,
-                available: hasWidth && stable,
-                stableFrames: stableMeasurements.get(ad) ? stableMeasurements.get(ad).frames : 0
+                available: hasWidth,
+                measuredFrames: hasWidth ? 1 : 0
             }, measurements);
             emitDiagnostic('adsense:pre-push', diagnostic);
-            if (!hasWidth || !stable) {
+            if (!hasWidth) {
                 emitDiagnostic('adsense:blocked', Object.assign({}, diagnostic, {
-                    reason: !hasWidth ? 'slot-width-not-measurable' : 'slot-width-not-stable-for-two-frames'
+                    reason: 'slot-width-not-measurable'
                 }));
                 reportAdStatus(ad);
                 break;
             }
-            stableMeasurements.delete(ad);
             pendingAds.delete(ad);
             initializedAds.add(ad);
             ad.dataset.adsInit = 'pending';
@@ -383,7 +351,8 @@
                 emitDiagnostic('adsense:auto-placement', {
                     slot: ad.getAttribute('data-ad-slot') || 'google-auto',
                     placement: inHeader ? 'site-header' : 'google-auto-placement',
-                    zeroWidth: measurements.slotWidth < 2 || measurements.parentWidth < 2,
+                    zeroWidth: measurements.availableWidth < 2,
+                    zeroWidthReason: measurements.hiddenAncestor ? 'hidden-ancestor' : (measurements.availableWidth < 2 ? 'no-measurable-width' : null),
                     measurements
                 });
             }
