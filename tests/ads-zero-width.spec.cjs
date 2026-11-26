@@ -139,17 +139,17 @@ test('AdSense waits while an approved slot is inside a display-none ancestor', a
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
 });
 
-test('AdSense pushes only after measurable width is stable across animation frames', async ({ page }) => {
+test('AdSense pushes after one animation-frame measurement when width is available', async ({ page }) => {
   // This test covers manual slot sizing only. Prevent GTM/Auto Ads from inserting
   // an earlier Google-managed <ins> that correctly blocks manual push ordering.
   await page.route('**/googletagmanager.com/gtm.js**', route => route.abort());
   await page.route('**/adsbygoogle.js**', route => route.abort());
   await page.addInitScript(() => {
     window.__adsPushCount = 0;
-    window.__adsStableFrames = [];
+    window.__adsMeasuredFrames = [];
     window.addEventListener('adsense:pre-push', event => {
       if (event.detail && event.detail.available) {
-        window.__adsStableFrames.push(event.detail.stableFrames);
+        window.__adsMeasuredFrames.push(event.detail.measuredFrames);
       }
     });
     window.adsbygoogle = { push() { window.__adsPushCount += 1; } };
@@ -168,9 +168,9 @@ test('AdSense pushes only after measurable width is stable across animation fram
   await page.locator('script[src*="adsbygoogle.js"]')
     .evaluate(script => script.dispatchEvent(new Event('load')));
   await expect.poll(() => page.evaluate(() => window.__adsPushCount)).toBeGreaterThan(0);
-  const stableFrames = await page.evaluate(() => window.__adsStableFrames);
-  expect(stableFrames.length).toBeGreaterThan(0);
-  expect(stableFrames.every(frames => frames >= 2)).toBe(true);
+  const measuredFrames = await page.evaluate(() => window.__adsMeasuredFrames);
+  expect(measuredFrames.length).toBeGreaterThan(0);
+  expect(measuredFrames.every(frames => frames === 1)).toBe(true);
 });
 
 test('AdSense does not initialize the same slot more than once after resize and mutations', async ({ page }) => {
