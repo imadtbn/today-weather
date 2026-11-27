@@ -220,3 +220,78 @@ test('AdSense reports zero-width TagErrors separately for Google-managed Auto Ad
   expect(diagnostic.likelyAutoPlacement).toBe(true);
   expect(diagnostic.googleManagedSlots).toHaveLength(1);
 });
+
+
+test('Google-managed Auto Ads measure the surrounding layout without requiring .ad-container', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const diagnostic = await page.evaluate(() => new Promise(resolve => {
+    window.addEventListener('adsense:auto-placement', event => {
+      if (event.detail && event.detail.slot === 'auto-width-test') resolve(event.detail);
+    });
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.style.cssText = 'display:block;width:320px;min-height:90px';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-client="ca-pub-5656416032906373" data-ad-slot="auto-width-test" style="display:block;width:0px"></ins>';
+    document.body.appendChild(wrapper);
+  }));
+
+  expect(diagnostic.measurements.googleManaged).toBe(true);
+  expect(diagnostic.measurements.availableWidth).toBeGreaterThan(2);
+  expect(diagnostic.zeroWidth).toBe(false);
+});
+
+test('TagError remains unattributed when manual and Auto Ads coexist after a recent manual push', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.locator('script[src*="adsbygoogle.js"]')
+    .evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => document.querySelectorAll('ins.adsbygoogle[data-ads-push-id]').length))
+    .toBeGreaterThan(0);
+
+  const diagnostic = await page.evaluate(() => new Promise(resolve => {
+    window.addEventListener('adsense:tag-error', event => resolve(event.detail), { once: true });
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-client="ca-pub-5656416032906373" data-ad-slot="auto-mixed-test" data-adsbygoogle-status="done"></ins>';
+    document.body.appendChild(wrapper);
+    const original = new Error('TagError: provider rejected an ad tag');
+    window.dispatchEvent(new ErrorEvent('error', {
+      message: 'TagError: provider rejected an ad tag',
+      error: original,
+      filename: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
+      lineno: 155,
+      colno: 253
+    }));
+  }));
+
+  expect(diagnostic.attribution).toBe('mixed-or-unattributed');
+  expect(diagnostic.attributionConfidence).toBe('temporal-correlation');
+  expect(diagnostic.correlatedPush.owner).toBe('manual');
+  expect(diagnostic.googleManagedSlots.some(slot => slot.slot === 'auto-mixed-test')).toBe(true);
+  expect(diagnostic.stack).toContain('TagError: provider rejected an ad tag');
+  expect(diagnostic.slots.some(slot => slot.pushId === diagnostic.correlatedPush.id)).toBe(true);
+});
+
+test('TagError is only marked as an Auto Ads candidate when no recent manual push exists', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const diagnostic = await page.evaluate(() => new Promise(resolve => {
+    window.addEventListener('adsense:auto-placement-error', event => resolve(event.detail), { once: true });
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-client="ca-pub-5656416032906373" data-ad-slot="auto-only-test" data-adsbygoogle-status="done"></ins>';
+    document.body.appendChild(wrapper);
+    window.dispatchEvent(new ErrorEvent('error', {
+      message: 'TagError: Auto Ads provider error',
+      error: new Error('TagError: Auto Ads provider error')
+    }));
+  }));
+
+  expect(diagnostic.attribution).toBe('google-managed-or-unattributed');
+  expect(diagnostic.attributionConfidence).toBe('candidate-only');
+  expect(diagnostic.correlatedPush).toBeNull();
+  expect(diagnostic.originalMessage).toContain('TagError');
+});
