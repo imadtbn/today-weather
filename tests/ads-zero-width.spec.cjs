@@ -243,6 +243,7 @@ test('Google-managed Auto Ads measure the surrounding layout without requiring .
 });
 
 test('TagError remains unattributed when manual and Auto Ads coexist after a recent manual push', async ({ page }) => {
+  await page.route('**/googletagmanager.com/gtm.js**', route => route.abort());
   await page.route('**/adsbygoogle.js**', route => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('script[src*="adsbygoogle.js"]')
