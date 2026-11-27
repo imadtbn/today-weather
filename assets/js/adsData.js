@@ -14,6 +14,9 @@
     let adsenseReady = false;
     let pushCount = 0;
     let lastPush = null;
+    let activePushContext = null;
+    const recentPushes = [];
+    const PUSH_CORRELATION_WINDOW_MS = 15000;
     const debugEnabled = new URLSearchParams(window.location.search).has('ads-debug');
 
     function emitDiagnostic(name, detail) {
@@ -25,6 +28,18 @@
     function getPlacement(ad) {
         const container = ad.closest('[data-ad-placement]');
         return container ? container.getAttribute('data-ad-placement') : 'unknown';
+    }
+
+    function isGoogleManagedAd(ad) {
+        return Boolean(ad && (ad.closest('.google-auto-placed') ||
+            (ad.hasAttribute('data-adsbygoogle-status') && !ad.closest(AD_CONTAINER_SELECTOR))));
+    }
+
+    function getRecentManualPushes() {
+        const now = performance.now();
+        return recentPushes.filter(function (push) {
+            return now - push.performanceTime <= PUSH_CORRELATION_WINDOW_MS;
+        });
     }
 
     function reportAdStatus(ad) {
@@ -183,7 +198,10 @@
                 clientWidth: node.clientWidth,
                 contentWidth: Math.round(contentWidth * 100) / 100
             });
-            narrowestAncestorWidth = Math.min(narrowestAncestorWidth, contentWidth);
+            // Auto Ads may begin at width:0 before provider sizing; measure their layout ancestors.
+            if (!(isGoogleManagedAd(ad) && node === ad)) {
+                narrowestAncestorWidth = Math.min(narrowestAncestorWidth, contentWidth);
+            }
 
             if (!hiddenAncestor && (computed.display === 'none' ||
                 computed.visibility === 'hidden' || computed.visibility === 'collapse' ||
@@ -196,12 +214,11 @@
         const slotWidth = Math.max(0, rect.width);
         const parentContentWidth = getContentWidth(parent);
         const containerContentWidth = getContentWidth(container);
-        const availableWidth = Math.max(0, Math.min(
-            slotWidth,
-            parentContentWidth || 0,
-            containerContentWidth || 0,
-            Number.isFinite(narrowestAncestorWidth) ? narrowestAncestorWidth : 0
-        ));
+        const googleManaged = isGoogleManagedAd(ad);
+        const widthCandidates = googleManaged ? [parentContentWidth] : [slotWidth, parentContentWidth];
+        if (container) widthCandidates.push(containerContentWidth);
+        if (Number.isFinite(narrowestAncestorWidth)) widthCandidates.push(narrowestAncestorWidth);
+        const availableWidth = Math.max(0, Math.min.apply(Math, widthCandidates));
         const visible = Boolean(ad.isConnected && ad.getClientRects().length &&
             style.display !== 'none' && style.visibility !== 'hidden' && !hiddenAncestor);
 
@@ -219,6 +236,7 @@
             containerHeight: containerRect ? Math.round(containerRect.height * 100) / 100 : 0,
             availableWidth: Math.round(availableWidth * 100) / 100,
             narrowestAncestorWidth: Math.round((Number.isFinite(narrowestAncestorWidth) ? narrowestAncestorWidth : 0) * 100) / 100,
+            googleManaged: googleManaged,
             ancestorWidths: ancestorWidths,
             display: style.display,
             visibility: style.visibility,
@@ -303,17 +321,30 @@
             ad.dataset.adsInit = 'pending';
             try {
                 pushCount += 1;
-                lastPush = {
+                const pushContext = {
+                    id: 'manual-push-' + pushCount,
                     index: pushCount,
+                    owner: 'manual',
                     slot: ad.getAttribute('data-ad-slot') || 'unknown',
                     placement: getPlacement(ad),
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    performanceTime: performance.now()
                 };
-                emitDiagnostic('adsense:push', Object.assign({}, lastPush, {
+                lastPush = pushContext;
+                activePushContext = pushContext;
+                recentPushes.push(pushContext);
+                while (recentPushes.length > 10) recentPushes.shift();
+                ad.dataset.adsPushId = pushContext.id;
+                ad.dataset.adsPushAt = pushContext.timestamp;
+                emitDiagnostic('adsense:push', Object.assign({}, pushContext, {
                     pendingCount: pendingAds.size,
                     slotStatus: ad.getAttribute('data-ad-status') || 'pending'
                 }));
-                (window.adsbygoogle = window.adsbygoogle || []).push({});
+                try {
+                    (window.adsbygoogle = window.adsbygoogle || []).push({});
+                } finally {
+                    activePushContext = null;
+                }
                 ad.dataset.adsInit = 'queued';
                 reportAdStatus(ad);
             } catch (error) {
@@ -326,6 +357,7 @@
                     status: 'init-error',
                     message: error && error.message ? error.message : 'Unknown initialization error'
                 });
+                reportAdSenseProviderError('push-exception', error && error.message, error, lastPush);
                 console.warn('[AdSense] تعذرت تهيئة الوحدة الإعلانية:', error);
                 break;
             }
@@ -418,6 +450,8 @@
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
                 initState: ad.dataset.adsInit || null,
+                pushId: ad.dataset.adsPushId || null,
+                pushAt: ad.dataset.adsPushAt || null,
                 diagnosticStatus: ad.dataset.adsDiagnosticStatus || null,
                 providerStatus: ad.getAttribute('data-adsbygoogle-status') || null,
                 adStatus: ad.getAttribute('data-ad-status') || null,
@@ -426,24 +460,39 @@
         });
     }
 
-    function reportAdSenseProviderError(source, message, errorDetails) {
+    function reportAdSenseProviderError(source, message, errorDetails, explicitPushContext) {
         const googleManagedSlots = getGoogleManagedSlots();
         const snapshot = getAdDiagnosticsSnapshot();
-        const isAutoPlacementError = !lastPush && googleManagedSlots.length > 0;
-        emitDiagnostic(isAutoPlacementError ? 'adsense:auto-placement-error' : 'adsense:tag-error', {
+        const recentManualPushes = getRecentManualPushes();
+        const correlatedPush = explicitPushContext || activePushContext || recentManualPushes[recentManualPushes.length - 1] || null;
+        const hasGoogleManagedSlots = googleManagedSlots.length > 0;
+        let attribution = 'unattributed';
+        if (correlatedPush && hasGoogleManagedSlots) attribution = 'mixed-or-unattributed';
+        else if (correlatedPush) attribution = 'manual-slot-associated';
+        else if (hasGoogleManagedSlots) attribution = 'google-managed-or-unattributed';
+        const isAutoPlacementCandidate = attribution === 'google-managed-or-unattributed';
+        const originalMessage = String(message || '');
+        const originalStack = errorDetails && errorDetails.stack ? String(errorDetails.stack) : null;
+        emitDiagnostic(isAutoPlacementCandidate ? 'adsense:auto-placement-error' : 'adsense:tag-error', {
             source: source,
-            message: message || 'AdSense reported an error without a readable message',
-            stack: errorDetails && errorDetails.stack || null,
+            message: originalMessage || originalStack || 'AdSense reported an error without a readable message',
+            originalMessage: originalMessage,
+            stack: originalStack,
             filename: errorDetails && errorDetails.filename || null,
             line: errorDetails && errorDetails.lineno || null,
             column: errorDetails && errorDetails.colno || null,
+            originalArguments: errorDetails && errorDetails.originalArguments || null,
+            attribution: attribution,
+            attributionConfidence: isAutoPlacementCandidate ? 'candidate-only' : (correlatedPush ? 'temporal-correlation' : 'unattributed'),
             pushCount: pushCount,
-            lastPush: lastPush,
+            lastPush: lastPush ? Object.assign({}, lastPush, { performanceTime: undefined }) : null,
+            correlatedPush: correlatedPush ? Object.assign({}, correlatedPush, { performanceTime: undefined }) : null,
+            recentManualPushes: recentManualPushes.map(function (push) { return Object.assign({}, push, { performanceTime: undefined }); }),
             viewport: { width: window.innerWidth, height: window.innerHeight },
             page: window.location.pathname,
             slots: snapshot,
             googleManagedSlots: googleManagedSlots,
-            likelyAutoPlacement: isAutoPlacementError
+            likelyAutoPlacement: isAutoPlacementCandidate
         });
     }
 
@@ -457,6 +506,7 @@
             reportAdSenseProviderError('window.error', message, {
                 stack: stack,
                 filename: filename,
+                originalArguments: [message, stack].filter(Boolean),
                 lineno: event.lineno,
                 colno: event.colno
             });
@@ -467,7 +517,7 @@
             const message = String(reason && reason.message || reason || '');
             const stack = String(reason && reason.stack || '');
             if (!/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message + ' ' + stack)) return;
-            reportAdSenseProviderError('unhandledrejection', message, { stack: stack });
+            reportAdSenseProviderError('unhandledrejection', message, { stack: stack, originalArguments: [message, stack].filter(Boolean) });
         });
 
         // Some AdSense TagError variants are emitted through console.error rather
@@ -483,7 +533,8 @@
                 const message = parts.join(' ');
                 if (/adsbygoogle|TagError|No slot size|googlesyndication/i.test(message)) {
                     reportAdSenseProviderError('console.error', message, {
-                        stack: parts.find(function (part) { return part.indexOf(' at ') !== -1; }) || null
+                        stack: parts.find(function (part) { return part.indexOf(' at ') !== -1; }) || null,
+                        originalArguments: parts
                     });
                 }
                 return originalError.apply(this, arguments);
