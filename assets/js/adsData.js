@@ -299,7 +299,7 @@
             const measurements = getSlotMeasurements(ad);
             // availableWidth already represents the narrowest measurable slot,
             // parent, container, and ancestor width. Avoid redundant per-element gates.
-            const hasWidth = Boolean(measurements.visible && measurements.availableWidth >= 2);
+            const hasWidth = Boolean(measurements.visible && measurements.availableWidth > 0);
             const diagnostic = Object.assign({
                 slot: ad.getAttribute('data-ad-slot') || 'unknown',
                 placement: getPlacement(ad),
@@ -544,9 +544,186 @@
         }
     }
 
+
+    // Auto Ads are owned by Google and are not initialized through manual push().
+    // Observe their network requests independently and correlate them with generated
+    // .google-auto-placed wrappers and their eventual provider status.
+    const autoAdRequests = [];
+    const autoAdElements = new WeakMap();
+    let autoAdElementSequence = 0;
+    let autoAdRequestSequence = 0;
+
+    function getAutoElementId(wrapper) {
+        if (!wrapper) return null;
+        if (!autoAdElements.has(wrapper)) {
+            autoAdElementSequence += 1;
+            autoAdElements.set(wrapper, 'auto-placement-' + autoAdElementSequence);
+            wrapper.dataset.adsAutoDiagnosticId = autoAdElements.get(wrapper);
+        }
+        return autoAdElements.get(wrapper);
+    }
+
+    function describeAutoPlacement(wrapper) {
+        const rect = wrapper.getBoundingClientRect();
+        const style = window.getComputedStyle(wrapper);
+        const ins = wrapper.querySelector('ins.adsbygoogle');
+        const status = ins && ins.getAttribute('data-ad-status');
+        const iframeCount = wrapper.querySelectorAll('iframe').length;
+        return {
+            elementId: getAutoElementId(wrapper),
+            tagName: wrapper.tagName.toLowerCase(),
+            className: String(wrapper.className || ''),
+            slot: ins && ins.getAttribute('data-ad-slot') || null,
+            status: status || null,
+            providerStatus: ins && ins.getAttribute('data-adsbygoogle-status') || null,
+            outcome: status === 'filled' ? 'filled' : (status === 'unfilled' ? 'unfilled' : (iframeCount ? 'rendered-candidate' : 'pending-or-unknown')),
+            iframeCount: iframeCount,
+            containerWidth: Math.round(rect.width * 100) / 100,
+            containerHeight: Math.round(rect.height * 100) / 100,
+            containerClientWidth: wrapper.clientWidth,
+            containerClientHeight: wrapper.clientHeight,
+            x: Math.round((rect.left + window.scrollX) * 100) / 100,
+            y: Math.round((rect.top + window.scrollY) * 100) / 100,
+            visible: Boolean(wrapper.isConnected && wrapper.getClientRects().length && style.display !== 'none' && style.visibility !== 'hidden'),
+            hidden: Boolean(wrapper.hidden || style.display === 'none' || style.visibility === 'hidden')
+        };
+    }
+
+    function getAutoPlacementCandidates() {
+        return Array.from(document.querySelectorAll('.google-auto-placed')).map(describeAutoPlacement);
+    }
+
+    function matchAutoPlacement(candidates, adx, ady) {
+        if (!candidates.length) return { elementId: null, method: 'no-element', candidates: [] };
+        if (candidates.length === 1) {
+            return { elementId: candidates[0].elementId, method: 'single-auto-placement', candidates: candidates };
+        }
+        const x = Number(adx);
+        const y = Number(ady);
+        if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0) {
+            const ranked = candidates.map(function (candidate) {
+                const dx = candidate.x - x;
+                const dy = candidate.y - y;
+                return { candidate: candidate, distance: Math.sqrt(dx * dx + dy * dy) };
+            }).sort(function (a, b) { return a.distance - b.distance; });
+            if (ranked.length && ranked[0].distance < 160) {
+                return { elementId: ranked[0].candidate.elementId, method: 'nearest-adx-ady-coordinate', candidates: candidates };
+            }
+        }
+        return { elementId: null, method: 'ambiguous-multiple-auto-placements', candidates: candidates };
+    }
+
+    function updateAutoRequestOutcomes() {
+        autoAdRequests.forEach(function (request) {
+            if (!request.elementId) {
+                const lateCandidates = getAutoPlacementCandidates();
+                if (lateCandidates.length === 1) {
+                    request.elementId = lateCandidates[0].elementId;
+                    request.matchMethod = 'single-auto-placement-after-request';
+                }
+            }
+            const candidate = request.elementId
+                ? document.querySelector('[data-ads-auto-diagnostic-id="' + request.elementId + '"]')
+                : null;
+            const wrapper = candidate && candidate.closest('.google-auto-placed');
+            const current = wrapper ? describeAutoPlacement(wrapper) : null;
+            const outcome = current ? current.outcome : (request.elementId ? 'element-removed' : 'unmatched');
+            const signature = outcome + ':' + (current && current.status || '') + ':' + (current && current.providerStatus || '') + ':' + (current && current.iframeCount || 0);
+            if (request.lastOutcomeSignature === signature) return;
+            request.lastOutcomeSignature = signature;
+            request.latestOutcome = outcome;
+            emitDiagnostic('adsense:auto-request-outcome', {
+                requestId: request.id,
+                owner: 'google-auto',
+                format: request.format,
+                adx: request.adx,
+                ady: request.ady,
+                elementId: request.elementId,
+                matchMethod: request.matchMethod,
+                outcome: outcome,
+                placement: current,
+                comparedAt: new Date().toISOString()
+            });
+        });
+    }
+
+    function recordAutoAdRequest(entry) {
+        let parsed;
+        try { parsed = new URL(entry.name); } catch (error) { return; }
+        const host = parsed.hostname.toLowerCase();
+        if (!/(^|\.)googleads\.g\.doubleclick\.net$|pagead2\.googlesyndication\.com$/.test(host)) return;
+        if (!/\/pagead\/ads/.test(parsed.pathname)) return;
+        const params = parsed.searchParams;
+        const format = params.get('format');
+        const saldr = params.get('saldr');
+        if (saldr !== 'aa' && format !== '0x0') return;
+
+        autoAdRequestSequence += 1;
+        const adx = params.get('adx');
+        const ady = params.get('ady');
+        const match = matchAutoPlacement(getAutoPlacementCandidates(), adx, ady);
+        const request = {
+            id: 'auto-request-' + autoAdRequestSequence,
+            owner: 'google-auto',
+            timestamp: new Date().toISOString(),
+            performanceTime: entry.startTime,
+            domain: host,
+            path: parsed.pathname,
+            format: format,
+            adx: adx,
+            ady: ady,
+            saldr: saldr,
+            client: params.get('client'),
+            elementId: match.elementId,
+            matchMethod: match.method,
+            candidatesAtRequest: match.candidates,
+            resourceDuration: Math.round(entry.duration * 100) / 100,
+            latestOutcome: 'pending'
+        };
+        autoAdRequests.push(request);
+        while (autoAdRequests.length > 50) autoAdRequests.shift();
+        emitDiagnostic('adsense:auto-request', Object.assign({}, request, {
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            page: window.location.pathname
+        }));
+        updateAutoRequestOutcomes();
+    }
+
+    function startAutoAdRequestDiagnostics() {
+        if (!('PerformanceObserver' in window)) return;
+        try {
+            const observer = new PerformanceObserver(function (list) {
+                list.getEntries().forEach(recordAutoAdRequest);
+            });
+            observer.observe({ type: 'resource', buffered: true });
+        } catch (error) {
+            try {
+                const observer = new PerformanceObserver(function (list) {
+                    list.getEntries().forEach(recordAutoAdRequest);
+                });
+                observer.observe({ entryTypes: ['resource'] });
+                performance.getEntriesByType('resource').forEach(recordAutoAdRequest);
+            } catch (ignored) {
+                emitDiagnostic('adsense:auto-request-observer', { status: 'unsupported' });
+            }
+        }
+
+        const observer = new MutationObserver(function () {
+            updateAutoRequestOutcomes();
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-ad-status', 'data-adsbygoogle-status', 'class', 'style', 'hidden']
+        });
+        getAutoPlacementCandidates();
+    }
+
     function start() {
         watchLoader();
         watchAdSenseErrors();
+        startAutoAdRequestDiagnostics();
 
         if ('ResizeObserver' in window) {
             resizeObserver = new ResizeObserver(schedulePendingAds);
