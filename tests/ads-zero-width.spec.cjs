@@ -387,3 +387,23 @@ test('Auto Ads request diagnostics work at mobile and desktop viewport sizes', a
     await page.locator('.google-auto-placed').last().evaluate(node => node.remove());
   }
 });
+
+
+test('Manual ad initialization accepts a visible slot with any positive measurable width', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__positiveWidthPushes = 0;
+    window.__positiveWidthMeasurements = [];
+    window.adsbygoogle = { push() { window.__positiveWidthPushes += 1; } };
+    window.addEventListener('adsense:pre-push', event => {
+      if (event.detail && event.detail.available) window.__positiveWidthMeasurements.push(event.detail.availableWidth);
+    });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const firstAd = page.locator('.ad-container ins.adsbygoogle').first();
+  await firstAd.evaluate(node => node.style.setProperty('width', '1px'));
+  await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__positiveWidthPushes)).toBeGreaterThan(0);
+  const widths = await page.evaluate(() => window.__positiveWidthMeasurements);
+  expect(widths).toContain(1);
+});
