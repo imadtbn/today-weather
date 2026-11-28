@@ -57,6 +57,8 @@ test('AdSense audit records mobile and desktop slots without changing placements
     window.addEventListener('adsense:pre-push', event => window.__adsAuditEvents.push({ kind: 'pre-push', ...event.detail }));
     window.addEventListener('adsense:placement-warning', event => window.__adsAuditEvents.push({ kind: 'placement-warning', ...event.detail }));
     window.addEventListener('adsense:auto-placement', event => window.__adsAuditEvents.push({ kind: 'auto-placement', ...event.detail }));
+    window.addEventListener('adsense:auto-request', event => window.__adsAuditEvents.push({ kind: 'auto-request', ...event.detail }));
+    window.addEventListener('adsense:auto-request-outcome', event => window.__adsAuditEvents.push({ kind: 'auto-request-outcome', ...event.detail }));
     window.addEventListener('adsense:push', event => window.__adsAuditEvents.push({ kind: 'push', ...event.detail }));
     window.addEventListener('adsense:tag-error', event => window.__adsAuditEvents.push({ kind: 'tag-error', ...event.detail }));
     window.addEventListener('adsense:auto-placement-error', event => window.__adsAuditEvents.push({ kind: 'auto-placement-error', ...event.detail }));
