@@ -296,3 +296,56 @@ test('TagError is only marked as an Auto Ads candidate when no recent manual pus
   expect(diagnostic.correlatedPush).toBeNull();
   expect(diagnostic.originalMessage).toContain('TagError');
 });
+
+
+test('Auto Ads requests capture zero-size parameters, wrapper geometry and filled/unfilled outcomes independently', async ({ page }) => {
+  await page.route('**/googletagmanager.com/gtm.js**', route => route.abort());
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.route('https://googleads.g.doubleclick.net/pagead/ads**', route => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p2sAAAAASUVORK5CYII=', 'base64')
+  }));
+  await page.addInitScript(() => {
+    window.__autoRequests = [];
+    window.__autoOutcomes = [];
+    window.addEventListener('adsense:auto-request', event => window.__autoRequests.push(event.detail));
+    window.addEventListener('adsense:auto-request-outcome', event => window.__autoOutcomes.push(event.detail));
+  });
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const sendAutoRequest = async (status, marker) => page.evaluate(({ status, marker }) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'google-auto-placed';
+    wrapper.style.cssText = 'display:block;width:320px;height:100px';
+    const ins = document.createElement('ins');
+    ins.className = 'adsbygoogle';
+    ins.setAttribute('data-ad-client', 'ca-pub-5656416032906373');
+    ins.setAttribute('data-ad-status', status);
+    ins.setAttribute('data-adsbygoogle-status', 'done');
+    wrapper.appendChild(ins);
+    document.body.appendChild(wrapper);
+    const image = new Image();
+    image.src = 'https://googleads.g.doubleclick.net/pagead/ads?client=ca-pub-5656416032906373&format=0x0&adx=-100000&ady=-100000&saldr=aa&test=' + marker;
+  }, { status, marker });
+
+  await sendAutoRequest('filled', 'filled-case');
+  await expect.poll(() => page.evaluate(() => window.__autoRequests.length)).toBeGreaterThanOrEqual(1);
+  const filledRequest = await page.evaluate(() => window.__autoRequests[0]);
+  expect(filledRequest.owner).toBe('google-auto');
+  expect(filledRequest.format).toBe('0x0');
+  expect(filledRequest.adx).toBe('-100000');
+  expect(filledRequest.ady).toBe('-100000');
+  expect(filledRequest.elementId).toBeTruthy();
+  expect(filledRequest.candidatesAtRequest[0].containerWidth).toBe(320);
+  expect(filledRequest.candidatesAtRequest[0].containerHeight).toBe(100);
+  await expect.poll(() => page.evaluate(id => window.__autoOutcomes.some(item => item.requestId === id && item.outcome === 'filled'), filledRequest.id)).toBe(true);
+
+  await page.locator('.google-auto-placed').last().evaluate(node => node.remove());
+  await sendAutoRequest('unfilled', 'unfilled-case');
+  await expect.poll(() => page.evaluate(() => window.__autoRequests.length)).toBeGreaterThanOrEqual(2);
+  const unfilledRequest = await page.evaluate(() => window.__autoRequests[window.__autoRequests.length - 1]);
+  expect(unfilledRequest.format).toBe('0x0');
+  expect(unfilledRequest.owner).toBe('google-auto');
+  await expect.poll(() => page.evaluate(id => window.__autoOutcomes.some(item => item.requestId === id && item.outcome === 'unfilled'), unfilledRequest.id)).toBe(true);
+});
