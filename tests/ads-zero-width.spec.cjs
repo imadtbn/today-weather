@@ -349,3 +349,61 @@ test('Auto Ads requests capture zero-size parameters, wrapper geometry and fille
   expect(unfilledRequest.owner).toBe('google-auto');
   await expect.poll(() => page.evaluate(id => window.__autoOutcomes.some(item => item.requestId === id && item.outcome === 'unfilled'), unfilledRequest.id)).toBe(true);
 });
+
+
+test('Auto Ads request diagnostics work at mobile and desktop viewport sizes', async ({ page }) => {
+  await page.route('**/googletagmanager.com/gtm.js**', route => route.abort());
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.route('https://googleads.g.doubleclick.net/pagead/ads**', route => route.fulfill({
+    status: 200,
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p2sAAAAASUVORK5CYII=', 'base64')
+  }));
+  await page.addInitScript(() => {
+    window.__responsiveAutoRequests = [];
+    window.addEventListener('adsense:auto-request', event => window.__responsiveAutoRequests.push(event.detail));
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    const marker = 'viewport-' + viewport.width;
+    await page.evaluate(marker => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'google-auto-placed';
+      wrapper.style.cssText = 'display:block;width:min(320px,100%);height:100px';
+      wrapper.innerHTML = '<ins class="adsbygoogle" data-ad-status="filled" data-adsbygoogle-status="done"></ins>';
+      document.body.appendChild(wrapper);
+      const image = new Image();
+      image.src = 'https://googleads.g.doubleclick.net/pagead/ads?format=0x0&adx=-100000&ady=-100000&saldr=aa&test=' + marker;
+    }, marker);
+    await expect.poll(() => page.evaluate(() => window.__responsiveAutoRequests.length)).toBeGreaterThan(viewport.width === 390 ? 0 : 1);
+    const request = await page.evaluate(width => window.__responsiveAutoRequests.find(item => item.viewport.width === width), viewport.width);
+    expect(request).toBeTruthy();
+    expect(request.format).toBe('0x0');
+    expect(request.adx).toBe('-100000');
+    expect(request.ady).toBe('-100000');
+    expect(request.owner).toBe('google-auto');
+    await page.locator('.google-auto-placed').last().evaluate(node => node.remove());
+  }
+});
+
+
+test('Manual ad initialization accepts a visible slot with any positive measurable width', async ({ page }) => {
+  await page.route('**/adsbygoogle.js**', route => route.abort());
+  await page.addInitScript(() => {
+    window.__positiveWidthPushes = 0;
+    window.__positiveWidthMeasurements = [];
+    window.adsbygoogle = { push() { window.__positiveWidthPushes += 1; } };
+    window.addEventListener('adsense:pre-push', event => {
+      if (event.detail && event.detail.available) window.__positiveWidthMeasurements.push(event.detail.availableWidth);
+    });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const firstAd = page.locator('.ad-container ins.adsbygoogle').first();
+  await firstAd.evaluate(node => node.style.setProperty('width', '1px'));
+  await page.locator('script[src*="adsbygoogle.js"]').evaluate(script => script.dispatchEvent(new Event('load')));
+  await expect.poll(() => page.evaluate(() => window.__positiveWidthPushes)).toBeGreaterThan(0);
+  const widths = await page.evaluate(() => window.__positiveWidthMeasurements);
+  expect(widths).toContain(1);
+});
