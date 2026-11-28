@@ -615,6 +615,13 @@
 
     function updateAutoRequestOutcomes() {
         autoAdRequests.forEach(function (request) {
+            if (!request.elementId) {
+                const lateCandidates = getAutoPlacementCandidates();
+                if (lateCandidates.length === 1) {
+                    request.elementId = lateCandidates[0].elementId;
+                    request.matchMethod = 'single-auto-placement-after-request';
+                }
+            }
             const candidate = request.elementId
                 ? document.querySelector('[data-ads-auto-diagnostic-id="' + request.elementId + '"]')
                 : null;
@@ -644,8 +651,8 @@
         let parsed;
         try { parsed = new URL(entry.name); } catch (error) { return; }
         const host = parsed.hostname.toLowerCase();
-        if (!/(^|\\.)googleads\\.g\\.doubleclick\\.net$|pagead2\\.googlesyndication\\.com$/.test(host)) return;
-        if (!/\\/pagead\\/ads/.test(parsed.pathname)) return;
+        if (!/(^|\.)googleads\.g\.doubleclick\.net$|pagead2\.googlesyndication\.com$/.test(host)) return;
+        if (!/\/pagead\/ads/.test(parsed.pathname)) return;
         const params = parsed.searchParams;
         const format = params.get('format');
         const saldr = params.get('saldr');
